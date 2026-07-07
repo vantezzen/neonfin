@@ -6,6 +6,8 @@ description: Read, check, refresh, and deduct credits from React components.
 `useCredits()` is the main hook for app UI. With no argument, it uses the first
 product balance. That is ideal for single-product apps.
 
+<UseCreditsLiveDemo />
+
 ## Usage
 
 ```tsx
@@ -19,7 +21,12 @@ export function ProcessButton() {
   }
 
   return (
-    <button disabled={loading || !hasCredits(10)} onClick={process}>
+    <button 
+      // FYI: You probably want to just use the "CreditGate"
+      // component instead of manually checking hasCredits.
+      disabled={loading || !hasCredits(10)} 
+      onClick={process}
+    >
       Process - {balance} {creditUnit}
     </button>
   );

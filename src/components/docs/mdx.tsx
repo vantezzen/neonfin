@@ -1,5 +1,14 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Step, Steps } from "fumadocs-ui/components/steps";
+import {
+  CreditGateLiveDemo,
+  FeatureGateLiveDemo,
+  ProviderLiveDemo,
+  PurchaseLiveDemo,
+  RemainingCreditsLiveDemo,
+  UseCreditsLiveDemo,
+  WalletLiveDemo,
+} from "@/components/docs/neonfin-component-demos";
 import type { MDXComponents } from "mdx/types";
 
 export function getMDXComponents(components?: MDXComponents) {
@@ -7,6 +16,13 @@ export function getMDXComponents(components?: MDXComponents) {
     ...defaultMdxComponents,
     Step,
     Steps,
+    CreditGateLiveDemo,
+    FeatureGateLiveDemo,
+    ProviderLiveDemo,
+    PurchaseLiveDemo,
+    RemainingCreditsLiveDemo,
+    UseCreditsLiveDemo,
+    WalletLiveDemo,
     ...components,
   } satisfies MDXComponents;
 }
