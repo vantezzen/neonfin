@@ -42,7 +42,7 @@ const minutes = useCredits("prod_minutes");
 | `productId` | `string \| null` | Resolved product id. |
 | `loading` | `boolean` | True while balances are loading. |
 | `error` | `string \| null` | Balance loading error message. |
-| `confirming` | `boolean` | True while a returning checkout is being confirmed. |
+| `confirming` | `boolean` | True while checkout started from this page is in progress. |
 | `refresh` | `() => Promise<void>` | Re-fetch balances. |
 | `hasCredits` | `(amount: number) => boolean` | Local balance check. |
 | `deduct` | `(amount, opts?) => Promise<DeductResult>` | Deduct credits and refresh. |

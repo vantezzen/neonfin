@@ -35,7 +35,7 @@ type NeonfinContextValue = {
     priceId: string,
     opts?: StartCheckoutOptions,
   ) => Promise<CheckoutResult>;
-  /** True while confirming a checkout the user just returned from. */
+  /** True while checkout started from this page is in progress. */
   confirming: boolean;
 };
 
@@ -108,9 +108,8 @@ export function NeonfinProvider({
     [client, refresh],
   );
 
-  // Resume a checkout the user was redirected away for. `startCheckout` stashes
-  // the order id in localStorage before redirect checkout; when the user returns
-  // we poll until it settles, then refresh.
+  // Resume a checkout the user was redirected away for. This must be
+  // non-blocking: stale abandoned orders should never freeze gates or buttons.
   const resumed = useRef(false);
   useEffect(() => {
     if (resumed.current || typeof window === "undefined") return;
@@ -120,8 +119,6 @@ export function NeonfinProvider({
 
     let active = true;
     let attempts = 0;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- entering the "confirming checkout" state on return
-    setConfirming(true);
 
     async function poll() {
       if (!active) return;
@@ -131,21 +128,24 @@ export function NeonfinProvider({
           client.setCode(order.code);
           window.localStorage.removeItem(client.pendingOrderKey);
           if (!active) return;
-          setConfirming(false);
           await refresh();
           return;
         }
         if (order.status === "failed" || order.status === "refunded") {
           window.localStorage.removeItem(client.pendingOrderKey);
-          setConfirming(false);
           return;
         }
-      } catch {
-        // transient - keep polling
+      } catch (err) {
+        if (err instanceof NeonfinError && err.code === "order_not_found") {
+          window.localStorage.removeItem(client.pendingOrderKey);
+          return;
+        }
+        // transient - keep polling in the background
       }
-      // Give up after ~30s of polling; the webhook may still be in flight.
+      // Stop tracking stale abandoned checkouts. The UI never blocks while this
+      // runs, but clearing the key avoids retrying the same old order forever.
       if (++attempts > 20) {
-        setConfirming(false);
+        window.localStorage.removeItem(client.pendingOrderKey);
         return;
       }
       setTimeout(poll, 1500);
