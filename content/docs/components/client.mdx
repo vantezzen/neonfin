@@ -1,14 +1,16 @@
 ---
 title: createNeonfin client
-description: The zero-dependency utility behind the React components.
+description: Browser client for custom credit, checkout, and wallet UI.
 ---
 
-This is the overview and install guide for the browser client. For the full list
-of methods, their signatures, and types, see the
-[client reference](/docs/api/client-reference).
+`createNeonfin()` is the zero-dependency browser client behind the React
+components. Use it when you want custom UI but still want the same wallet,
+checkout, balance, and feature logic that `NeonfinProvider` uses internally.
 
-`NeonfinProvider` internally creates a `neonfin` client and passes it down via
-React context. You can also create your own client for custom UI.
+The client uses a publishable key (`nf_pk_...`) and stores anonymous wallet
+credit codes in `localStorage`. If your app has logged-in users and you want
+credits tied to your own user ids, use the [server client](/docs/components/server)
+instead.
 
 ## Install
 
@@ -27,23 +29,129 @@ export const neonfin = createNeonfin({
 });
 ```
 
+## Config
+
+| Field | Type | Description |
+|---|---|---|
+| `baseUrl` | `string` | Public URL of your neonFin instance. |
+| `publishableKey` | `string` | Project publishable key. Safe for browser use. |
+| `storageKey` | `string` | Optional custom `localStorage` key for credit codes. |
+
 ## Common calls
 
 ```ts
 const products = await neonfin.getProducts();
 const code = await neonfin.getOrCreateCode();
-const balances = await neonfin.getBalances();
+const wallet = await neonfin.getWallet();
 const result = await neonfin.deduct(10, { idempotencyKey: "job_123" });
+
 await neonfin.startCheckout("price_..."); // popup on desktop, redirect on mobile
 ```
 
-## Every method
+## Credit-code methods
 
-The client covers credit-code storage, catalog/balance reads, spending,
-checkout, and customer-portal links. See the
-[client reference](/docs/api/client-reference) for the complete list with
-signatures, return types, and error handling.
+| Method | Returns | Description |
+|---|---|---|
+| `getCode()` | `string \| null` | Reads the stored browser code. |
+| `setCode(code)` | `void` | Saves a recovery code, usually after restore or checkout. |
+| `clearCode()` | `void` | Removes the stored code. The next wallet call creates a fresh wallet. |
+| `getOrCreateCode()` | `Promise<string>` | Creates a wallet if needed and stores the code. |
 
-> Working server-side with your own user accounts instead? Use the
-> [`neonfin-server`](/docs/concepts/external-auth#the-server-client) client and
-> a secret key.
+If the stored code is missing, expired, or deleted server-side, balance,
+deduct, and checkout calls clear it and create a fresh wallet automatically.
+
+## Catalog and wallet
+
+| Method | Returns | Description |
+|---|---|---|
+| `getProducts()` | `Promise<Product[]>` | Reads active products and prices. |
+| `getWallet(code?)` | `Promise<WalletInfo>` | Reads balances, features, and subscriptions in one call. |
+| `getBalances(code?)` | `Promise<Balance[]>` | Reads all balances for a code wallet. |
+| `getBalance(productId?, code?)` | `Promise<Balance \| null>` | Reads one product balance. Without `productId`, returns the only product or first product. |
+| `getFeatures(code?)` | `Promise<string[]>` | Reads unlocked feature slugs. |
+| `hasFeature(feature, code?)` | `Promise<boolean>` | Checks whether a feature is unlocked. |
+| `hasCredits(amount, opts?)` | `Promise<boolean>` | Checks whether the wallet has enough credits. |
+
+## Spending credits
+
+```ts
+await neonfin.deduct(10, {
+  productId: "prod_...",
+  idempotencyKey: "job_123",
+  meta: { feature: "render" },
+});
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `deduct(amount, opts?)` | `Promise<{ balance: number; deducted: boolean }>` | Deducts credits from the browser wallet. |
+
+Pass a stable `idempotencyKey` for retryable work, such as a render job id or
+request id. If you omit it, the client generates one, which is fine for a single
+button click but not for server retries.
+
+## Checkout
+
+For custom purchase UI, prefer `startCheckout`. Its default `flow: "auto"` opens
+a popup on desktop and uses redirect checkout on touch/mobile devices:
+
+```ts
+await neonfin.startCheckout("price_...");
+```
+
+Force redirect checkout when your app cannot support popups:
+
+```ts
+await neonfin.startCheckout("price_...", { flow: "redirect" });
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `startCheckout(priceId, opts?)` | `Promise<CheckoutResult>` | One-call checkout. Creates the session, remembers the order, and uses popup or redirect checkout. |
+| `createCheckout(priceId, opts?)` | `Promise<CheckoutResult>` | Lower-level checkout. Returns the provider URL; you handle redirect and resume. |
+| `getOrder(ref)` | `Promise<OrderStatus>` | Polls an order by order id or provider checkout id. |
+
+`CheckoutResult` contains:
+
+```ts
+type CheckoutResult = {
+  url: string;
+  checkoutId: string;
+  orderId: string;
+};
+```
+
+## Billing portal
+
+Use the portal URL when a wallet has completed at least one purchase and the
+user wants invoices, refunds, payment methods, or subscription management:
+
+```ts
+const url = await neonfin.getPortalUrl({
+  returnUrl: window.location.href,
+});
+
+window.location.href = url;
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `getPortalUrl(opts?)` | `Promise<string>` | Creates a payment-provider customer portal URL for the current wallet. |
+
+## Error handling
+
+```ts
+import { NeonfinError } from "@/lib/neonfin";
+
+try {
+  await neonfin.deduct(100);
+} catch (err) {
+  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+    console.log(`Need ${err.requested}, have ${err.balance}`);
+  }
+}
+```
+
+`NeonfinError` includes `status`, optional stable `code`, and for insufficient
+credits also `balance` and `requested`. See [Errors](/docs/api/errors) for
+common status codes.

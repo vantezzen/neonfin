@@ -62,8 +62,9 @@ It exposes these server-side methods:
   checkout URL that credits this user's wallet when paid.
 
 Always pass a stable `idempotencyKey` (job id, request id) on deductions and
-grants so retries apply exactly once. For the raw HTTP endpoints and every
-field, see [Server-side users](/docs/api/server-side-users).
+grants so retries apply exactly once. For every server-client method and field,
+see [createNeonfinServer client](/docs/components/server). For raw HTTP
+endpoints, see [Server-side users](/docs/api/server-side-users).
 
 ## Examples
 

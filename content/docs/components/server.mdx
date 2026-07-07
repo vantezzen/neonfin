@@ -1,0 +1,220 @@
+---
+title: createNeonfinServer client
+description: Server-only client for external auth, grants, deductions, and checkout.
+---
+
+`createNeonfinServer()` is the zero-dependency server client for apps that
+already have their own user accounts. It uses a secret key (`nf_sk_...`) and
+maps your user ids to neonFin wallets through `externalUserId`.
+
+Use it only in server code: route handlers, server actions, API routes,
+background jobs, and support tooling. Never import it into browser code.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-server.json
+```
+
+## Create a server client
+
+```ts
+import { createNeonfinServer } from "@/lib/neonfin/server";
+
+export const neonfinServer = createNeonfinServer({
+  baseUrl: process.env.NEONFIN_URL!,
+  secretKey: process.env.NEONFIN_SECRET_KEY!,
+});
+```
+
+## Config
+
+| Field | Type | Description |
+|---|---|---|
+| `baseUrl` | `string` | Public URL of your neonFin instance. |
+| `secretKey` | `string` | Secret API key starting with `nf_sk_`. Keep it server-only. |
+
+## When to use it
+
+Use the server client when:
+
+- Your app already has accounts.
+- Credits should follow the logged-in account across devices.
+- You want to grant credits from support, migrations, or promotions.
+- Paid work happens on the server and must be deducted securely.
+- You need checkout to credit a user account instead of a browser code wallet.
+
+For anonymous browser wallets, use the [browser client](/docs/components/client)
+or React components instead.
+
+## Wallets
+
+Create or read a wallet for your own user id:
+
+```ts
+const wallet = await neonfinServer.getOrCreateWallet(user.id);
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `getOrCreateWallet(externalUserId)` | `Promise<ExternalWallet>` | Gets or creates the wallet tied to your user id. Idempotent by `externalUserId`. |
+
+Call this on billing pages, after signup, or before showing account credit
+state. It returns balances, unlocked features, and subscriptions in one response.
+
+## Grant credits
+
+Grant credits from server-side workflows such as welcome credits, migrations,
+promotions, or support adjustments:
+
+```ts
+await neonfinServer.grantCredits({
+  externalUserId: user.id,
+  productId: "prod_...",
+  amount: 50,
+  idempotencyKey: `welcome-${user.id}`,
+  meta: { source: "signup" },
+});
+```
+
+You can also grant credits to an anonymous recovery code:
+
+```ts
+await neonfinServer.grantCredits({
+  code: "SKIP-8F3K-L9PQ-2MVT",
+  amount: 50,
+  idempotencyKey: "support-ticket-456",
+});
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `grantCredits(input)` | `Promise<GrantResult>` | Adds credits to an external user wallet or code wallet. |
+
+`productId` is optional when the project has one product. Use a stable
+`idempotencyKey` whenever a grant can be retried.
+
+## Deduct credits
+
+Deduct credits when a logged-in user runs paid work:
+
+```ts
+await neonfinServer.deduct({
+  externalUserId: user.id,
+  productId: "prod_...",
+  amount: 10,
+  idempotencyKey: job.id,
+  meta: { feature: "render" },
+});
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `deduct(input)` | `Promise<DeductResult>` | Deducts credits from an external user's wallet. |
+
+Always pass a stable `idempotencyKey`, such as a job id or request id. If the
+same operation is retried, neonFin applies it once.
+
+## Checkout
+
+Start checkout for a logged-in user:
+
+```ts
+const { url } = await neonfinServer.createCheckout("price_...", {
+  externalUserId: user.id,
+  successUrl: "https://your-app.com/billing?status=success",
+  cancelUrl: "https://your-app.com/billing?status=cancelled",
+  customerEmail: user.email,
+});
+
+return Response.redirect(url);
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `createCheckout(priceId, input)` | `Promise<CheckoutResult>` | Creates a provider checkout that credits the external user's wallet when paid. |
+
+The wallet is created automatically if it does not exist yet. The payment
+webhook credits the wallet tied to `externalUserId`, so you do not need browser
+credit-code handling.
+
+## Features
+
+Check feature access in server code:
+
+```ts
+if (await neonfinServer.hasFeature(user.id, "analytics")) {
+  return runAnalyticsExport();
+}
+```
+
+Manually grant or revoke feature access for support, comps, or promos:
+
+```ts
+await neonfinServer.grantFeature(user.id, "analytics");
+await neonfinServer.revokeFeature(user.id, "analytics");
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `hasFeature(externalUserId, feature)` | `Promise<boolean>` | Checks whether the user currently has a feature. |
+| `grantFeature(externalUserId, feature)` | `Promise<FeatureResult>` | Adds a manual feature grant. Idempotent. |
+| `revokeFeature(externalUserId, feature)` | `Promise<FeatureResult>` | Removes a manual feature grant. Derived subscription or purchase access remains. |
+
+## Full paid action
+
+```ts
+import { NeonfinError } from "@/lib/neonfin/server";
+import { neonfinServer } from "@/lib/neonfin/server";
+
+export async function renderVideo(userId: string, jobId: string) {
+  try {
+    await neonfinServer.deduct({
+      externalUserId: userId,
+      amount: 10,
+      idempotencyKey: jobId,
+    });
+  } catch (err) {
+    if (err instanceof NeonfinError && err.isInsufficientCredits) {
+      const { url } = await neonfinServer.createCheckout("price_...", {
+        externalUserId: userId,
+        successUrl: "https://your-app.com/billing?status=success",
+      });
+
+      return { needsPayment: url };
+    }
+
+    throw err;
+  }
+
+  return startRenderJob(jobId);
+}
+```
+
+## Error handling
+
+```ts
+import { NeonfinError } from "@/lib/neonfin/server";
+
+try {
+  await neonfinServer.deduct({
+    externalUserId: user.id,
+    amount: 100,
+    idempotencyKey: requestId,
+  });
+} catch (err) {
+  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+    console.log(`Need ${err.requested}, have ${err.balance}`);
+  }
+}
+```
+
+`NeonfinError` includes `status`, optional stable `code`, and for insufficient
+credits also `balance` and `requested`. See [Errors](/docs/api/errors) for
+common status codes.
+
+## Raw endpoints
+
+The server client wraps the secret-key REST endpoints. If you are building a
+non-TypeScript integration or need raw HTTP examples, see
+[Server-side users](/docs/api/server-side-users).

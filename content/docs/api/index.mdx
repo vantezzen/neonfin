@@ -1,19 +1,21 @@
 ---
-title: Client & API
-description: Use the typed client or call the public REST API directly.
+title: Public REST API
+description: Endpoints used by the client and components.
 ---
 
-Most apps should start with the React components. Use this section when you
-need custom UI, server-side users, or a non-React integration.
+neonFin provides a REST API for on-page actions like getting wallet info and
+starting checkout.
 
-## What to use
+It is highly recommended that you use the React components or the typed clients
+instead of calling the REST API directly. The components handle wallet creation,
+balance refresh, and checkout confirmation automatically.
 
 | Need | Use |
 |---|---|
 | React UI for credits and checkout | [Components](/docs/components) |
-| Custom browser UI | [createNeonfin client](/docs/api/client-reference) |
+| Custom browser UI | [createNeonfin client](/docs/components/client) |
 | Non-React browser app | REST API with a publishable key |
-| Existing logged-in users | [Server-side users](/docs/api/server-side-users) with a secret key |
+| Existing logged-in users | [createNeonfinServer client](/docs/components/server) with a secret key |
 | Promo/support credits | `POST /api/v1/credit` with a secret key |
 
 ## Key types
@@ -38,3 +40,226 @@ The hosted default used in docs is:
 ```txt
 https://pay.vantezzen.io/api/v1
 ```
+
+Use the REST API directly if you are not using the registry client.
+
+## Authentication
+
+All requests use bearer auth:
+
+```http
+Authorization: Bearer nf_pk_...
+```
+
+Browser calls should use publishable keys. Server-only calls that create
+external-auth wallets, deduct from them, or grant credits require secret keys -
+see [Server-side users](/docs/api/server-side-users) for those endpoints.
+
+## Catalog
+
+```http
+GET /api/v1/products
+```
+
+Returns active products and active prices for the authenticated project.
+
+```json
+{
+  "products": [
+    {
+      "id": "prod_...",
+      "name": "Image generations",
+      "description": null,
+      "type": "credits",
+      "creditUnit": "images",
+      "freeGrant": { "credits": 10, "period": "monthly" },
+      "prices": [
+        {
+          "id": "price_...",
+          "label": null,
+          "amountCents": 500,
+          "currency": "USD",
+          "creditsGranted": 100,
+          "features": [],
+          "interval": "one_time"
+        }
+      ]
+    }
+  ]
+}
+```
+
+For a subscription product, each price is a tier - `label` is the tier name,
+`interval` is `month`/`year`, `creditsGranted` is included per cycle, and
+`features` lists the slugs it unlocks. One-time unlocks carry their features on
+a `one_time` price.
+
+## Anonymous wallets
+
+Create a credit-code wallet:
+
+```http
+POST /api/v1/wallets
+Authorization: Bearer nf_pk_...
+```
+
+Returns the wallet's balances plus its derived access (unlocked features and
+active subscriptions):
+
+```json
+{
+  "code": "SKIP-8F3K-L9PQ-2MVT",
+  "balances": [],
+  "features": [],
+  "subscriptions": []
+}
+```
+
+Read a wallet (same shape):
+
+```http
+GET /api/v1/wallets/{code}
+```
+
+A wallet with access looks like:
+
+```json
+{
+  "code": "SKIP-8F3K-L9PQ-2MVT",
+  "balances": [{ "productId": "prod_...", "balance": 8, "creditUnit": "analyses" }],
+  "features": ["analytics", "export"],
+  "subscriptions": [
+    {
+      "productId": "prod_...",
+      "priceId": "price_...",
+      "label": "Pro",
+      "status": "active",
+      "currentPeriodEnd": "2026-08-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+Deduct credits:
+
+```http
+POST /api/v1/wallets/{code}/deduct
+Content-Type: application/json
+
+{
+  "productId": "prod_...",
+  "amount": 10,
+  "idempotencyKey": "job_123",
+  "meta": { "feature": "render" }
+}
+```
+
+Returns:
+
+```json
+{
+  "balance": 90,
+  "deducted": true
+}
+```
+
+## Checkout
+
+```http
+POST /api/v1/checkout
+Content-Type: application/json
+
+{
+  "priceId": "price_...",
+  "code": "SKIP-8F3K-L9PQ-2MVT",
+  "successUrl": "https://your-app.com",
+  "cancelUrl": "https://your-app.com/billing",
+  "customerEmail": "user@example.com"
+}
+```
+
+Pass `code` to top up an anonymous wallet, or `externalUserId` (server-side)
+to credit an account wallet - never both. With neither, fulfillment mints a
+fresh credit code and returns it on the order.
+
+For a subscription tier, if the wallet already has an active subscription to the
+same product, checkout returns `409 already_subscribed` - send the user to the
+[customer portal](#customer-portal) to switch tiers instead.
+
+With a publishable key, `successUrl` and `cancelUrl` must be on one of the
+project's allowed origins (when an allowlist is configured) - a publishable
+key is public, so unrestricted redirects would let anyone send your buyers to
+their own page after payment. Secret-key calls may redirect anywhere.
+
+Returns:
+
+```json
+{
+  "url": "https://checkout...",
+  "checkoutId": "cs_...",
+  "orderId": "ord_..."
+}
+```
+
+Redirect the browser to `url`.
+
+## Orders
+
+```http
+GET /api/v1/orders/{orderIdOrCheckoutId}
+```
+
+Returns:
+
+```json
+{
+  "id": "ord_...",
+  "status": "paid",
+  "code": "SKIP-8F3K-L9PQ-2MVT",
+  "balance": 100
+}
+```
+
+## Customer portal
+
+```http
+GET /api/v1/wallets/{code}/portal?returnUrl=https%3A%2F%2Fyour-app.com
+```
+
+Returns a provider portal URL for wallets that have completed a purchase. Use
+it for customer-facing billing management: invoices, payment methods,
+subscription changes, cancellation, and any refund flow the provider exposes.
+
+```json
+{
+  "url": "https://billing..."
+}
+```
+
+## Features (secret key)
+
+Manually grant or revoke a feature for a wallet - for comps, support, or your
+own logic. Requires a secret key.
+
+```http
+POST /api/v1/features
+Authorization: Bearer nf_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_42",
+  "feature": "analytics",
+  "action": "grant"
+}
+```
+
+Identify the wallet by `externalUserId` or `code`. `action` is `grant`
+(default) or `revoke`. Returns the wallet's full feature list:
+
+```json
+{ "features": ["analytics"] }
+```
+
+`revoke` removes only a manual grant. Access from an active subscription or a
+one-time purchase is derived and can't be revoked here - end the subscription or
+refund the order instead.
