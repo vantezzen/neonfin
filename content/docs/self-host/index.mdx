@@ -1,0 +1,31 @@
+---
+title: Self-host neonFin
+description: Run neonFin on your own domain with your own database and provider accounts.
+---
+
+Self-hosting neonFin means running one Next.js app and one Postgres database.
+Your users still check out through Stripe or Polar; neonFin handles products,
+wallets, credits, webhooks, and the shadcn registry.
+
+## What you need
+
+- A public domain for neonFin, for example `https://pay.example.com`.
+- A Postgres database.
+- Environment variables for auth, encryption, and public URLs.
+- Stripe or Polar credentials.
+- A way to run database migrations after deploy.
+
+## Recommended path
+
+1. [Set environment variables](/docs/self-host/environment).
+2. [Create and migrate Postgres](/docs/self-host/database).
+3. [Deploy the Next.js app](/docs/self-host/deployment).
+4. [Connect Stripe or Polar](/docs/getting-started/providers) - provider setup is
+   the same for hosted and self-hosted instances.
+5. [Use your registry URL](/docs/self-host/registry).
+6. [Follow operational checks](/docs/self-host/operations).
+
+<Callout>
+After creating your admin account, set `NEONFIN_ALLOW_SIGNUPS=false` unless you
+want other developers to create accounts on your instance.
+</Callout>

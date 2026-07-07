@@ -1,0 +1,46 @@
+---
+title: Go live checklist
+description: The practical checks before real users buy credits.
+---
+
+Use this checklist before switching from test payments to real payments.
+
+## Dashboard
+
+- Your project has the correct identity mode.
+- Products use clear credit units users understand.
+- Prices grant the amount of credits you intend.
+- Free grants are not larger than you are comfortable giving away.
+- Anonymous projects have a wallet creation limit and optional code expiry.
+
+## Provider
+
+- Stripe is connected with production credentials.
+- The webhook endpoint shown in neonFin is registered at the provider.
+- The webhook signing secret is saved in neonFin.
+- A test checkout creates an order and credits the wallet.
+- Refunds and subscription renewal events show up in the webhook log.
+
+<Callout>
+Using Polar instead? The same checklist applies, but use the Polar events from
+[Connect a provider](/docs/getting-started/providers).
+</Callout>
+
+## App
+
+- `NEXT_PUBLIC_NEONFIN_URL` points to the production neonFin URL.
+- `NEXT_PUBLIC_NEONFIN_KEY` is a publishable key for the right project.
+- Secret keys are used only on your server.
+- Each paid action calls `deduct()` when work starts.
+- Retried paid actions use stable idempotency keys.
+- The purchase button is visible when users run out of credits.
+- A recovery-code input is available somewhere users can find it.
+
+## Self-hosted neonFin
+
+- `NEONFIN_ALLOW_SIGNUPS=false` after your admin account exists.
+- `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` match the public domain.
+- Database migrations have run against production Postgres.
+- The registry URL in install commands uses your production domain.
+
+After this, your users can buy credits and spend them in your app.

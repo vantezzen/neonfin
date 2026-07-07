@@ -1,0 +1,11 @@
+{
+  "title": "Core concepts",
+  "pages": [
+    "index",
+    "projects-products-prices",
+    "access-and-features",
+    "credit-codes",
+    "external-auth",
+    "checkout-flow"
+  ]
+}

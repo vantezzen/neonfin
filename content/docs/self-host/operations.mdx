@@ -1,0 +1,51 @@
+---
+title: Operations
+description: Day-to-day checks for a self-hosted neonFin instance.
+---
+
+neonFin sits in the payment path, so operate it like a small billing service.
+
+## Routine checks
+
+- Webhook events are being processed.
+- Orders move from pending to paid after checkout.
+- Provider webhook secrets are present.
+- Database backups are running.
+- Signup access is locked down if the instance is private.
+- Consuming apps use the correct publishable key and base URL.
+
+## Webhook replay
+
+The dashboard webhook log includes replay for stored verified payloads. Use it
+when provider delivery succeeded but fulfillment failed because of a temporary
+issue.
+
+Replay is idempotent for normal payment events, so repeated replay should not
+duplicate credits.
+
+## Rate limits
+
+Publishable-key endpoints have in-process rate limiting. Anonymous wallet
+creation also has a per-project/IP throttle. On multi-instance deployments,
+effective limits scale with the number of instances until you move the limiter
+to shared storage.
+
+## Common fixes
+
+| Symptom | Check |
+|---|---|
+| Checkout cannot start | Product has an active synced price and provider account. |
+| Paid checkout did not credit wallet | Provider webhook endpoint and signing secret. |
+| Browser app gets `403 Origin not allowed` | Project allowed origins include the app origin. |
+| Users see `Insufficient credits` | Purchase UI is visible and prices are active. |
+| Secret key works in dashboard but not app | Secret keys must stay server-side; browser code needs publishable keys. |
+
+## Upgrades
+
+After pulling code changes:
+
+1. Review environment changes.
+2. Run migrations.
+3. Deploy.
+4. Complete a small test checkout.
+5. Check the webhook log.

@@ -1,0 +1,35 @@
+---
+title: Common workflows
+description: Practical recipes for subscriptions, billing, refunds, and support work.
+---
+
+These pages sit between the quickstart and the low-level reference. Use them
+when you know what you want to support in your app, but do not want to piece it
+together from the component and API pages.
+
+## Workflows
+
+- [Sell subscriptions and gate features](/docs/workflows/subscriptions)
+- [Let customers manage billing](/docs/workflows/billing-portal)
+- [Handle refunds](/docs/workflows/refunds)
+- [Grant credits or access for support](/docs/workflows/support-adjustments)
+
+## What neonFin owns
+
+neonFin owns the small app-facing layer:
+
+- wallets and recovery codes
+- balances and deductions
+- feature access derived from purchases, subscriptions, and manual grants
+- provider checkout creation
+- webhook fulfillment
+- drop-in React components
+
+Stripe or Polar still own money movement, invoices, payment methods,
+subscription billing, cancellation screens, and provider-side refunds.
+
+<Callout>
+The safest pattern is to send customers to the provider portal for billing
+changes, and let provider webhooks update neonFin after payment, cancellation,
+renewal, or refund events.
+</Callout>

@@ -1,0 +1,43 @@
+---
+title: Registry URL
+description: Serve shadcn registry files from your own neonFin domain.
+---
+
+The shadcn components install from your neonFin instance:
+
+```txt
+https://your-domain.com/r/neonfin-provider.json
+```
+
+The registry JSON is generated from `registry.json` and `registry/neonfin/**`.
+
+## Consumer install commands
+
+When self-hosting, replace `pay.vantezzen.io` with your own domain:
+
+```bash
+npx shadcn@latest add https://pay.example.com/r/neonfin-provider.json
+npx shadcn@latest add https://pay.example.com/r/neonfin-purchase.json
+npx shadcn@latest add https://pay.example.com/r/neonfin-gate.json
+```
+
+In the consuming app:
+
+```bash title=".env.local"
+NEXT_PUBLIC_NEONFIN_URL=https://pay.example.com
+NEXT_PUBLIC_NEONFIN_KEY=nf_pk_your_key
+```
+
+## When the domain changes
+
+If you move the neonFin instance to a new domain:
+
+1. Update consuming apps' `NEXT_PUBLIC_NEONFIN_URL`.
+2. Update shadcn install commands in your docs/readme.
+3. Update provider webhook endpoints.
+4. Rebuild/deploy so `/r/*.json` is current.
+
+## CORS
+
+The registry JSON under `/r` is served with permissive CORS headers so shadcn
+can fetch it during install.

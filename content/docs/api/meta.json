@@ -1,0 +1,10 @@
+{
+  "title": "Client & API",
+  "pages": [
+    "index",
+    "client-reference",
+    "public-rest-api",
+    "server-side-users",
+    "errors"
+  ]
+}

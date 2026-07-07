@@ -1,0 +1,15 @@
+{
+  "title": "Components & utils",
+  "pages": [
+    "index",
+    "install",
+    "provider",
+    "use-credits",
+    "remaining-credits",
+    "credit-gate",
+    "feature-gate",
+    "purchase",
+    "wallet-button",
+    "client"
+  ]
+}

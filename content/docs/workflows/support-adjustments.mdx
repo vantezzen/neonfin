@@ -1,0 +1,97 @@
+---
+title: Support adjustments
+description: Grant credits or feature access without sending a customer through checkout.
+---
+
+Use support adjustments when you need to fix a customer account without a
+provider checkout: compensation credits, migration credits, promo credits,
+testing access, or a manual feature comp.
+
+<Steps>
+<Step>
+
+### Identify the wallet
+
+For credit-code projects, ask the customer for the wallet code shown in
+`WalletButton`.
+
+For external-auth projects, use your own user id. That id is the stable wallet
+address for server-side calls.
+
+</Step>
+<Step>
+
+### Decide what you are granting
+
+Grant **credits** when the customer should be able to spend metered usage.
+
+Grant a **feature** when the customer should unlock a boolean capability such as
+`analytics`, `export`, or `priority-support`.
+
+</Step>
+<Step>
+
+### Apply the adjustment
+
+Use the dashboard for one-off support work, or the secret-key API for automated
+workflows.
+
+Grant credits:
+
+```ts
+await neonfin.grantCredits({
+  externalUserId: "user_123",
+  productId: "prod_...",
+  amount: 50,
+  idempotencyKey: "support-ticket-456",
+});
+```
+
+Grant a feature:
+
+```ts
+await neonfin.grantFeature("user_123", "analytics");
+```
+
+</Step>
+<Step>
+
+### Use stable idempotency keys
+
+Every automated credit grant should have a stable `idempotencyKey`. If your
+server retries the same support action, neonFin applies it once.
+
+Good keys include support ticket ids, migration ids, or promotion ids.
+
+</Step>
+</Steps>
+
+## Manual grants and paid access are separate
+
+Feature access can come from three places:
+
+- an active subscription
+- a paid one-time purchase
+- a manual grant
+
+`revokeFeature()` only removes the manual grant. It does not cancel a
+subscription and does not refund an order. To remove paid access, cancel or
+refund it through the provider workflow.
+
+## When to use credits instead of features
+
+Use credits when each action consumes a quantity:
+
+- AI generations
+- file conversions
+- transcription minutes
+- exports
+- API calls
+
+Use features when the user either has access or does not:
+
+- analytics dashboard
+- team seats
+- custom branding
+- priority support
+- export button

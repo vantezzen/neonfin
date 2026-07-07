@@ -1,0 +1,52 @@
+---
+title: Credit codes
+description: Anonymous wallets that work without login.
+---
+
+Credit codes are the default neonFin identity mode. They let your app sell and
+meter credits without building accounts.
+
+## How they work
+
+1. The SDK asks neonFin for a wallet.
+2. neonFin returns a code like `SKIP-8F3K-L9PQ-2MVT`.
+3. The SDK stores it in `localStorage`.
+4. Reads, deductions, and checkouts use that code automatically.
+5. If the user changes browser or device, they can use `WalletButton` to copy,
+   scan, or paste the code and restore the wallet.
+
+Most users never need to see the code. Treat it as a recovery code, not as the
+main product experience.
+
+## When to use credit codes
+
+Use credit codes when:
+
+- Your app has no login.
+- You want a very fast monetization setup.
+- Losing browser storage is acceptable if users can save a recovery code.
+- Your paid work can be started from browser code with a publishable key.
+
+Avoid credit codes when your app already has accounts and users expect credits
+to follow that account everywhere. Use [external auth](/docs/concepts/external-auth)
+instead.
+
+## Expiry and abuse controls
+
+Anonymous projects can create free wallets, so neonFin includes two controls:
+
+- **Wallets per hour** limits how many anonymous wallets one IP can create for a
+  project.
+- **Credit code expiry** can expire inactive unpaid codes.
+
+Expiry only applies to unpaid anonymous wallets. If a wallet has a paid order,
+the code keeps working so purchased credits are not removed.
+
+## What happens when a stored code expires?
+
+The shadcn client recovers automatically for implicit stored codes. If the code
+in `localStorage` is expired or deleted, the client clears it and creates a new
+wallet on the next balance, deduct, or checkout call.
+
+Explicit recovery-code calls still throw a `NeonfinError`, so your restore form
+can tell the user the code no longer works.

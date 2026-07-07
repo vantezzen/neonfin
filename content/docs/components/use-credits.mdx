@@ -1,0 +1,94 @@
+---
+title: useCredits
+description: Read, check, refresh, and deduct credits from React components.
+---
+
+`useCredits()` is the main hook for app UI. With no argument, it uses the first
+product balance. That is ideal for single-product apps.
+
+## Usage
+
+```tsx
+import { useCredits } from "@/components/neonfin/provider";
+
+export function ProcessButton() {
+  const { balance, creditUnit, hasCredits, deduct, loading } = useCredits();
+
+  async function process() {
+    await deduct(10, { idempotencyKey: "job_123" });
+  }
+
+  return (
+    <button disabled={loading || !hasCredits(10)} onClick={process}>
+      Process - {balance} {creditUnit}
+    </button>
+  );
+}
+```
+
+For multi-product projects, pass a product id:
+
+```tsx
+const images = useCredits("prod_images");
+const minutes = useCredits("prod_minutes");
+```
+
+## Return value
+
+| Field | Type | Description |
+|---|---|---|
+| `balance` | `number` | Current balance for the selected product. |
+| `creditUnit` | `string \| null` | Unit label, like `minutes` or `images`. |
+| `productId` | `string \| null` | Resolved product id. |
+| `loading` | `boolean` | True while balances are loading. |
+| `error` | `string \| null` | Balance loading error message. |
+| `confirming` | `boolean` | True while a returning checkout is being confirmed. |
+| `refresh` | `() => Promise<void>` | Re-fetch balances. |
+| `hasCredits` | `(amount: number) => boolean` | Local balance check. |
+| `deduct` | `(amount, opts?) => Promise<DeductResult>` | Deduct credits and refresh. |
+
+## Deduct options
+
+| Option | Type | Description |
+|---|---|---|
+| `idempotencyKey` | `string` | Stable key for retries. Recommended for paid work. |
+| `meta` | `Record<string, unknown>` | Optional metadata stored with the deduction. |
+
+<Callout>
+Use a stable `idempotencyKey` for operations that can retry. For example, use a
+job id or request id instead of generating a new value for each retry.
+</Callout>
+
+## Common pattern
+
+```tsx
+const COST = 25;
+const { hasCredits, deduct } = useCredits();
+
+async function runPaidAction(jobId: string) {
+  if (!hasCredits(COST)) return;
+
+  await deduct(COST, {
+    idempotencyKey: jobId,
+    meta: { feature: "export" },
+  });
+
+  // Start the paid work after the deduction succeeds.
+}
+```
+
+## Not metering? Use features instead
+
+`useCredits` is for spending a balance. For "does this user have access?" -
+subscription tiers and one-time unlocks - reach for features:
+
+```tsx
+import { useFeature } from "@/components/neonfin/provider";
+
+const { enabled } = useFeature("analytics");
+```
+
+`useSubscription(productId?)` returns the wallet's active subscription for a
+product (tier label, status, `currentPeriodEnd`) - handy for a "current plan"
+badge. See [Access & features](/docs/concepts/access-and-features) and
+[`FeatureGate`](/docs/components/feature-gate).

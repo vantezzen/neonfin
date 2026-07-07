@@ -1,0 +1,51 @@
+---
+title: Deployment
+description: Deploy the neonFin Next.js app.
+---
+
+neonFin is a standard Next.js app. Vercel is the simplest target, but any host
+that can run Next.js with environment variables and Postgres access works.
+
+## Vercel
+
+1. Import the repository.
+2. Set the environment variables from [Environment variables](/docs/self-host/environment).
+3. Deploy.
+4. Run `bun run db:migrate` once against production.
+5. Visit `/register` and create your admin account.
+6. Set `NEONFIN_ALLOW_SIGNUPS=false`.
+
+The build script generates the shadcn registry JSON before building the app, so
+the registry is served from `/r`.
+
+## Other hosts
+
+Your host must support:
+
+- Node-compatible Next.js runtime.
+- Long enough request handling for provider SDK calls.
+- HTTPS public URL for webhooks.
+- Persistent Postgres database.
+- Environment variables.
+
+### Trusted proxy
+
+Per-IP protections (anonymous wallet creation throttling, publishable-key rate
+limits) read the client address from `x-forwarded-for`. That header is only
+trustworthy behind a proxy that overwrites it - Vercel and Cloudflare do,
+and a well-configured nginx/Caddy does too. Don't expose the Node process to
+the internet directly, or clients can spoof the header and bypass those
+limits.
+
+## Public URL
+
+The public URL is important. It is used for:
+
+- Dashboard auth callbacks.
+- Provider webhook URLs.
+- Hosted checkout success/fallback pages.
+- Consumer app registry install URLs.
+- API calls from consuming apps.
+
+If the domain changes, update `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, provider
+webhooks, and consumer app environment variables.

@@ -1,0 +1,49 @@
+---
+title: createNeonfin client
+description: The zero-dependency utility behind the React components.
+---
+
+This is the overview and install guide for the browser client. For the full list
+of methods, their signatures, and types, see the
+[client reference](/docs/api/client-reference).
+
+`NeonfinProvider` internally creates a `neonfin` client and passes it down via
+React context. You can also create your own client for custom UI.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-client.json
+```
+
+## Create a client
+
+```ts
+import { createNeonfin } from "@/lib/neonfin";
+
+export const neonfin = createNeonfin({
+  baseUrl: process.env.NEXT_PUBLIC_NEONFIN_URL!,
+  publishableKey: process.env.NEXT_PUBLIC_NEONFIN_KEY!,
+});
+```
+
+## Common calls
+
+```ts
+const products = await neonfin.getProducts();
+const code = await neonfin.getOrCreateCode();
+const balances = await neonfin.getBalances();
+const result = await neonfin.deduct(10, { idempotencyKey: "job_123" });
+await neonfin.startCheckout("price_..."); // popup on desktop, redirect on mobile
+```
+
+## Every method
+
+The client covers credit-code storage, catalog/balance reads, spending,
+checkout, and customer-portal links. See the
+[client reference](/docs/api/client-reference) for the complete list with
+signatures, return types, and error handling.
+
+> Working server-side with your own user accounts instead? Use the
+> [`neonfin-server`](/docs/concepts/external-auth#the-server-client) client and
+> a secret key.

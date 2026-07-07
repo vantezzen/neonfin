@@ -1,0 +1,50 @@
+---
+title: Database
+description: Set up Postgres and run migrations.
+---
+
+neonFin uses Postgres through Drizzle. Any provider that gives you a standard
+connection string works: Neon, Supabase, Vercel Postgres, Railway, Fly Postgres,
+or a self-managed database.
+
+## Local database
+
+The repo includes a Docker Compose setup for local development:
+
+```bash
+docker compose up -d
+```
+
+The default local connection string is:
+
+```bash
+DATABASE_URL="postgres://neonfin:neonfin@localhost:5432/neonfin"
+```
+
+## Run migrations
+
+After setting `DATABASE_URL`, run:
+
+```bash
+bun run db:migrate
+```
+
+For production, run the same command from a machine or CI job that has the
+production `DATABASE_URL`.
+
+## Development resets
+
+For local development only:
+
+```bash
+bun run db:reset
+```
+
+This wipes the local database and applies migrations again. Do not run it
+against production.
+
+## Backups
+
+Back up Postgres like you would any production billing-adjacent system. Wallet
+balances are cached for speed, but the ledger is the important record of credit
+changes.

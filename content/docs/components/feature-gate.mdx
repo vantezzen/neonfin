@@ -1,0 +1,80 @@
+---
+title: FeatureGate
+description: Render UI only when the wallet has unlocked a feature.
+---
+
+`FeatureGate` checks whether the wallet has a feature unlocked - via an active
+subscription, a one-time purchase, or a manual grant - and renders its children
+or a fallback. The default fallback is a scoped `PurchaseButton` that only shows
+prices unlocking the requested feature.
+
+Unlike [`CreditGate`](/docs/components/credit-gate), nothing is consumed. Access
+is derived, so the gate opens and closes automatically as the subscription
+renews or ends.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-gate.json
+```
+
+Ships alongside `CreditGate` in the same registry item.
+
+## Usage
+
+```tsx
+import { FeatureGate } from "@/components/neonfin/feature-gate";
+
+export function Analytics() {
+  return (
+    <FeatureGate feature="analytics">
+      <AnalyticsDashboard />
+    </FeatureGate>
+  );
+}
+```
+
+With a custom fallback:
+
+```tsx
+<FeatureGate
+  feature="export"
+  fallback={<PurchaseButton>Unlock export</PurchaseButton>}
+>
+  <ExportButton />
+</FeatureGate>
+```
+
+Or customize the built-in scoped fallback:
+
+```tsx
+<FeatureGate
+  feature="export"
+  purchaseButtonProps={{ variant: "outline" }}
+>
+  <ExportButton />
+</FeatureGate>
+```
+
+## Props
+
+| Prop | Type | Required | Description |
+|---|---|---:|---|
+| `feature` | `string` | Yes | Feature slug required to show `children`. |
+| `productId` | `string` | No | Limit the purchase fallback to one product. |
+| `children` | `React.ReactNode` | Yes | UI shown when the feature is unlocked. |
+| `fallback` | `React.ReactNode` | No | UI shown otherwise. Defaults to `PurchaseButton`. |
+| `purchaseButtonProps` | `PurchaseButtonProps` | No | Customize the default scoped purchase button. |
+
+## Checking a feature imperatively
+
+Use `useFeature` when you need the boolean rather than a wrapper:
+
+```tsx
+import { useFeature } from "@/components/neonfin/provider";
+
+const { enabled, loading } = useFeature("analytics");
+```
+
+See [Access & features](/docs/concepts/access-and-features) for how features are
+attached to prices and derived.

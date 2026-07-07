@@ -1,0 +1,61 @@
+---
+title: NeonfinProvider
+description: React context that loads balances and resumes checkout confirmation.
+---
+
+`NeonfinProvider` is required by all React components and hooks. Put it above
+the parts of your app that show or spend credits.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-provider.json
+```
+
+## Usage
+
+```tsx title="app/layout.tsx"
+import { NeonfinProvider } from "@/components/neonfin/provider";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <NeonfinProvider
+          baseUrl={process.env.NEXT_PUBLIC_NEONFIN_URL!}
+          publishableKey={process.env.NEXT_PUBLIC_NEONFIN_KEY!}
+        >
+          {children}
+        </NeonfinProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+## Props
+
+| Prop | Type | Required | Description |
+|---|---|---:|---|
+| `baseUrl` | `string` | Yes | Public URL of your neonFin instance. |
+| `publishableKey` | `string` | Yes | Project publishable key, starting with `nf_pk_`. |
+| `children` | `React.ReactNode` | Yes | UI that can read or spend credits. |
+
+## What it does
+
+- Creates a `createNeonfin()` client.
+- Loads the wallet on mount - balances, unlocked features, and subscriptions.
+- Exposes the client through `useNeonfin()`.
+- Exposes balances and deduction helpers through `useCredits()`.
+- Exposes feature access through `useFeature()` and subscriptions through
+  `useSubscription()`.
+- Starts checkout with desktop popup/mobile redirect behavior through
+  `useNeonfinCheckout()`.
+- Watches pending checkout orders and refreshes when the order is paid.
+
+## Related APIs
+
+- [`useCredits`](/docs/components/use-credits)
+- [`useFeature` / `FeatureGate`](/docs/components/feature-gate)
+- [`useNeonfin`](/docs/components/client)
+- [`PurchaseDialog`](/docs/components/purchase)

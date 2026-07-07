@@ -1,0 +1,148 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "neonfin",
+  "homepage": "https://pay.vantezzen.io",
+  "items": [
+    {
+      "name": "neonfin-client",
+      "type": "registry:lib",
+      "title": "neonFin client",
+      "description": "Zero-dependency typed client for the neonFin API (credits, checkout, credit-code storage).",
+      "files": [
+        {
+          "path": "registry/neonfin/lib/neonfin/index.ts",
+          "type": "registry:lib",
+          "target": "lib/neonfin/index.ts"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-server",
+      "type": "registry:lib",
+      "title": "neonFin server client",
+      "description": "Zero-dependency server-only client for external-auth apps: get-or-create wallets by your user id and grant credits with a secret key.",
+      "files": [
+        {
+          "path": "registry/neonfin/lib/neonfin/server.ts",
+          "type": "registry:lib",
+          "target": "lib/neonfin/server.ts"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-provider",
+      "type": "registry:component",
+      "title": "neonFin provider",
+      "description": "NeonfinProvider context + useCredits() / useNeonfin() hooks. Required by all neonFin components.",
+      "registryDependencies": ["https://pay.vantezzen.io/r/neonfin-client.json"],
+      "files": [
+        {
+          "path": "registry/neonfin/components/neonfin/provider.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/provider.tsx"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-credits",
+      "type": "registry:component",
+      "title": "Remaining credits",
+      "description": "Inline display of the current credit balance.",
+      "registryDependencies": ["https://pay.vantezzen.io/r/neonfin-provider.json"],
+      "files": [
+        {
+          "path": "registry/neonfin/components/neonfin/remaining-credits.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/remaining-credits.tsx"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-wallet",
+      "type": "registry:component",
+      "title": "Wallet button",
+      "description": "Wallet button and dialog for copying, restoring, QR transfer, native QR scanning, and billing management.",
+      "registryDependencies": [
+        "dialog",
+        "button",
+        "input",
+        "https://pay.vantezzen.io/r/neonfin-provider.json"
+      ],
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "registry/neonfin/components/neonfin/wallet-button.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/wallet-button.tsx"
+        },
+        {
+          "path": "registry/neonfin/components/neonfin/wallet-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/wallet-dialog.tsx"
+        },
+        {
+          "path": "registry/neonfin/components/neonfin/wallet-code-field.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/wallet-code-field.tsx"
+        },
+        {
+          "path": "registry/neonfin/components/neonfin/wallet-qr-code.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/wallet-qr-code.tsx"
+        },
+        {
+          "path": "registry/neonfin/components/neonfin/wallet-qr-scanner.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/wallet-qr-scanner.tsx"
+        },
+        {
+          "path": "registry/neonfin/lib/neonfin/qr.ts",
+          "type": "registry:lib",
+          "target": "lib/neonfin/qr.ts"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-purchase",
+      "type": "registry:component",
+      "title": "Purchase dialog",
+      "description": "PurchaseButton + PurchaseDialog: list prices and start popup or redirect checkout.",
+      "registryDependencies": [
+        "dialog",
+        "button",
+        "https://pay.vantezzen.io/r/neonfin-provider.json"
+      ],
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "registry/neonfin/components/neonfin/purchase-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/purchase-dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "neonfin-gate",
+      "type": "registry:component",
+      "title": "Credit & feature gates",
+      "description": "Gate content on having enough credits (CreditGate) or an unlocked feature (FeatureGate), with a purchase fallback.",
+      "registryDependencies": [
+        "https://pay.vantezzen.io/r/neonfin-provider.json",
+        "https://pay.vantezzen.io/r/neonfin-purchase.json"
+      ],
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "registry/neonfin/components/neonfin/credit-gate.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/credit-gate.tsx"
+        },
+        {
+          "path": "registry/neonfin/components/neonfin/feature-gate.tsx",
+          "type": "registry:component",
+          "target": "components/neonfin/feature-gate.tsx"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+---
+title: External auth
+description: Attach credits to your own user ids instead of a browser code.
+---
+
+External auth mode is for apps that **already have user accounts**. Instead of a
+browser recovery code stored in `localStorage`, your server tells neonFin which
+user owns a wallet, keyed by your own `externalUserId`.
+
+## When to use it
+
+Use external auth when:
+
+- Your app already requires login.
+- Users expect credits to follow their account across devices.
+- You want wallet creation to happen server-side, not in the browser.
+- You need support tooling that looks users up by your own user id.
+
+If your app has no accounts, use [credit codes](/docs/concepts/credit-codes)
+instead - they need zero server code.
+
+## How it works
+
+The mental model is one call at the boundary of your app:
+
+1. Authenticate the user with whatever auth you already use.
+2. On your **server**, call neonFin with your **secret key** (`nf_sk_…`) and the
+   user's id. neonFin gets-or-creates that user's wallet (idempotent).
+3. Optionally grant credits (promos, migrations, support) server-side.
+4. Read balances / start checkout however you like.
+
+The secret key must stay on the server. Never ship an `nf_sk_…` key to the
+browser - that's what the publishable key and the
+[credit-code client](/docs/components/client) are for.
+
+## The server client
+
+Install the zero-dependency server helper from the registry:
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-server.json
+```
+
+```ts
+// lib/neonfin/server.ts is added for you; create one instance to reuse.
+import { createNeonfinServer } from "@/lib/neonfin/server";
+
+export const neonfinServer = createNeonfinServer({
+  baseUrl: process.env.NEONFIN_URL!,
+  secretKey: process.env.NEONFIN_SECRET_KEY!, // nf_sk_… - server only
+});
+```
+
+It exposes these server-side methods:
+
+- `getOrCreateWallet(externalUserId)` → the user's wallet + balances.
+- `deduct({ externalUserId, amount, idempotencyKey, productId?, meta? })` →
+  spend credits when the user runs paid work.
+- `grantCredits({ externalUserId | code, productId?, amount, idempotencyKey? })`
+  → add credits (promos, support, migrations).
+- `createCheckout(priceId, { externalUserId, successUrl? })` → a provider
+  checkout URL that credits this user's wallet when paid.
+
+Always pass a stable `idempotencyKey` (job id, request id) on deductions and
+grants so retries apply exactly once. For the raw HTTP endpoints and every
+field, see [Server-side users](/docs/api/server-side-users).
+
+## Examples
+
+### better-auth
+
+```ts
+// app/api/wallet/route.ts
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { neonfinServer } from "@/lib/neonfin/server";
+
+export async function GET() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return new Response("Unauthorized", { status: 401 });
+
+  const wallet = await neonfinServer.getOrCreateWallet(session.user.id);
+  return Response.json(wallet);
+}
+```
+
+### Next.js route handler (any auth)
+
+Works with any auth that gives you a stable user id on the server - a route
+handler or a server action:
+
+```ts
+// app/api/credits/grant/route.ts
+import { getUserId } from "@/lib/session"; // your own helper
+import { neonfinServer } from "@/lib/neonfin/server";
+
+export async function POST() {
+  const userId = await getUserId();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  const result = await neonfinServer.grantCredits({
+    externalUserId: userId,
+    amount: 100,
+    idempotencyKey: `welcome-${userId}`, // one welcome grant per user
+  });
+  return Response.json(result);
+}
+```
+
+### Clerk / Auth.js
+
+The pattern is identical - read the user id from your provider's server helper:
+
+```ts
+// Clerk
+import { auth } from "@clerk/nextjs/server";
+import { neonfinServer } from "@/lib/neonfin/server";
+
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+  return Response.json(await neonfinServer.getOrCreateWallet(userId));
+}
+```
+
+```ts
+// Auth.js (NextAuth)
+import { auth } from "@/auth";
+import { neonfinServer } from "@/lib/neonfin/server";
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
+  return Response.json(await neonfinServer.getOrCreateWallet(session.user.id));
+}
+```
+
+## The full loop, server-side
+
+A complete paid feature in external-auth mode is three calls, all with the
+server client:
+
+```ts
+// Somewhere in your server code - session already verified.
+import { neonfinServer } from "@/lib/neonfin/server";
+import { NeonfinError } from "@/lib/neonfin/server";
+
+export async function renderVideo(userId: string, jobId: string) {
+  try {
+    // 1. Charge for the work (creates the wallet lazily via getOrCreateWallet
+    //    on signup, or grant a welcome balance first).
+    await neonfinServer.deduct({
+      externalUserId: userId,
+      amount: 10,
+      idempotencyKey: jobId, // retries never double-charge
+    });
+  } catch (err) {
+    if (err instanceof NeonfinError && err.isInsufficientCredits) {
+      // 2. Out of credits → send the user to checkout.
+      const { url } = await neonfinServer.createCheckout("price_...", {
+        externalUserId: userId,
+        successUrl: "https://your-app.com/billing?status=success",
+      });
+      return { needsPayment: url };
+    }
+    throw err;
+  }
+
+  // 3. Run the paid work.
+  return startRenderJob(jobId);
+}
+```
+
+The checkout webhook credits the same user's wallet - no code handling, no
+success-page plumbing. Render balances in your own UI from
+`getOrCreateWallet(userId).balances`.
+
+The publishable-key React components (`useCredits`, `PurchaseButton`, …) target
+anonymous credit-code projects; in external-auth mode your server is the source
+of truth and your UI reads from it.

@@ -1,0 +1,89 @@
+---
+title: Refunds
+description: Process provider refunds and understand how neonFin updates wallets.
+---
+
+Refunds start at the payment provider. neonFin listens for refund webhooks and
+updates wallet state from those provider events.
+
+<Steps>
+<Step>
+
+### Find the order
+
+Open the neonFin dashboard and find the order under **Orders**. Use the provider
+link on the order to jump to the matching Stripe or Polar checkout/customer
+record.
+
+</Step>
+<Step>
+
+### Issue the refund in Stripe or Polar
+
+Create the refund in the provider dashboard. Keep the provider as the source of
+truth for money movement, receipts, tax records, and customer communication.
+
+Stripe and Polar webhook delivery may take a short moment. Do not manually edit
+the neonFin order while waiting for the webhook.
+
+</Step>
+<Step>
+
+### Confirm the webhook
+
+Check the neonFin webhook log after refunding. A full refund should arrive as a
+refund event and mark the matching order as refunded.
+
+If no event arrives, check that the provider webhook endpoint is still
+configured and that the account attached to the product is the same account that
+issued the refund.
+
+</Step>
+<Step>
+
+### Check the wallet outcome
+
+For a full refund, neonFin reverses the original credit grant. If the refunded
+order started a subscription, neonFin also cancels that subscription row so
+subscription-derived features stop.
+
+</Step>
+</Steps>
+
+## What neonFin changes
+
+On a full refund, neonFin:
+
+- marks the order as `refunded`
+- writes a negative ledger entry for the original credit grant
+- cancels the subscription that was started by that order
+- removes access that was derived from that subscription
+
+Manual grants are not touched by a provider refund. If support granted an extra
+feature or credits separately, remove those separately if needed.
+
+## Partial refunds
+
+Partial refunds are intentionally ignored by the fulfillment layer today. They
+are money adjustments, but neonFin does not know how many credits or which
+features should be removed from a partial refund.
+
+For partial refunds, decide what should happen operationally:
+
+- leave the wallet as-is
+- revoke a manual support grant
+- grant compensating credits
+- issue a full refund instead when access should be removed
+
+## Customer asks for a refund from your app
+
+Send them to billing management when possible:
+
+```tsx
+<WalletButton>Wallet</WalletButton>
+```
+
+The wallet dialog opens the provider portal for wallets with billing history.
+If the provider portal does not expose refunds for your account setup, handle
+the request from your support process and issue the refund in the provider
+dashboard.

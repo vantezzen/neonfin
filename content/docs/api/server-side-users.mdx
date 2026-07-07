@@ -1,0 +1,157 @@
+---
+title: Server-side users
+description: Use secret keys when your app already has accounts.
+---
+
+Use these endpoints from your server only. They require an `nf_sk_` key.
+
+This is the endpoint reference. For the mental model and worked examples
+(better-auth, Clerk, Auth.js), see [External auth](/docs/concepts/external-auth).
+The [`neonfin-server`](/docs/concepts/external-auth#the-server-client) registry
+client is a typed wrapper around everything below.
+
+## Get or create a wallet
+
+Create a wallet tied to your own user id:
+
+```http
+POST /api/v1/wallets/external
+Authorization: Bearer nf_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_123"
+}
+```
+
+Returns:
+
+```json
+{
+  "walletId": "wal_...",
+  "externalUserId": "user_123",
+  "balances": []
+}
+```
+
+This endpoint is idempotent by `externalUserId`. You can call it whenever a
+user opens billing or starts a paid workflow.
+
+## Grant credits
+
+Grant credits to a code wallet or external user:
+
+```http
+POST /api/v1/credit
+Authorization: Bearer nf_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_123",
+  "productId": "prod_...",
+  "amount": 50,
+  "idempotencyKey": "support-ticket-456"
+}
+```
+
+Or by recovery code:
+
+```json
+{
+  "code": "SKIP-8F3K-L9PQ-2MVT",
+  "productId": "prod_...",
+  "amount": 50,
+  "idempotencyKey": "promo-summer-2026"
+}
+```
+
+Use manual grants for support adjustments, promotions, migrations, or server
+workflows that should add credits without provider checkout.
+
+## Deduct credits
+
+Deduct credits when an external user runs paid work. This endpoint is
+secret-key only - the user id is the wallet address, so a browser key would let
+anyone spend anyone's credits.
+
+```http
+POST /api/v1/wallets/external/deduct
+Authorization: Bearer nf_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_123",
+  "productId": "prod_...",
+  "amount": 10,
+  "idempotencyKey": "job_9f3k",
+  "meta": { "feature": "render" }
+}
+```
+
+Returns the new balance:
+
+```json
+{
+  "balance": 90,
+  "deducted": true
+}
+```
+
+`productId` is optional when the project has one product. On insufficient
+credits the response is `402` with the current `balance` and `requested`
+amount - see [Errors](/docs/api/errors).
+
+## Start a checkout for a user
+
+Pass `externalUserId` to checkout and the purchase credits that user's wallet
+when the payment webhook arrives - no code handling involved:
+
+```http
+POST /api/v1/checkout
+Authorization: Bearer nf_sk_...
+Content-Type: application/json
+
+{
+  "priceId": "price_...",
+  "externalUserId": "user_123",
+  "successUrl": "https://your-app.com/billing?status=success"
+}
+```
+
+Redirect the user to the returned `url`. The wallet is created on the fly if it
+doesn't exist yet.
+
+## Features and access
+
+The wallet returned by `getOrCreateWallet` includes `features` (unlocked slugs)
+and `subscriptions` (active plans), so you can gate server logic directly:
+
+```ts
+if (await neonfin.hasFeature("user_123", "export")) {
+  // allow the export
+}
+```
+
+Grant or revoke a feature manually (comps, support). Revoke removes only the
+manual grant - subscription and one-time-purchase access is derived:
+
+```ts
+await neonfin.grantFeature("user_123", "analytics");
+await neonfin.revokeFeature("user_123", "analytics");
+```
+
+See [Access & features](/docs/concepts/access-and-features) for the full model.
+
+## Idempotency
+
+Always pass a stable `idempotencyKey` for server grants and deductions. If your
+server retries the same logical operation, neonFin applies it once.
+
+Good keys:
+
+- `welcome-user_123`
+- `support-ticket-456`
+- `render-job-9f3k`
+
+Avoid random keys for retryable operations because every retry would look like a
+new grant or a new charge.

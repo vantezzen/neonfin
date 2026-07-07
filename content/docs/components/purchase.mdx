@@ -1,0 +1,158 @@
+---
+title: PurchaseButton and PurchaseDialog
+description: Show available prices and start popup or redirect checkout.
+---
+
+`PurchaseDialog` loads your neonFin catalog, lists purchasable offers - credit
+packs, subscription tiers, and one-time unlocks - and starts provider checkout.
+`PurchaseButton` is a convenience wrapper that opens the dialog.
+
+By default checkout uses `flow="auto"`: desktop users pay in a popup while your
+page stays mounted, and touch/mobile users use a normal redirect. Pass
+`flow="redirect"` if your app does not want popup checkout.
+
+Each offer shows its tier label, included credits, and the features it unlocks.
+If the wallet already subscribes to a product shown here, its tiers are marked
+**Current plan** and a **Manage subscription** button opens the billing portal -
+because a fresh checkout can't switch an existing subscription (the API returns
+`409 already_subscribed`, which the dialog handles for you).
+
+Use `filters` to scope the dialog to the relevant offers: credit packs for one
+product, plans that unlock a feature, or your own predicate.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-purchase.json
+```
+
+## PurchaseButton
+
+```tsx
+import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
+
+export function EmptyState() {
+  return <PurchaseButton>Buy credits</PurchaseButton>;
+}
+```
+
+`PurchaseButton` accepts regular shadcn `Button` props:
+
+```tsx
+<PurchaseButton variant="outline" size="sm" productId="prod_images">
+  Add image credits
+</PurchaseButton>
+```
+
+Filter to prices that unlock a feature:
+
+```tsx
+<PurchaseButton filters={{ features: ["analytics"] }}>
+  Unlock analytics
+</PurchaseButton>
+```
+
+Filter to credit-granting prices for a product:
+
+```tsx
+<PurchaseButton
+  filters={{ productId: "prod_processing", grantsCredits: true }}
+>
+  Buy processing minutes
+</PurchaseButton>
+```
+
+## PurchaseDialog
+
+Use the dialog directly when you want custom trigger control.
+
+```tsx
+import { PurchaseDialog } from "@/components/neonfin/purchase-dialog";
+import { Button } from "@/components/ui/button";
+
+<PurchaseDialog title="Choose a package" description="Pick what you need.">
+  <Button>Upgrade</Button>
+</PurchaseDialog>
+```
+
+Controlled usage:
+
+```tsx
+<PurchaseDialog
+  open={open}
+  onOpenChange={setOpen}
+  filters={{ features: ["export"] }}
+/>
+```
+
+## Props
+
+### PurchaseButton
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `productId` | `string` | All products | Limit purchase options to one product. |
+| `filters` | `PurchaseFilters` | All prices | Filter products/prices shown in the dialog. |
+| `children` | `React.ReactNode` | Filter-aware label | Button label. |
+| `title` | `string` | `Get access` | Dialog title. |
+| `description` | `string` | `Choose an option to continue.` | Dialog description. |
+| `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
+| `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
+| `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
+| `className` | `string` | - | Extra classes. |
+| Button props | `React.ComponentProps<typeof Button>` | - | Forwarded to the local shadcn button. |
+
+### PurchaseDialog
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `productId` | `string` | All products | Limit options to one product. |
+| `filters` | `PurchaseFilters` | All prices | Filter products/prices shown in the dialog. |
+| `open` | `boolean` | Internal state | Controlled open state. |
+| `onOpenChange` | `(open: boolean) => void` | Internal setter | Controlled open callback. |
+| `children` | `React.ReactNode` | - | Optional trigger element. |
+| `title` | `string` | `Get access` | Dialog title. |
+| `description` | `string` | `Choose an option to continue.` | Dialog description. |
+| `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
+| `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
+| `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
+
+### PurchaseFilters
+
+| Field | Type | Description |
+|---|---|---|
+| `productId` | `string` | Match one product. |
+| `productIds` | `string[]` | Match any listed product. |
+| `features` | `string[]` | Match prices that unlock every listed feature. |
+| `grantsCredits` | `boolean` | Match prices with included credits. |
+| `match` | `(option) => boolean` | Final custom predicate. |
+
+The default `CreditGate` fallback uses `filters={{ productId, grantsCredits:
+true }}`. The default `FeatureGate` fallback uses `filters={{ features:
+[feature] }}`.
+
+## Checkout return behavior
+
+The dialog calls `client.startCheckout(priceId, { flow })`, which stores the
+order id in `localStorage`.
+
+In popup checkout, the original page keeps polling the order and refreshes as
+soon as the webhook marks it paid. If the customer closes or cancels the popup,
+the dialog returns to the normal selectable state with a clear message.
+
+In redirect checkout, `NeonfinProvider` sees the pending order when the user
+returns, polls the order, saves the issued code, and refreshes balances.
+
+That is why a simple current-page `successUrl` works for most apps.
+
+## Fully custom purchase UI
+
+Don't want the dialog? Call the client directly from your own components and
+you keep the same auto-resume behavior:
+
+```tsx
+import { useNeonfin } from "@/components/neonfin/provider";
+
+const client = useNeonfin();
+await client.startCheckout("price_...", { flow: "auto" });
+```

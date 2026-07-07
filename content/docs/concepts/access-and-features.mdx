@@ -1,0 +1,98 @@
+---
+title: Access & features
+description: Unlock features with subscriptions and one-time purchases.
+---
+
+Not everything is metered. Often you just want "does this user have access?" -
+to a subscription tier, or a feature they paid to unlock. neonFin models that
+with **features**, alongside credits.
+
+## Features
+
+A feature is a developer-chosen slug, like `analytics` or `export`. You attach
+features to a **price**:
+
+- On a **subscription tier**, the feature is unlocked while the subscription is
+  active.
+- On a **one-time unlock**, the feature is unlocked permanently once paid.
+
+A wallet's features are **derived, never stored** as a flag. neonFin computes
+them from the wallet's active subscriptions, its paid one-time purchases, and
+any manual grants. That means cancelling or refunding removes access
+automatically - there's no separate "revoke" step that could drift.
+
+Check a feature from the SDK:
+
+```tsx
+const { enabled } = useFeature("analytics");
+// or gate content directly:
+<FeatureGate feature="analytics">
+  <AnalyticsDashboard />
+</FeatureGate>
+```
+
+Server-side (external auth):
+
+```ts
+if (await neonfin.hasFeature(userId, "export")) {
+  // ...
+}
+```
+
+## Tiers
+
+The tiers of a subscription product are simply its recurring prices. "Basic" and
+"Pro" are two prices on one product, each with its own amount, included credits,
+and features. There is no separate plan editor - a price *is* the tier.
+
+```txt
+Product: Analytics (subscription)
+- Basic  $5/mo   -> 5 analyses / cycle
+- Pro    $10/mo  -> 10 analyses / cycle + feature "export"
+```
+
+## Included credits
+
+A subscription tier can include credits each cycle (e.g. "5 analyses / cycle").
+How they land on the balance is controlled per product (Advanced → *Included
+credits each cycle*):
+
+- **Refresh** (default): each paid cycle tops the balance **up to** the included
+  amount. Unused credits don't stack. This matches "you get N per cycle".
+- **Add**: each cycle adds the included amount on top. Credits accumulate.
+
+Refresh shares one balance with any credit packs the user also bought, so packs
+count toward the threshold. Choose *Add* if packs should stack on top of the
+included allowance.
+
+## Switching tiers
+
+A fresh checkout can't change an existing subscription - it would double-bill.
+So when a wallet already subscribes to a product, neonFin returns
+`409 already_subscribed` from checkout, and the `<PurchaseDialog>` marks the
+current tier and shows **Manage subscription**, which opens the provider's
+billing portal. Stripe and Polar both handle plan changes (and proration) there.
+
+## Lifecycle
+
+- **Purchase / first cycle** — features unlock, included credits apply.
+- **Renewal** — included credits apply again (refresh or add); features stay.
+- **Cancellation** — access continues until the current period ends; when the
+  provider reports the subscription actually ended, features stop. Credits
+  already granted are never clawed back.
+- **Refund** — a refunded first payment cancels the subscription and reverses
+  its credit grant.
+
+## Manual grants
+
+For comps and support, grant a feature straight to a wallet - in the dashboard
+(wallet → Access → Grant feature) or via the API:
+
+```ts
+await neonfin.grantFeature(userId, "analytics");
+await neonfin.revokeFeature(userId, "analytics");
+```
+
+Revoking only removes a **manual** grant. Access that comes from an active
+subscription or a paid one-time purchase isn't revocable this way - end the
+subscription or refund the order instead.

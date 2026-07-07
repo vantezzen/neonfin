@@ -1,0 +1,62 @@
+---
+title: WalletButton
+description: Let users copy, restore, transfer, and manage an anonymous wallet.
+---
+
+`WalletButton` opens a compact wallet dialog. Users can copy the wallet code,
+paste a different code, transfer the wallet with a QR code, or scan a QR code in
+browsers that support native camera scanning. Wallets with billing history also
+get a **Manage** button that opens the provider billing portal for invoices,
+payment methods, subscription changes, cancellation, and any provider-supported
+refund flow.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+```
+
+## Usage
+
+```tsx
+import { WalletButton } from "@/components/neonfin/wallet-button";
+
+export function WalletMenu() {
+  return (
+    <WalletButton
+      onRestored={(code) => {
+        console.log("Restored wallet", code);
+      }}
+    />
+  );
+}
+```
+
+## Deep-link restore
+
+The dialog can restore wallet links like:
+
+```txt
+https://your-app.com/dashboard?__neonfin_wallet=SKIP-8F3K-L9PQ-2MVT
+```
+
+When a page opens with `__neonfin_wallet`, `WalletButton` opens the dialog,
+validates the code, saves it, refreshes balances, and removes the query
+parameter from the URL.
+
+## Direct pieces
+
+The registry item also installs `WalletDialog`, `WalletCodeField`,
+`WalletQrCode`, and `WalletQrScanner` as separate files for custom layouts.
+They are re-exported from `wallet-button.tsx` for convenience.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `onRestored` | `(code: string) => void` | - | Called after a valid code is saved. |
+| `title` | `string` | `Wallet` | Dialog title. |
+| `description` | `string` | Short wallet intro | Dialog description. |
+
+`WalletButton` also accepts normal local `Button` props like `variant`, `size`,
+and `className`.

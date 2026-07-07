@@ -1,0 +1,11 @@
+{
+  "title": "Self-host",
+  "pages": [
+    "index",
+    "environment",
+    "database",
+    "registry",
+    "deployment",
+    "operations"
+  ]
+}

@@ -1,0 +1,48 @@
+---
+title: RemainingCredits
+description: Inline balance display for the current wallet.
+---
+
+`RemainingCredits` renders the current balance for one product. It is useful in
+headers, toolbars, pricing prompts, and next to paid buttons.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-credits.json
+```
+
+## Usage
+
+```tsx
+import { RemainingCredits } from "@/components/neonfin/remaining-credits";
+
+export function BalancePill() {
+  return (
+    <span>
+      Credits: <RemainingCredits />
+    </span>
+  );
+}
+```
+
+Without a product id, it shows the first product balance.
+
+```tsx
+<RemainingCredits />
+<RemainingCredits showUnit={false} />
+<RemainingCredits productId="prod_images" />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `productId` | `string` | First product | Product balance to show. |
+| `showUnit` | `boolean` | `true` | Show the credit unit after the number. |
+| `className` | `string` | - | Extra classes for the wrapper span. |
+
+## Loading state
+
+While balances load, the component renders a small skeleton span. That keeps the
+layout stable and avoids showing an incorrect `0` during startup.

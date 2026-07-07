@@ -1,0 +1,89 @@
+---
+title: Projects, products, and prices
+description: Model what users buy and unlock.
+---
+
+## Projects
+
+A project maps to one app. It owns API keys, allowed origins, products, prices,
+wallets, orders, and webhook events.
+
+Use one project per app or product surface. If two apps should have separate
+balances and separate API keys, they should be separate projects.
+
+## Products come in three shapes
+
+When you create a product you pick what you're selling. All three share the same
+engine (wallets, balances, an append-only ledger); the shape is a template that
+sets sensible defaults and drives checkout.
+
+### Credit pack
+
+Users buy a balance and spend it as they go - API calls, minutes, generations.
+This is classic metered billing. Prices are one-time packs (`$5 → 100 images`),
+and you spend with `deduct()`.
+
+### Subscription
+
+A recurring plan. Each **price is a tier** (Basic, Pro), billed monthly or
+yearly. A tier can unlock **features**, include **credits each cycle**, or both.
+
+```txt
+Product: Analytics (subscription)
+- Basic  $5/mo   -> 5 analyses / cycle
+- Pro    $10/mo  -> 10 analyses / cycle + feature "export"
+```
+
+### One-time unlock
+
+A single payment that **permanently** unlocks features (and optionally grants
+some credits once). Great for "pay $5, full access forever".
+
+```txt
+Product: Pro features (one-time unlock)
+- $5 -> feature "full_access"
+```
+
+Every product also has a name, a credit unit (for metered shapes), an optional
+free grant, and one or more prices. In a simple app you usually have one
+product, which lets the SDK infer it automatically in `useCredits()` /
+`deduct()`.
+
+## Prices
+
+A price is one purchasable offer. Depending on the product shape it stores:
+
+- **Amount and currency.**
+- **Billing interval** — one-time for packs and unlocks; monthly/yearly for
+  subscription tiers.
+- **Credits granted** — on purchase (packs/unlocks) or included each cycle
+  (subscriptions). May be `0` for a pure access offer.
+- **A tier label** — e.g. "Pro" (subscriptions).
+- **Features** — slugs this offer unlocks (see
+  [Access & features](/docs/concepts/access-and-features)).
+
+Labels and features are neonFin-only; they're never sent to Stripe or Polar, so
+you can edit them any time - even on a synced price.
+
+## Free grants
+
+A free grant is the starting balance for a metered product.
+
+- **Once**: applied when the wallet first sees the product.
+- **Monthly**: tops the balance back up to the grant amount when due.
+
+Monthly grants are "top up to", not "add every month". If a user has 2 free
+credits left and the grant is 10, the refill adds 8. If the user has 20 paid
+credits, the refill adds 0. Subscription tiers with included credits use the
+same "top up to" logic by default (see
+[Access & features](/docs/concepts/access-and-features#included-credits)).
+
+## A good first setup
+
+For most apps:
+
+1. Create one project, in credit-code identity mode.
+2. Create one product - pick the shape that matches how you charge.
+3. Add a free grant so new users can try it.
+4. Add one price.
+5. Connect Stripe or Polar on the project page to make prices chargeable.

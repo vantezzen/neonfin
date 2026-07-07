@@ -1,0 +1,149 @@
+---
+title: Client reference
+description: The createNeonfin methods and types.
+---
+
+`createNeonfin()` is a zero-dependency wrapper around the public REST API. It
+handles `localStorage` credit-code storage for anonymous projects and throws
+`NeonfinError` for non-2xx responses.
+
+New here? Start with the [client overview and install](/docs/components/client).
+This page is the full method + type reference. For server-side calls with your
+own user accounts, see [Server-side users](/docs/api/server-side-users).
+
+## Create the client
+
+```ts
+import { createNeonfin } from "@/lib/neonfin";
+
+const neonfin = createNeonfin({
+  baseUrl: process.env.NEXT_PUBLIC_NEONFIN_URL!,
+  publishableKey: process.env.NEXT_PUBLIC_NEONFIN_KEY!,
+});
+```
+
+## Config
+
+| Field | Type | Description |
+|---|---|---|
+| `baseUrl` | `string` | Public URL of your neonFin instance. |
+| `publishableKey` | `string` | Project publishable key. |
+| `storageKey` | `string` | Optional custom `localStorage` key for credit codes. |
+
+## Types
+
+```ts
+type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: "credits" | "subscription" | "one_time";
+  creditUnit: string;
+  freeGrant: { credits: number; period: "monthly" | "once" } | null;
+  prices: Price[];
+};
+
+type Price = {
+  id: string;
+  label: string | null; // tier name for subscriptions
+  amountCents: number;
+  currency: string;
+  creditsGranted: number; // 0 = pure access offer
+  features: string[]; // slugs this offer unlocks
+  interval: "one_time" | "month" | "year";
+};
+
+type Balance = {
+  productId: string;
+  productName: string;
+  creditUnit: string;
+  balance: number;
+  freeGrantResetAt: string | null;
+};
+
+type Subscription = {
+  productId: string;
+  priceId: string | null;
+  label: string | null;
+  status: "active" | "canceled";
+  currentPeriodEnd: string | null;
+};
+
+type WalletInfo = {
+  code: string;
+  balances: Balance[];
+  features: string[];
+  subscriptions: Subscription[];
+};
+```
+
+## Credit-code methods
+
+| Method | Returns | Description |
+|---|---|---|
+| `getCode()` | `string \| null` | Reads the stored browser code. |
+| `setCode(code)` | `void` | Saves a recovery code. |
+| `clearCode()` | `void` | Removes the stored code. |
+| `getOrCreateCode()` | `Promise<string>` | Creates a wallet if needed and stores the code. |
+
+If an implicit stored code is missing or expired, the client clears it and
+creates a fresh wallet on the next balance, deduct, or checkout call.
+
+## Catalog and balances
+
+| Method | Returns | Description |
+|---|---|---|
+| `getProducts()` | `Promise<Product[]>` | Reads active products and prices. |
+| `getWallet(code?)` | `Promise<WalletInfo>` | Reads balances, features, and subscriptions in one call. |
+| `getBalances(code?)` | `Promise<Balance[]>` | Reads all balances for a code wallet. |
+| `getBalance(productId?, code?)` | `Promise<Balance \| null>` | Reads one product balance. |
+| `hasCredits(amount, opts?)` | `Promise<boolean>` | Checks whether the wallet has enough credits. |
+| `getFeatures(code?)` | `Promise<string[]>` | Reads the wallet's unlocked feature slugs. |
+| `hasFeature(feature, code?)` | `Promise<boolean>` | Checks whether a feature is unlocked. |
+
+## Spending and checkout
+
+```ts
+await neonfin.deduct(10, {
+  productId: "prod_...",
+  idempotencyKey: "job_123",
+  meta: { feature: "render" },
+});
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `deduct(amount, opts?)` | `Promise<{ balance: number; deducted: boolean }>` | Deducts credits. |
+| `startCheckout(priceId, opts?)` | `Promise<CheckoutResult>` | One-call checkout: creates the session, remembers the order, and uses popup or redirect checkout. |
+| `createCheckout(priceId, opts?)` | `Promise<{ url: string; checkoutId: string; orderId: string }>` | Lower-level: creates the session and returns the URL; you handle redirect and resume. |
+| `getOrder(ref)` | `Promise<OrderStatus>` | Polls an order by order id or checkout id. |
+| `getPortalUrl(opts?)` | `Promise<string>` | Creates a customer portal URL for a purchased wallet. |
+
+For custom purchase UI, prefer `startCheckout`. Its default `flow: "auto"`
+opens a popup on desktop and uses redirect on touch/mobile devices:
+
+```ts
+await neonfin.startCheckout("price_...");
+```
+
+Force redirect checkout when your app cannot support popups:
+
+```ts
+await neonfin.startCheckout("price_...", { flow: "redirect" });
+```
+
+## Error handling
+
+```ts
+import { NeonfinError } from "@/lib/neonfin";
+
+try {
+  await neonfin.deduct(100);
+} catch (err) {
+  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+    console.log(`Need ${err.requested}, have ${err.balance}`);
+  }
+}
+```
+
+See [Errors](/docs/api/errors) for common status codes.

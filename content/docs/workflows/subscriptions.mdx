@@ -1,0 +1,112 @@
+---
+title: Subscriptions and feature gates
+description: Sell recurring plans, unlock features, and handle plan changes.
+---
+
+Use a subscription product when a user should keep access while a recurring
+plan is active. The app normally checks access with `FeatureGate`,
+`useFeature()`, or the server client.
+
+<Steps>
+<Step>
+
+### Create a subscription product
+
+In the neonFin dashboard, create a product with type **Subscription**. Give it a
+clear credit unit even if the plan is mostly about feature access.
+
+Attach the product to Stripe or Polar so neonFin can create provider checkout
+sessions and receive webhooks.
+
+</Step>
+<Step>
+
+### Add one price per tier
+
+Each recurring price is a tier. For example:
+
+```txt
+Product: Pro tools
+- Basic  $9/mo   -> feature: analytics
+- Pro    $19/mo  -> features: analytics, export
+```
+
+Attach feature slugs to each tier. Use stable lowercase slugs like `analytics`,
+`export`, or `priority-support`.
+
+</Step>
+<Step>
+
+### Decide whether the tier includes credits
+
+If the tier includes credits each cycle, set `creditsGranted` on the price.
+Then choose the product renewal mode:
+
+- **Refresh**: top the balance up to the included amount each cycle.
+- **Add**: add the included amount each cycle.
+
+Use **Refresh** for normal allowances. Use **Add** only when unused credits
+should accumulate.
+
+</Step>
+<Step>
+
+### Gate the feature in your app
+
+Use `FeatureGate` when you want to hide UI until the wallet has access:
+
+```tsx
+import { FeatureGate } from "@/components/neonfin/feature-gate";
+
+export function AnalyticsPanel() {
+  return (
+    <FeatureGate feature="analytics">
+      <AnalyticsDashboard />
+    </FeatureGate>
+  );
+}
+```
+
+Use `useFeature()` when you need the boolean:
+
+```tsx
+const { enabled, loading } = useFeature("analytics");
+```
+
+</Step>
+<Step>
+
+### Send plan changes to the billing portal
+
+A second checkout should not change an existing subscription. It would create a
+second subscription at the provider.
+
+The default `PurchaseDialog` detects an active subscription and shows
+**Manage subscription**. That opens the Stripe or Polar portal, where the
+provider handles plan changes, proration, and cancellation.
+
+</Step>
+</Steps>
+
+## What happens after purchase
+
+When the provider sends the payment webhook, neonFin:
+
+- marks the order as paid
+- creates or updates the wallet
+- stores the provider customer id on the wallet
+- records the active subscription
+- applies included credits for the paid cycle
+
+Feature access is derived from active subscriptions, paid one-time purchases,
+and manual grants. There is no separate feature flag to keep in sync.
+
+## Cancellation behavior
+
+When a customer cancels in the provider portal, access continues until the
+provider reports that the subscription has actually ended. At that point neonFin
+marks the subscription canceled, and subscription-derived features stop showing
+up in the wallet.
+
+Credits already granted for a paid period are not clawed back on cancellation.
+Full refunds are handled separately; see [Handle refunds](/docs/workflows/refunds).

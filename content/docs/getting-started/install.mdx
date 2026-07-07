@@ -1,0 +1,78 @@
+---
+title: Install the SDK
+description: Add the shadcn components and wire the provider into your app.
+---
+
+Now that neonFin has a project, Stripe connection, product, price, and
+publishable key, install the app-side pieces. The project **Developers** tab
+shows the same commands with your deployment URL and key.
+
+neonFin ships as a shadcn registry. The files are copied into your app and use
+your local shadcn components.
+
+<Callout>
+Your project's **Developers** tab in the dashboard shows all of the snippets on
+this page with your real key and registry URL already filled in - you can copy
+from there instead.
+</Callout>
+
+## 1. Add your environment variables
+
+Use the project publishable key. For example, in Next.js:
+
+```bash title=".env.local"
+NEXT_PUBLIC_NEONFIN_URL=https://pay.vantezzen.io
+NEXT_PUBLIC_NEONFIN_KEY=nf_pk_your_key
+```
+
+If you self-host neonFin, use your own domain instead of `pay.vantezzen.io`.
+
+## 2. Install the common components
+
+One command installs the provider, balance display, purchase dialog, and
+credit gate:
+
+```bash
+npx shadcn@latest add \
+  https://pay.vantezzen.io/r/neonfin-provider.json \
+  https://pay.vantezzen.io/r/neonfin-credits.json \
+  https://pay.vantezzen.io/r/neonfin-purchase.json \
+  https://pay.vantezzen.io/r/neonfin-gate.json
+```
+
+Add the wallet dialog if users may switch devices:
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+```
+
+You can install individual pieces later from the
+[component installation page](/docs/components/install).
+
+## 3. Add the provider
+
+Put `NeonfinProvider` above the pages that need balances or checkout.
+
+```tsx title="app/layout.tsx"
+import { NeonfinProvider } from "@/components/neonfin/provider";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <NeonfinProvider
+          baseUrl={process.env.NEXT_PUBLIC_NEONFIN_URL!}
+          publishableKey={process.env.NEXT_PUBLIC_NEONFIN_KEY!}
+        >
+          {children}
+        </NeonfinProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+The provider loads the current wallet balance, creates a wallet when needed,
+and resumes checkout confirmation when the user returns from Stripe.
+
+Next, [gate your first paid feature](/docs/getting-started/first-feature).

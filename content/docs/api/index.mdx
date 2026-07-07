@@ -1,0 +1,40 @@
+---
+title: Client & API
+description: Use the typed client or call the public REST API directly.
+---
+
+Most apps should start with the React components. Use this section when you
+need custom UI, server-side users, or a non-React integration.
+
+## What to use
+
+| Need | Use |
+|---|---|
+| React UI for credits and checkout | [Components](/docs/components) |
+| Custom browser UI | [createNeonfin client](/docs/api/client-reference) |
+| Non-React browser app | REST API with a publishable key |
+| Existing logged-in users | [Server-side users](/docs/api/server-side-users) with a secret key |
+| Promo/support credits | `POST /api/v1/credit` with a secret key |
+
+## Key types
+
+| Key | Starts with | Where it can be used | What it can do |
+|---|---|---|---|
+| Publishable | `nf_pk_` | Browser or server | Read catalog, create/read code wallets, deduct, start checkout |
+| Secret | `nf_sk_` | Server only | Create external wallets, grant credits |
+
+Never ship a secret key to a browser.
+
+## Base URL
+
+All REST endpoints live under:
+
+```txt
+https://your-neonfin-domain.com/api/v1
+```
+
+The hosted default used in docs is:
+
+```txt
+https://pay.vantezzen.io/api/v1
+```

@@ -1,0 +1,68 @@
+---
+title: CreditGate
+description: Render UI only when the wallet has enough credits.
+---
+
+`CreditGate` checks the current balance and either renders its children or a
+fallback. The default fallback is a scoped `PurchaseButton` that only shows
+prices granting credits for the checked product.
+
+## Install
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-gate.json
+```
+
+## Usage
+
+```tsx
+import { CreditGate } from "@/components/neonfin/credit-gate";
+import { useCredits } from "@/components/neonfin/provider";
+import { Button } from "@/components/ui/button";
+
+const COST = 10;
+
+export function PaidAction() {
+  const { deduct } = useCredits();
+
+  return (
+    <CreditGate cost={COST}>
+      <Button onClick={() => deduct(COST)}>Run action</Button>
+    </CreditGate>
+  );
+}
+```
+
+Customize the fallback button without replacing the filtering:
+
+```tsx
+<CreditGate
+  cost={10}
+  productId="prod_processing"
+  purchaseButtonProps={{ variant: "outline" }}
+/>
+```
+
+## Props
+
+| Prop | Type | Required | Description |
+|---|---|---:|---|
+| `cost` | `number` | Yes | Credits required to show `children`. |
+| `productId` | `string` | No | Product balance to check. |
+| `children` | `React.ReactNode` | Yes | UI shown when the wallet has enough credits. |
+| `fallback` | `React.ReactNode` | No | UI shown when credits are too low. Defaults to `PurchaseButton`. |
+| `purchaseButtonProps` | `PurchaseButtonProps` | No | Customize the default scoped purchase button. |
+
+## Important behavior
+
+`CreditGate` does not deduct credits. It only checks the balance. Deduct inside
+the event handler that starts paid work.
+
+```tsx
+<CreditGate cost={10}>
+  <Button onClick={() => deduct(10)}>Generate</Button>
+</CreditGate>
+```
+
+This prevents credits from being spent when a user only views the page or opens
+a modal.

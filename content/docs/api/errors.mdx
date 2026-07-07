@@ -1,0 +1,92 @@
+---
+title: Errors
+description: Common API and client errors.
+---
+
+The REST API returns JSON errors with a human-readable `error` message and a
+stable machine-readable `code`:
+
+```json
+{
+  "error": "Insufficient credits",
+  "code": "insufficient_credits"
+}
+```
+
+Branch on `code` (or the HTTP status) - never on the message text, which may
+change. The typed clients throw `NeonfinError` carrying `status`, `code`, and
+the message. For the common out-of-credits case you don't need to remember
+either - check `err.isInsufficientCredits`.
+
+## Common statuses
+
+| Status | Meaning | What to do |
+|---:|---|---|
+| `400` | Invalid request or missing required field | Check request body and project setup. |
+| `401` | Missing, invalid, or revoked API key | Create a new key or check the bearer token. |
+| `402` | Insufficient credits | Show purchase UI. |
+| `403` | Wrong key type or blocked origin | Use the correct key or update allowed origins. |
+| `404` | Wallet, price, or order not found | Check ids and project ownership. |
+| `409` | Already subscribed to this product | Send the user to the billing portal to switch tiers. |
+| `410` | Anonymous code wallet expired | Ask the user to start fresh or restore another code. |
+| `429` | Rate limit exceeded | Wait for `Retry-After` seconds. |
+| `502` | Provider checkout/portal error | Check provider credentials and account setup. |
+
+## Error codes
+
+| `code` | Status | Meaning |
+|---|---:|---|
+| `invalid_body` | 400 | Request body failed validation. |
+| `missing_bearer_token` | 401 | No `Authorization: Bearer` header. |
+| `invalid_api_key` | 401 | Unknown or revoked key. |
+| `wrong_key_kind` | 403 | Endpoint needs the other key type (pk vs sk). |
+| `secret_key_from_browser` | 403 | Secret keys must be used server-side, not from browser-origin requests. |
+| `origin_not_allowed` | 403 | Browser origin is not on the project allowlist. |
+| `redirect_origin_not_allowed` | 400 | `successUrl`/`cancelUrl` origin not allowed. |
+| `rate_limited` | 429 | Too many requests - wait for `Retry-After`. |
+| `mode_mismatch` | 400 | Endpoint doesn't apply to this project mode. |
+| `wallet_not_found` | 404 | No wallet for that code / user id. |
+| `wallet_expired` | 410 | Inactive anonymous code wallet was expired. |
+| `already_subscribed` | 409 | Wallet already subscribes to this product - use the portal to switch. |
+| `insufficient_credits` | 402 | Balance too low - includes `balance`/`requested`. |
+| `product_required` | 400 | Multi-product project: pass `productId`. |
+| `unknown_product` | 400 | `productId` doesn't belong to this project. |
+| `price_not_found` | 404 | Unknown price id. |
+| `price_inactive` | 400 | Price or product is deactivated. |
+| `price_not_synced` | 400 | Price has no provider yet - connect one first. |
+| `order_not_found` | 404 | Unknown order/checkout reference. |
+| `no_billing_customer` | 400 | Wallet has no completed purchase yet (portal). |
+| `provider_account_missing` | 400 | The product's provider account was removed. |
+| `provider_error` | 502 | Stripe/Polar rejected the call - check credentials. |
+
+## Insufficient credits
+
+For deductions, `402` includes the current balance and requested amount:
+
+```json
+{
+  "error": "Insufficient credits",
+  "code": "insufficient_credits",
+  "balance": 4,
+  "requested": 10
+}
+```
+
+Client handling:
+
+```ts
+try {
+  await neonfin.deduct(10, { idempotencyKey: "job_123" });
+} catch (err) {
+  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+    // Open your purchase dialog. err.balance / err.requested are available.
+  }
+}
+```
+
+## Expired credit codes
+
+Anonymous projects can expire inactive unpaid codes. The registry client
+recovers automatically for its own stored code, but explicit recovery-code
+lookups surface the `410` so your UI can explain that the code is no longer
+valid.

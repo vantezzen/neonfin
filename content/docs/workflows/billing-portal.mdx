@@ -1,0 +1,116 @@
+---
+title: Customer billing portal
+description: Let customers view invoices, update payment methods, and cancel subscriptions.
+---
+
+Use the provider billing portal for customer-facing billing management. It is
+where Stripe or Polar handles invoices, payment methods, subscription changes,
+cancellation, and any provider-supported refund flow.
+
+<Steps>
+<Step>
+
+### Install the wallet component
+
+The wallet dialog includes the billing management entry point:
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+```
+
+</Step>
+<Step>
+
+### Render the wallet button near paid UI
+
+Put `WalletButton` somewhere customers can find later, such as your account
+menu, billing page, or app header.
+
+```tsx
+import { WalletButton } from "@/components/neonfin/wallet-button";
+
+export function AccountMenu() {
+  return <WalletButton>Wallet</WalletButton>;
+}
+```
+
+</Step>
+<Step>
+
+### Let the wallet dialog open the portal
+
+Inside the wallet dialog, the **Billing** section calls:
+
+```ts
+const url = await neonfin.getPortalUrl({
+  returnUrl: window.location.href,
+});
+```
+
+The browser redirects to the provider portal. When the customer is done, the
+provider sends them back to `returnUrl`.
+
+</Step>
+<Step>
+
+### Handle the no-history case gently
+
+A brand-new wallet has no provider customer yet. In that case there is no
+billing portal to open.
+
+The wallet dialog shows a neutral note and asks the customer to restore or scan
+the wallet code from the device they purchased on.
+
+</Step>
+</Steps>
+
+## When a portal URL can be created
+
+The portal is available only after the wallet has completed a provider purchase.
+That purchase is when neonFin receives and stores the provider customer id.
+
+This means the portal is not available for:
+
+- a fresh anonymous wallet
+- a wallet that only has free credits
+- a wallet that only has manual credits or manual feature grants
+- the wrong wallet code on a different device
+
+## Custom billing buttons
+
+You can build your own button with `useNeonfin()`:
+
+```tsx
+import { useState } from "react";
+import { NeonfinError } from "@/lib/neonfin";
+import { useNeonfin } from "@/components/neonfin/provider";
+import { Button } from "@/components/ui/button";
+
+export function ManageBillingButton() {
+  const neonfin = useNeonfin();
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function openPortal() {
+    setMessage(null);
+    try {
+      const url = await neonfin.getPortalUrl({
+        returnUrl: window.location.href,
+      });
+      window.location.assign(url);
+    } catch (err) {
+      setMessage(
+        err instanceof NeonfinError && err.code === "no_billing_customer"
+          ? "No billing history for this wallet yet."
+          : "Couldn't open billing management.",
+      );
+    }
+  }
+
+  return (
+    <>
+      <Button onClick={openPortal}>Manage billing</Button>
+      {message ? <p>{message}</p> : null}
+    </>
+  );
+}
+```

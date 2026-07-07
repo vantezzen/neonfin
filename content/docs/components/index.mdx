@@ -1,0 +1,42 @@
+---
+title: Components & utils
+description: shadcn registry components and utilities for adding credits to your app.
+---
+
+The neonFin registry copies source files into your project. They are not a black
+box package: you can inspect them, adjust copy, change styling, and compose them
+with your existing shadcn components.
+
+## Install the pieces you need
+
+Most apps use:
+
+- [`NeonfinProvider`](/docs/components/provider)
+- [`useCredits`](/docs/components/use-credits)
+- [`RemainingCredits`](/docs/components/remaining-credits)
+- [`CreditGate`](/docs/components/credit-gate)
+- [`PurchaseButton` and `PurchaseDialog`](/docs/components/purchase)
+
+Add [`WalletButton`](/docs/components/wallet-button) if users need a visible
+wallet menu for copying, restoring, or transferring their code.
+
+## Registry items
+
+| Registry item | Use it for |
+|---|---|
+| `neonfin-client` | Raw typed API client in `lib/neonfin/index.ts` |
+| `neonfin-provider` | React context, balance loading, checkout resume |
+| `neonfin-credits` | Inline balance display |
+| `neonfin-gate` | Hide or replace UI when credits are too low |
+| `neonfin-purchase` | Price picker and popup/redirect checkout |
+| `neonfin-wallet` | Wallet dialog with code restore and transfer |
+
+## Component design
+
+The components use standard shadcn conventions in the consuming app. They depend
+on your local `button`, `dialog`, and `input` components, so they inherit your
+theme and can be edited like the rest of your UI.
+
+For a guided first integration, start with
+[Set up neonFin and Stripe](/docs/getting-started/dashboard), then install the
+components after you have a publishable key.

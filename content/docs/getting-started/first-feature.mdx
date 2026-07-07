@@ -1,0 +1,109 @@
+---
+title: Gate your first feature
+description: Show the balance, offer checkout, and deduct credits when work starts.
+---
+
+For the default credit-code flow, your UI only needs three things:
+
+1. Show the user's current balance.
+2. Show a purchase button when the balance is too low.
+3. Deduct credits when the paid job starts.
+
+## A complete example
+
+This example charges 10 processing minutes.
+
+```tsx title="components/process-button.tsx"
+"use client";
+
+import { CreditGate } from "@/components/neonfin/credit-gate";
+import { RemainingCredits } from "@/components/neonfin/remaining-credits";
+import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
+import { useCredits } from "@/components/neonfin/provider";
+import { Button } from "@/components/ui/button";
+
+const COST = 10;
+
+export function ProcessButton() {
+  const { deduct, loading } = useCredits();
+
+  async function processFile() {
+    const jobId = crypto.randomUUID();
+
+    await deduct(COST, {
+      idempotencyKey: jobId,
+      meta: { feature: "process-file" },
+    });
+
+    // Run the paid work after the deduction succeeds.
+    // await startProcessingJob({ jobId });
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-muted-foreground">
+        Balance: <RemainingCredits />
+      </span>
+
+      <CreditGate
+        cost={COST}
+        fallback={<PurchaseButton>Buy credits</PurchaseButton>}
+      >
+        <Button disabled={loading} onClick={processFile}>
+          Process file ({COST} minutes)
+        </Button>
+      </CreditGate>
+    </div>
+  );
+}
+```
+
+## Why deduct inside the click handler?
+
+`CreditGate` only checks the balance. It does not spend credits. That is
+intentional: users should not lose credits just because a component rendered.
+
+Deduct when the paid work actually begins. If your backend retries the same job,
+pass the same `idempotencyKey` so the retry does not charge twice.
+
+## Handling "out of credits"
+
+If two tabs race or the balance changed on another device, `deduct` can still
+fail even after `CreditGate` let the user through. Catch it and show the
+purchase dialog instead of an error:
+
+```tsx
+import { NeonfinError } from "@/lib/neonfin";
+
+try {
+  await deduct(COST, { idempotencyKey: jobId });
+} catch (err) {
+  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+    setShowPurchase(true); // e.g. a controlled <PurchaseDialog open={...}>
+    return;
+  }
+  throw err;
+}
+```
+
+## Buying more credits
+
+`PurchaseButton` opens a dialog with the purchasable prices you configured in
+neonFin. When the user chooses one:
+
+1. neonFin creates a provider checkout.
+2. The user pays in Stripe.
+3. On desktop, the checkout popup closes and your page stays mounted. On
+   mobile, the provider redirects back to your app.
+4. `NeonfinProvider` confirms the order and refreshes the balance.
+
+You do not need to write a checkout callback page for the common case.
+
+## What to read next
+
+- Need to restore credits on another device? Add
+  [`WalletButton`](/docs/components/wallet-button).
+- Need existing user accounts instead of credit codes? Read
+  [External auth](/docs/concepts/external-auth).
+- Want custom UI without the components? Use the
+  [client reference](/docs/api/client-reference).
