@@ -61,7 +61,7 @@ const STEPS = [
 const FEATURES = [
   {
     icon: Ticket,
-    title: "No login required",
+    title: "No auth required, unless you already have one",
     body: "Visitors get a wallet on their first visit and can restore it on any device. Great for tools too small to deserve auth.",
   },
   {
@@ -71,8 +71,8 @@ const FEATURES = [
   },
   {
     icon: Plug,
-    title: "Providers keep the money",
-    body: "Taxes, invoices, and subscriptions stay with Stripe or Polar. neonFin turns payments into credits.",
+    title: "No extra fees, providers keep the money",
+    body: "Taxes, invoices, and subscriptions stay with Stripe or Polar. neonFin adds no extra layers or fees.",
   },
   {
     icon: KeyRound,
@@ -145,6 +145,15 @@ function Nav() {
         </Link>
         <nav className="flex items-center gap-1">
           <Link
+            href="/guides"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "text-muted-foreground",
+            )}
+          >
+            Guides
+          </Link>
+          <Link
             href="/docs"
             className={cn(
               buttonVariants({ variant: "ghost" }),
@@ -180,7 +189,7 @@ function Hero() {
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-balance text-muted-foreground duration-700 fill-mode-backwards delay-200 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 sm:text-lg">
           The billing microservice for all your side projects:
-          <br /> Ccnnect Stripe or Polar once, define credits, and every project
+          <br /> Connect Stripe or Polar once, define credits, and every project
           you ship gets wallets, checkout, and drop-in components - in an
           afternoon, not a week.
         </p>
@@ -388,6 +397,12 @@ function Footer() {
           <span>· payments for side projects</span>
         </div>
         <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">
+          <Link href="/guides" className="hover:text-foreground">
+            Guides
+          </Link>
+          <Link href="/compare" className="hover:text-foreground">
+            Compare
+          </Link>
           <Link href="/docs" className="hover:text-foreground">
             Docs
           </Link>
