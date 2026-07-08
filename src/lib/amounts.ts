@@ -61,11 +61,16 @@ export const positiveCreditAmountSchema = creditAmount(z.number(), {
 export const nonNegativeCreditAmountSchema = creditAmount(z.number(), {
   mode: "nonNegative",
 });
-export const signedCreditAmountSchema = creditAmount(z.number(), { mode: "signed" });
-
-export const coercePositiveCreditAmountSchema = creditAmount(z.coerce.number(), {
-  mode: "positive",
+export const signedCreditAmountSchema = creditAmount(z.number(), {
+  mode: "signed",
 });
+
+export const coercePositiveCreditAmountSchema = creditAmount(
+  z.coerce.number(),
+  {
+    mode: "positive",
+  },
+);
 export const coerceNonNegativeCreditAmountSchema = creditAmount(
   z.coerce.number(),
   { mode: "nonNegative" },
@@ -76,5 +81,5 @@ export const coerceSignedCreditAmountSchema = creditAmount(z.coerce.number(), {
 export const priceAmountSchema = priceAmount(z.coerce.number());
 
 export function assertCreditDelta(n: number): void {
-  signedCreditAmountSchema.parse(n);
+  nonNegativeCreditAmountSchema.parse(n);
 }
