@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# neonFin
 
-## Getting Started
+neonFin is a self-hostable payments and credit-wallet app for side projects. It
+runs a Next.js dashboard/API, stores wallets and ledger entries in Postgres,
+syncs prices with Stripe or Polar, and serves shadcn registry components for
+consumer apps.
 
-First, run the development server:
+## Useful Links
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Product docs: `content/docs/index.mdx`
+- Self-hosting: `content/docs/self-host/index.mdx`
+- Component install: `content/docs/components/install.mdx`
+- Registry config: `registry.json`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies with `bun install`.
+2. Copy `.env.example` to `.env` and fill the secrets.
+3. Start local Postgres with `docker compose up -d`.
+4. Run migrations with `bun run db:migrate`.
+5. Start the app with `bun run dev` when you are working locally.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | Purpose |
+|---|---|
+| `bun run lint` | Run ESLint. |
+| `bun run test` | Run Bun tests. |
+| `./node_modules/.bin/tsc --noEmit --incremental false --pretty false` | Typecheck without writing incremental artifacts. |
+| `bun run db:generate` | Generate Drizzle migrations after schema changes. |
+| `bun run db:migrate` | Apply migrations. |
+| `bun run registry:build` | Build the shadcn registry output. |
 
-To learn more about Next.js, take a look at the following resources:
+## Notes For Agents
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Follow `AGENTS.md`; this repo uses a newer Next.js with changed APIs.
+- Do not run `bun run dev` or `bun run build` as verification unless the
+  operator explicitly asks.
+- Prefer `bun run lint`, `bun run test`, and the no-emit TypeScript command for
+  routine checks.

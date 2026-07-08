@@ -41,11 +41,12 @@ export async function POST(
     );
   }
 
-  // Idempotency: unique (provider, providerEventId). Claim the row as `pending`
-  // first; only a row that already reached a terminal *success* state
-  // (processed/skipped) short-circuits. A row still `pending`/`error` means a
-  // previous delivery failed mid-fulfillment, so we reprocess on the retry
-  // instead of acking a duplicate and silently dropping the credit grant.
+  // Idempotency: unique (providerAccountId, provider, providerEventId). Claim
+  // the row as `pending` first; only a row that already reached a terminal
+  // *success* state (processed/skipped) short-circuits. A row still
+  // `pending`/`error` means a previous delivery failed mid-fulfillment, so we
+  // reprocess on the retry instead of acking a duplicate and silently dropping
+  // the credit grant.
   const [inserted] = await db
     .insert(webhookEvents)
     .values({
@@ -56,7 +57,13 @@ export async function POST(
       payload: JSON.parse(rawBody),
       status: "pending",
     })
-    .onConflictDoNothing()
+    .onConflictDoNothing({
+      target: [
+        webhookEvents.providerAccountId,
+        webhookEvents.provider,
+        webhookEvents.providerEventId,
+      ],
+    })
     .returning({ id: webhookEvents.id });
 
   let eventRowId: string;
@@ -65,6 +72,7 @@ export async function POST(
   } else {
     const existing = await db.query.webhookEvents.findFirst({
       where: and(
+        eq(webhookEvents.providerAccountId, account.id),
         eq(webhookEvents.provider, account.provider),
         eq(webhookEvents.providerEventId, event.providerEventId),
       ),

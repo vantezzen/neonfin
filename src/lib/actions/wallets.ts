@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { featureGrants, products, wallets } from "@/db/schema";
+import { coerceSignedCreditAmountSchema } from "@/lib/amounts";
 import { requireOwnedProject } from "@/lib/auth/dal";
 import { createCodeWallet, creditWallet } from "@/lib/credits";
 import { FEATURE_KEY_RE, normalizeFeatureKey } from "@/lib/features";
@@ -25,7 +26,7 @@ const adjustInput = z.object({
   walletId: z.string().min(1),
   productId: z.string().min(1),
   // Signed: positive grants, negative debits. Non-zero.
-  amount: z.coerce.number().refine((n) => n !== 0, "Amount can't be zero"),
+  amount: coerceSignedCreditAmountSchema,
   note: z.string().optional(),
 });
 

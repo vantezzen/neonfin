@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { wallets } from "@/db/schema";
+import { products, wallets } from "@/db/schema";
+import { positiveCreditAmountSchema } from "@/lib/amounts";
 import { authenticate, corsHeaders, apiError, preflight } from "@/lib/api/http";
 import {
   creditWallet,
@@ -19,7 +20,7 @@ const bodySchema = z
     code: z.string().optional(),
     externalUserId: z.string().optional(),
     productId: z.string().optional(),
-    amount: z.number().positive(),
+    amount: positiveCreditAmountSchema,
     reason: z.enum(["manual", "refund", "purchase"]).optional(),
     idempotencyKey: z.string().min(1).optional(),
     meta: z.record(z.string(), z.unknown()).optional(),
@@ -84,6 +85,13 @@ export async function POST(req: Request): Promise<Response> {
   const productId = input.productId ?? (await soleProductId(project.id));
   if (!productId) {
     return apiError(400, "product_required", "productId is required (project has multiple products)", cors);
+  }
+  const product = await db.query.products.findFirst({
+    where: and(eq(products.id, productId), eq(products.projectId, project.id)),
+    columns: { id: true },
+  });
+  if (!product) {
+    return apiError(400, "unknown_product", "Unknown product", cors);
   }
 
   const result = await creditWallet(

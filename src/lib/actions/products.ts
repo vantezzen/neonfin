@@ -5,6 +5,11 @@ import { z } from "zod";
 import { db } from "@/db";
 import { prices, products, type FreeGrant } from "@/db/schema";
 import {
+  coerceNonNegativeCreditAmountSchema,
+  coercePositiveCreditAmountSchema,
+  priceAmountSchema,
+} from "@/lib/amounts";
+import {
   requireOwnedPrice,
   requireOwnedProduct,
   requireOwnedProject,
@@ -29,8 +34,10 @@ const productInput = z.object({
 });
 
 function parseFreeGrant(formData: FormData): FreeGrant {
-  const credits = Number(formData.get("freeGrantCredits"));
-  if (!Number.isFinite(credits) || credits <= 0) return null;
+  const rawCredits = formData.get("freeGrantCredits");
+  const numericCredits = Number(rawCredits);
+  if (!Number.isFinite(numericCredits) || numericCredits <= 0) return null;
+  const credits = coercePositiveCreditAmountSchema.parse(rawCredits);
   const period = String(formData.get("freeGrantPeriod"));
   return { credits, period: period === "once" ? "once" : "monthly" };
 }
@@ -154,10 +161,10 @@ const priceInput = z.object({
   productId: z.string().min(1),
   projectId: z.string().min(1),
   label: z.string().max(60).optional(),
-  amount: z.coerce.number().min(0),
+  amount: priceAmountSchema,
   currency: z.string().min(3).max(3),
   // 0 = a pure access offer (no metered credits, just features).
-  creditsGranted: z.coerce.number().min(0),
+  creditsGranted: coerceNonNegativeCreditAmountSchema,
   interval: z.enum(["one_time", "month", "year"]),
 });
 
@@ -211,8 +218,8 @@ export async function createPrice(
 
 const priceUpdateInput = z.object({
   label: z.string().max(60).optional(),
-  creditsGranted: z.coerce.number().min(0),
-  amount: z.coerce.number().min(0).optional(),
+  creditsGranted: coerceNonNegativeCreditAmountSchema,
+  amount: priceAmountSchema.optional(),
   currency: z.string().min(3).max(3).optional(),
   interval: z.enum(["one_time", "month", "year"]).optional(),
 });

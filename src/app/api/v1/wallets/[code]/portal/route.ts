@@ -12,6 +12,7 @@ import {
 import { findActiveCodeWallet, WalletExpiredError } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
 import { getProvider, getProviderAccount } from "@/lib/providers";
+import { providerErrorMessage } from "@/lib/api/provider-errors";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -97,7 +98,7 @@ export async function GET(
       returnUrl,
     );
     return Response.json({ url }, { headers: cors });
-  } catch (err) {
-    return apiError(502, "provider_error", `Provider error: ${String(err)}`, cors);
+  } catch {
+    return apiError(502, "provider_error", providerErrorMessage(), cors);
   }
 }

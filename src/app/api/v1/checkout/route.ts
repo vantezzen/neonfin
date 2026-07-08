@@ -18,6 +18,7 @@ import {
 } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
 import { getProvider, getProviderAccount } from "@/lib/providers";
+import { providerErrorMessage } from "@/lib/api/provider-errors";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -223,11 +224,11 @@ export async function POST(req: Request): Promise<Response> {
       .set({ providerCheckoutId: checkoutId })
       .where(eq(orders.id, order.id));
     return Response.json({ url, checkoutId, orderId: order.id }, { headers: cors });
-  } catch (err) {
+  } catch {
     await db
       .update(orders)
       .set({ status: "failed" })
       .where(eq(orders.id, order.id));
-    return apiError(502, "provider_error", `Provider error: ${String(err)}`, cors);
+    return apiError(502, "provider_error", providerErrorMessage(), cors);
   }
 }

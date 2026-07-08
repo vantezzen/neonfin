@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   ledgerEntries,
@@ -171,17 +171,50 @@ export async function getDashboardOverview(
     };
   }
 
-  const [recentOrders, recentDeductions, activeWalletRows] = await Promise.all([
-    db.query.orders.findMany({
-      where: and(
-        inArray(orders.projectId, projectIds),
-        gte(orders.createdAt, start),
-      ),
-    }),
+  const orderDay =
+    sql<string>`to_char(${orders.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
+  const deductionDay =
+    sql<string>`to_char(${ledgerEntries.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
+
+  const [
+    orderSummaryRows,
+    dailyOrderRows,
+    deductionSummaryRows,
+    dailyDeductionRows,
+    activeWalletCountRows,
+  ] = await Promise.all([
     db
       .select({
-        delta: ledgerEntries.delta,
-        createdAt: ledgerEntries.createdAt,
+        revenueCents: sql<number>`coalesce(sum(${orders.amountCents}), 0)::int`,
+        revenueCurrency: sql<string | null>`min(${orders.currency})`,
+        mixedCurrencies: sql<boolean>`count(distinct ${orders.currency}) > 1`,
+        paidOrders: sql<number>`count(*)::int`,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.projectId, projectIds),
+          eq(orders.status, "paid"),
+          gte(orders.createdAt, start),
+        ),
+      ),
+    db
+      .select({
+        date: orderDay,
+        revenueCents: sql<number>`coalesce(sum(${orders.amountCents}), 0)::int`,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.projectId, projectIds),
+          eq(orders.status, "paid"),
+          gte(orders.createdAt, start),
+        ),
+      )
+      .groupBy(orderDay),
+    db
+      .select({
+        creditsConsumed: sql<string>`coalesce(sum(abs(${ledgerEntries.delta})), 0)`,
       })
       .from(ledgerEntries)
       .innerJoin(wallets, eq(ledgerEntries.walletId, wallets.id))
@@ -193,7 +226,22 @@ export async function getDashboardOverview(
         ),
       ),
     db
-      .select({ id: wallets.id })
+      .select({
+        date: deductionDay,
+        creditsConsumed: sql<string>`coalesce(sum(abs(${ledgerEntries.delta})), 0)`,
+      })
+      .from(ledgerEntries)
+      .innerJoin(wallets, eq(ledgerEntries.walletId, wallets.id))
+      .where(
+        and(
+          inArray(wallets.projectId, projectIds),
+          eq(ledgerEntries.reason, "deduction"),
+          gte(ledgerEntries.createdAt, start),
+        ),
+      )
+      .groupBy(deductionDay),
+    db
+      .select({ activeWallets: sql<number>`count(*)::int` })
       .from(wallets)
       .where(
         and(
@@ -203,31 +251,25 @@ export async function getDashboardOverview(
       ),
   ]);
 
-  const paidOrders = recentOrders.filter((order) => order.status === "paid");
-  const currencies = new Set(paidOrders.map((order) => order.currency));
-  let revenueCents = 0;
-  for (const order of paidOrders) {
-    revenueCents += order.amountCents;
-    // A row stamped by the DB clock can land just outside the JS-clock window.
-    const day = byDay.get(dayKey(order.createdAt));
-    if (day) day.revenue += order.amountCents / 100;
+  const orderSummary = orderSummaryRows[0];
+  for (const row of dailyOrderRows) {
+    const day = byDay.get(row.date);
+    if (day) day.revenue += row.revenueCents / 100;
   }
 
-  let creditsConsumed = 0;
-  for (const entry of recentDeductions) {
-    const consumed = Math.abs(toNum(entry.delta));
-    creditsConsumed += consumed;
-    const day = byDay.get(dayKey(entry.createdAt));
-    if (day) day.creditsConsumed += consumed;
+  const creditsConsumed = toNum(deductionSummaryRows[0]?.creditsConsumed ?? "0");
+  for (const row of dailyDeductionRows) {
+    const day = byDay.get(row.date);
+    if (day) day.creditsConsumed += toNum(row.creditsConsumed);
   }
 
   return {
-    revenueCents,
-    revenueCurrency: currencies.values().next().value ?? "USD",
-    mixedCurrencies: currencies.size > 1,
-    activeWallets: activeWalletRows.length,
+    revenueCents: orderSummary?.revenueCents ?? 0,
+    revenueCurrency: orderSummary?.revenueCurrency ?? "USD",
+    mixedCurrencies: orderSummary?.mixedCurrencies ?? false,
+    activeWallets: activeWalletCountRows[0]?.activeWallets ?? 0,
     creditsConsumed,
-    paidOrders: paidOrders.length,
+    paidOrders: orderSummary?.paidOrders ?? 0,
     series,
   };
 }
@@ -290,27 +332,32 @@ export async function getProjectActivity(
         currencies: new Set<string>(),
         activeWallets: 0,
         creditsConsumed: 0,
+        mixedCurrencies: false,
       },
     ]),
   );
 
-  const [recentOrders, recentDeductions, activeWalletRows] = await Promise.all([
-    db.query.orders.findMany({
-      where: and(
-        inArray(orders.projectId, projectIds),
-        gte(orders.createdAt, start),
-      ),
-      columns: {
-        projectId: true,
-        status: true,
-        amountCents: true,
-        currency: true,
-      },
-    }),
+  const [orderRows, deductionRows, activeWalletRows] = await Promise.all([
+    db
+      .select({
+        projectId: orders.projectId,
+        revenueCents: sql<number>`coalesce(sum(${orders.amountCents}), 0)::int`,
+        revenueCurrency: sql<string | null>`min(${orders.currency})`,
+        mixedCurrencies: sql<boolean>`count(distinct ${orders.currency}) > 1`,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.projectId, projectIds),
+          eq(orders.status, "paid"),
+          gte(orders.createdAt, start),
+        ),
+      )
+      .groupBy(orders.projectId),
     db
       .select({
         projectId: wallets.projectId,
-        delta: ledgerEntries.delta,
+        creditsConsumed: sql<string>`coalesce(sum(abs(${ledgerEntries.delta})), 0)`,
       })
       .from(ledgerEntries)
       .innerJoin(wallets, eq(ledgerEntries.walletId, wallets.id))
@@ -320,41 +367,48 @@ export async function getProjectActivity(
           eq(ledgerEntries.reason, "deduction"),
           gte(ledgerEntries.createdAt, start),
         ),
-      ),
+      )
+      .groupBy(wallets.projectId),
     db
-      .select({ projectId: wallets.projectId, id: wallets.id })
+      .select({
+        projectId: wallets.projectId,
+        activeWallets: sql<number>`count(*)::int`,
+      })
       .from(wallets)
       .where(
         and(
           inArray(wallets.projectId, projectIds),
           gte(wallets.lastSeenAt, start),
         ),
-      ),
+      )
+      .groupBy(wallets.projectId),
   ]);
 
-  for (const order of recentOrders) {
-    if (order.status !== "paid") continue;
+  for (const order of orderRows) {
     const project = byProject.get(order.projectId);
     if (!project) continue;
-    project.revenueCents += order.amountCents;
-    project.currencies.add(order.currency);
-    project.revenueCurrency = order.currency;
+    project.revenueCents = order.revenueCents;
+    if (order.revenueCurrency) {
+      project.currencies.add(order.revenueCurrency);
+      project.revenueCurrency = order.revenueCurrency;
+    }
+    project.mixedCurrencies = order.mixedCurrencies;
   }
 
-  for (const entry of recentDeductions) {
+  for (const entry of deductionRows) {
     const project = byProject.get(entry.projectId);
-    if (project) project.creditsConsumed += Math.abs(toNum(entry.delta));
+    if (project) project.creditsConsumed = toNum(entry.creditsConsumed);
   }
 
   for (const wallet of activeWalletRows) {
     const project = byProject.get(wallet.projectId);
-    if (project) project.activeWallets += 1;
+    if (project) project.activeWallets = wallet.activeWallets;
   }
 
   return Array.from(byProject.values())
     .map(({ currencies, ...project }) => ({
       ...project,
-      mixedCurrencies: currencies.size > 1,
+      mixedCurrencies: project.mixedCurrencies || currencies.size > 1,
     }))
     .sort((a, b) => {
       const aScore = a.revenueCents + a.creditsConsumed + a.activeWallets;

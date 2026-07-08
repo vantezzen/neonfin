@@ -25,10 +25,13 @@ duplicate credits.
 
 ## Rate limits
 
-Publishable-key endpoints have in-process rate limiting. Anonymous wallet
-creation also has a per-project/IP throttle. On multi-instance deployments,
-effective limits scale with the number of instances until you move the limiter
-to shared storage.
+Publishable-key endpoints and anonymous wallet creation use Postgres-backed
+token buckets stored in `rate_limit_buckets`. Limits are shared across app
+instances, and concurrent requests for the same key spend from the same row.
+
+Because rate limiting depends on Postgres, database health is part of API abuse
+protection. Monitor database availability and growth of the `rate_limit_buckets`
+table on high-traffic instances.
 
 ## Common fixes
 

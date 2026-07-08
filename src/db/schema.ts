@@ -416,7 +416,11 @@ export const webhookEvents = pgTable(
     createdAt,
   },
   (t) => [
-    uniqueIndex("webhook_provider_event_uq").on(t.provider, t.providerEventId),
+    uniqueIndex("webhook_provider_account_event_uq").on(
+      t.providerAccountId,
+      t.provider,
+      t.providerEventId,
+    ),
     // The dashboard webhook log filters by the owner's accounts.
     index("webhook_events_account_idx").on(t.providerAccountId),
   ],

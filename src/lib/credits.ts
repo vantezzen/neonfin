@@ -19,6 +19,7 @@ import {
   type SubscriptionStatus,
   type Wallet,
 } from "@/db/schema";
+import { assertCreditDelta } from "@/lib/amounts";
 import { createCreditCode } from "@/lib/id";
 
 // Credits are numeric(20,6). Postgres holds the source of truth AND does the
@@ -29,6 +30,7 @@ export function toNum(v: string | number): number {
   return typeof v === "number" ? v : parseFloat(v);
 }
 function fmt(n: number): string {
+  assertCreditDelta(n);
   return n.toFixed(SCALE);
 }
 

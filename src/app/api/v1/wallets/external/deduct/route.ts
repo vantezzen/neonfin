@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { positiveCreditAmountSchema } from "@/lib/amounts";
 import { authenticate, corsHeaders, apiError, preflight } from "@/lib/api/http";
 import {
   deductByExternalId,
@@ -15,7 +16,7 @@ export function OPTIONS(): Response {
 const bodySchema = z.object({
   externalUserId: z.string().min(1),
   productId: z.string().optional(),
-  amount: z.number().positive(),
+  amount: positiveCreditAmountSchema,
   idempotencyKey: z.string().min(1),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
