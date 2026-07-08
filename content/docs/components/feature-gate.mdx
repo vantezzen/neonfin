@@ -17,7 +17,7 @@ renews or ends.
 ## Install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-gate.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-gate.json
 ```
 
 Ships alongside `CreditGate` in the same registry item.
@@ -25,7 +25,7 @@ Ships alongside `CreditGate` in the same registry item.
 ## Usage
 
 ```tsx
-import { FeatureGate } from "@/components/neonfin/feature-gate";
+import { FeatureGate } from "@/components/pay/feature-gate";
 
 export function Analytics() {
   return (
@@ -73,7 +73,7 @@ Or customize the built-in scoped fallback:
 Use `useFeature` when you need the boolean rather than a wrapper:
 
 ```tsx
-import { useFeature } from "@/components/neonfin/provider";
+import { useFeature } from "@/components/pay/provider";
 
 const { enabled, loading } = useFeature("analytics");
 ```

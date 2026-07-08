@@ -1,9 +1,9 @@
 ---
 title: Deployment
-description: Deploy the neonFin Next.js app.
+description: Deploy the vantezzen/pay Next.js app.
 ---
 
-neonFin is a standard Next.js app. Vercel is the simplest target, but any host
+vantezzen/pay is a standard Next.js app. Vercel is the simplest target, but any host
 that can run Next.js with environment variables and Postgres access works.
 
 ## Vercel
@@ -13,7 +13,7 @@ that can run Next.js with environment variables and Postgres access works.
 3. Deploy.
 4. Run `bun run db:migrate` once against production.
 5. Visit `/register` and create your admin account.
-6. Set `NEONFIN_ALLOW_SIGNUPS=false`.
+6. Set `PAY_ALLOW_SIGNUPS=false`.
 
 The build script generates the shadcn registry JSON before building the app, so
 the registry is served from `/r`.

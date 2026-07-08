@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { createQr } from "@/lib/neonfin/qr";
+import { createQr } from "@/lib/pay/qr";
 
 export type WalletQrCodeProps = {
   value: string;

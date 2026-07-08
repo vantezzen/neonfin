@@ -37,7 +37,7 @@ export function ProjectFirstSteps({
   const knownFeatures = knownFeaturesOf(products);
   const actionNoun = firstProduct ? productPriceNoun(firstProduct.type) : "price";
   const stepNoun = firstProduct?.type === "subscription" ? "tier" : "price";
-  const integrationKey = `neonfin:first-steps:${projectId}:integrated`;
+  const integrationKey = `pay:first-steps:${projectId}:integrated`;
   const [integrationDone, setIntegrationDone] = useState(false);
 
   useEffect(() => {

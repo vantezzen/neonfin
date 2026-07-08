@@ -12,15 +12,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { NeonfinError } from "@/lib/neonfin";
+import { PayError } from "@/lib/pay";
 import {
   createWalletTransferUrl,
   WALLET_QUERY_PARAM,
-} from "@/lib/neonfin/qr";
-import { useCredits, useNeonfin } from "@/components/neonfin/provider";
-import { WalletCodeField } from "@/components/neonfin/wallet-code-field";
-import { WalletQrCode } from "@/components/neonfin/wallet-qr-code";
-import { WalletQrScanner } from "@/components/neonfin/wallet-qr-scanner";
+} from "@/lib/pay/qr";
+import { useCredits, usePay } from "@/components/pay/provider";
+import { WalletCodeField } from "@/components/pay/wallet-code-field";
+import { WalletQrCode } from "@/components/pay/wallet-qr-code";
+import { WalletQrScanner } from "@/components/pay/wallet-qr-scanner";
 
 export type WalletDialogProps = {
   open?: boolean;
@@ -48,7 +48,7 @@ export function WalletDialog({
   description = "Your wallet code keeps credits available across devices.",
   transferParam = WALLET_QUERY_PARAM,
 }: WalletDialogProps) {
-  const client = useNeonfin();
+  const client = usePay();
   const { refresh } = useCredits();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
@@ -106,7 +106,7 @@ export function WalletDialog({
         onRestored?.(wallet.code);
       } catch (err) {
         setError(
-          err instanceof NeonfinError && err.status === 404
+          err instanceof PayError && err.status === 404
             ? "That code doesn't match a wallet."
             : "Couldn't restore that wallet. Check the code and try again.",
         );
@@ -163,7 +163,7 @@ export function WalletDialog({
     } catch (err) {
       setBillingBusy(false);
       const noBillingHistory =
-        err instanceof NeonfinError && err.code === "no_billing_customer";
+        err instanceof PayError && err.code === "no_billing_customer";
       setBillingMessage({
         tone: noBillingHistory ? "info" : "error",
         text: noBillingHistory

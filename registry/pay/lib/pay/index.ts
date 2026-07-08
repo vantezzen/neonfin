@@ -1,19 +1,19 @@
 /**
- * neonFin client - a tiny, zero-dependency wrapper around the neonFin public
+ * vantezzen/pay client - a tiny, zero-dependency wrapper around the vantezzen/pay public
  * API (`/api/v1`). It handles credit-code storage (localStorage) so anonymous
  * users keep their balance across visits, and exposes typed helpers for reading
  * products, checking/deducting credits, and starting checkouts.
  *
  * Everything here is safe to run in the browser: only the *publishable* key
- * (`nf_pk_…`) is used. Never put a secret key (`nf_sk_…`) in client code.
+ * (`pay_pk_…`) is used. Never put a secret key (`pay_sk_…`) in client code.
  *
  * Docs: https://pay.vantezzen.io/docs
  */
 
-export type NeonfinConfig = {
-  /** Base URL of your neonFin deployment, e.g. `https://pay.vantezzen.io`. */
+export type PayClientConfig = {
+  /** Base URL of your vantezzen/pay deployment, e.g. `https://pay.vantezzen.io`. */
   baseUrl: string;
-  /** Publishable API key (`nf_pk_…`). Browser-safe. */
+  /** Publishable API key (`pay_pk_…`). Browser-safe. */
   publishableKey: string;
   /** localStorage key used to persist the credit code. */
   storageKey?: string;
@@ -106,7 +106,7 @@ export type OrderStatus = {
  * API's stable machine-readable `code` (e.g. `"insufficient_credits"`,
  * `"wallet_expired"`) - branch on those, not on the message text.
  */
-export class NeonfinError extends Error {
+export class PayError extends Error {
   readonly status: number;
   /** Stable error code from the API, e.g. `"wallet_not_found"`. */
   readonly code?: string;
@@ -121,7 +121,7 @@ export class NeonfinError extends Error {
     opts: { code?: string; balance?: number; requested?: number } = {},
   ) {
     super(message);
-    this.name = "NeonfinError";
+    this.name = "PayError";
     this.status = status;
     this.code = opts.code;
     this.balance = opts.balance;
@@ -134,8 +134,8 @@ export class NeonfinError extends Error {
   }
 }
 
-const DEFAULT_STORAGE_KEY = "neonfin_code";
-export const PENDING_ORDER_KEY = "neonfin_pending_order";
+const DEFAULT_STORAGE_KEY = "pay_code";
+export const PENDING_ORDER_KEY = "pay_pending_order";
 const POPUP_POLL_MS = 1500;
 
 function hasStorage(): boolean {
@@ -149,8 +149,8 @@ function randomKey(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function checkoutError(code: string, message: string): NeonfinError {
-  return new NeonfinError(0, message, { code });
+function checkoutError(code: string, message: string): PayError {
+  return new PayError(0, message, { code });
 }
 
 function shouldUseRedirect(flow: CheckoutFlow): boolean {
@@ -187,7 +187,7 @@ function popupFeatures(): string {
 
 function openCheckoutPopup(): Window | null {
   if (typeof window === "undefined") return null;
-  const popup = window.open("", "neonfin_checkout", popupFeatures());
+  const popup = window.open("", "pay_checkout", popupFeatures());
   if (!popup) return null;
 
   try {
@@ -209,9 +209,9 @@ type CheckoutPopupMessage = {
   orderId?: unknown;
 };
 
-export type NeonfinClient = ReturnType<typeof createNeonfin>;
+export type PayClient = ReturnType<typeof createPayClient>;
 
-export function createNeonfin(config: NeonfinConfig) {
+export function createPayClient(config: PayClientConfig) {
   const baseUrl = config.baseUrl.replace(/\/$/, "");
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
   // Namespaced by storageKey so two projects on one origin don't clash.
@@ -243,7 +243,7 @@ export function createNeonfin(config: NeonfinConfig) {
         balance?: number;
         requested?: number;
       };
-      throw new NeonfinError(
+      throw new PayError(
         res.status,
         err.error ?? `Request failed (${res.status})`,
         { code: err.code, balance: err.balance, requested: err.requested },
@@ -276,7 +276,7 @@ export function createNeonfin(config: NeonfinConfig) {
   ): boolean {
     return (
       !explicitCode &&
-      err instanceof NeonfinError &&
+      err instanceof PayError &&
       (err.status === 404 || err.status === 410)
     );
   }
@@ -372,7 +372,7 @@ export function createNeonfin(config: NeonfinConfig) {
 
   /**
    * Deduct `amount` credits. Idempotent: pass a stable `idempotencyKey` to make
-   * retries safe (one is generated otherwise). Throws `NeonfinError` with
+   * retries safe (one is generated otherwise). Throws `PayError` with
    * status 402 when the balance is insufficient.
    */
   async function deduct(
@@ -516,7 +516,7 @@ export function createNeonfin(config: NeonfinConfig) {
       function onMessage(event: MessageEvent<CheckoutPopupMessage>) {
         if (event.origin !== baseOrigin) return;
         const data = event.data;
-        if (data?.source !== "neonfin") return;
+        if (data?.source !== "pay") return;
 
         const matchesOrder = data.orderId === result.orderId;
         if (data.type === "checkout_paid" && matchesOrder) {
@@ -632,7 +632,7 @@ export function createNeonfin(config: NeonfinConfig) {
   ): Promise<string> {
     const code = opts.code ?? getCode();
     if (!code) {
-      throw new NeonfinError(400, "No credit code for this browser", {
+      throw new PayError(400, "No credit code for this browser", {
         code: "wallet_not_found",
       });
     }

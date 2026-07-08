@@ -8,19 +8,19 @@ import * as schema from "./schema";
 // protocol, so the same code targets local docker-compose, Neon, or Supabase -
 // only DATABASE_URL changes. Reuse the client across hot reloads in dev.
 const globalForDb = globalThis as unknown as {
-  __neonfinSql?: ReturnType<typeof postgres>;
+  __paySql?: ReturnType<typeof postgres>;
 };
 
 function client() {
-  if (!globalForDb.__neonfinSql) {
-    globalForDb.__neonfinSql = postgres(env().DATABASE_URL, {
+  if (!globalForDb.__paySql) {
+    globalForDb.__paySql = postgres(env().DATABASE_URL, {
       // Serverless-friendly: keep the pool small; managed Postgres poolers
       // (Neon/Supabase) handle fan-out.
       max: 10,
       prepare: false,
     });
   }
-  return globalForDb.__neonfinSql;
+  return globalForDb.__paySql;
 }
 
 export const db = drizzle(client(), { schema });

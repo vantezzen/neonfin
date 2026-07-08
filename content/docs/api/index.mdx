@@ -3,7 +3,7 @@ title: Public REST API
 description: Endpoints used by the client and components.
 ---
 
-neonFin provides a REST API for on-page actions like getting wallet info and
+vantezzen/pay provides a REST API for on-page actions like getting wallet info and
 starting checkout.
 
 It is highly recommended that you use the React components or the typed clients
@@ -13,17 +13,17 @@ balance refresh, and checkout confirmation automatically.
 | Need | Use |
 |---|---|
 | React UI for credits and checkout | [Components](/docs/components) |
-| Custom browser UI | [createNeonfin client](/docs/components/client) |
+| Custom browser UI | [createPayClient](/docs/components/client) |
 | Non-React browser app | REST API with a publishable key |
-| Existing logged-in users | [createNeonfinServer client](/docs/components/server) with a secret key |
+| Existing logged-in users | [createPayServerClient](/docs/components/server) with a secret key |
 | Promo/support credits | `POST /api/v1/credit` with a secret key |
 
 ## Key types
 
 | Key | Starts with | Where it can be used | What it can do |
 |---|---|---|---|
-| Publishable | `nf_pk_` | Browser or server | Read catalog, create/read code wallets, deduct, start checkout |
-| Secret | `nf_sk_` | Server only | Create external wallets, grant credits |
+| Publishable | `pay_pk_` | Browser or server | Read catalog, create/read code wallets, deduct, start checkout |
+| Secret | `pay_sk_` | Server only | Create external wallets, grant credits |
 
 Never ship a secret key to a browser.
 
@@ -32,7 +32,7 @@ Never ship a secret key to a browser.
 All REST endpoints live under:
 
 ```txt
-https://your-neonfin-domain.com/api/v1
+https://your-pay-domain.com/api/v1
 ```
 
 The hosted default used in docs is:
@@ -48,7 +48,7 @@ Use the REST API directly if you are not using the registry client.
 All requests use bearer auth:
 
 ```http
-Authorization: Bearer nf_pk_...
+Authorization: Bearer pay_pk_...
 ```
 
 Browser calls should use publishable keys. Server-only calls that create
@@ -100,7 +100,7 @@ Create a credit-code wallet:
 
 ```http
 POST /api/v1/wallets
-Authorization: Bearer nf_pk_...
+Authorization: Bearer pay_pk_...
 ```
 
 Returns the wallet's balances plus its derived access (unlocked features and
@@ -243,7 +243,7 @@ own logic. Requires a secret key.
 
 ```http
 POST /api/v1/features
-Authorization: Bearer nf_sk_...
+Authorization: Bearer pay_sk_...
 Content-Type: application/json
 
 {

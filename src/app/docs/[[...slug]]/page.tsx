@@ -59,14 +59,14 @@ export async function generateMetadata(
       canonical: page.url,
     },
     openGraph: {
-      title: `${page.data.title} · neonFin Docs`,
+      title: `${page.data.title} · vantezzen/pay Docs`,
       description: page.data.description,
       url: page.url,
       type: "article",
     },
     twitter: {
       card: "summary",
-      title: `${page.data.title} · neonFin Docs`,
+      title: `${page.data.title} · vantezzen/pay Docs`,
       description: page.data.description,
     },
   };

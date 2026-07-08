@@ -4,17 +4,17 @@ import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { WALLET_QUERY_PARAM } from "@/lib/neonfin/qr";
-import { WalletDialog } from "@/components/neonfin/wallet-dialog";
+import { WALLET_QUERY_PARAM } from "@/lib/pay/qr";
+import { WalletDialog } from "@/components/pay/wallet-dialog";
 
-export { WalletCodeField } from "@/components/neonfin/wallet-code-field";
-export { WalletDialog } from "@/components/neonfin/wallet-dialog";
-export { WalletQrCode } from "@/components/neonfin/wallet-qr-code";
-export { WalletQrScanner } from "@/components/neonfin/wallet-qr-scanner";
-export type { WalletCodeFieldProps } from "@/components/neonfin/wallet-code-field";
-export type { WalletDialogProps } from "@/components/neonfin/wallet-dialog";
-export type { WalletQrCodeProps } from "@/components/neonfin/wallet-qr-code";
-export type { WalletQrScannerProps } from "@/components/neonfin/wallet-qr-scanner";
+export { WalletCodeField } from "@/components/pay/wallet-code-field";
+export { WalletDialog } from "@/components/pay/wallet-dialog";
+export { WalletQrCode } from "@/components/pay/wallet-qr-code";
+export { WalletQrScanner } from "@/components/pay/wallet-qr-scanner";
+export type { WalletCodeFieldProps } from "@/components/pay/wallet-code-field";
+export type { WalletDialogProps } from "@/components/pay/wallet-dialog";
+export type { WalletQrCodeProps } from "@/components/pay/wallet-qr-code";
+export type { WalletQrScannerProps } from "@/components/pay/wallet-qr-scanner";
 
 export type WalletButtonProps = React.ComponentProps<typeof Button> & {
   /** Called after switching to a valid wallet code. */

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { NeonfinProvider } from "@/components/neonfin/provider";
+import { PayProvider } from "@/components/pay/provider";
 
 export const metadata: Metadata = {
-  title: { default: "Example · neonFin", template: "%s · neonFin" },
+  title: { default: "Example · vantezzen/pay", template: "%s · vantezzen/pay" },
   robots: {
     index: false,
     follow: false,
@@ -18,12 +18,12 @@ export default function ExampleLayout({
     <div className="flex min-h-svh bg-muted/30">
       <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto w-full max-w-5xl px-6 py-6">
-          <NeonfinProvider
-            baseUrl={process.env.NEXT_PUBLIC_EXAMPLE_NEONFIN_URL!}
-            publishableKey={process.env.NEXT_PUBLIC_EXAMPLE_NEONFIN_KEY!}
+          <PayProvider
+            baseUrl={process.env.NEXT_PUBLIC_EXAMPLE_PAY_URL!}
+            publishableKey={process.env.NEXT_PUBLIC_EXAMPLE_PAY_KEY!}
           >
             {children}
-          </NeonfinProvider>
+          </PayProvider>
         </div>
       </main>
     </div>

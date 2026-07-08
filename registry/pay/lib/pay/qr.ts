@@ -1,4 +1,4 @@
-export const WALLET_QUERY_PARAM = "__neonfin_wallet";
+export const WALLET_QUERY_PARAM = "__pay_wallet";
 
 export type QrCode = {
   size: number;

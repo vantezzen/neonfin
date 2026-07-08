@@ -26,7 +26,17 @@ export function SetupChecklist({
       done: state.hasProvider,
       title: "Connect a payment provider",
       description: "Add your Stripe or Polar keys so purchases can be charged.",
-      action: <ProviderConnectWizard appUrl={appUrl} size="sm" />,
+      action: (
+        <div className="flex flex-wrap items-center gap-2">
+          <ProviderConnectWizard appUrl={appUrl} size="sm" />
+          <Link
+            href="/docs/workflows/providers"
+            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+          >
+            Setup guide
+          </Link>
+        </div>
+      ),
     },
     {
       done: state.hasProject,

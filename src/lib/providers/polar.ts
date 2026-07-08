@@ -73,7 +73,7 @@ export class PolarProvider implements PaymentProvider {
 
     return {
       // Polar checkouts select products, not standalone price ids. Because this
-      // adapter creates one Polar product per neonFin price, the product id is
+      // adapter creates one Polar product per vantezzen/pay price, the product id is
       // the durable checkout reference stored in `prices.providerPriceId`.
       providerPriceId: product.id,
       providerProductId: product.id,

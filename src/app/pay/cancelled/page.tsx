@@ -1,6 +1,6 @@
 import { CancelledPopupNotice } from "./cancelled-popup-notice";
 
-export const metadata = { title: "Checkout cancelled · neonFin" };
+export const metadata = { title: "Checkout cancelled · vantezzen/pay" };
 
 export default function CancelledPage() {
   return (

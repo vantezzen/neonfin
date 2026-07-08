@@ -1,0 +1,142 @@
+---
+title: Connect a payment provider
+description: Set up Stripe or Polar so vantezzen/pay can create checkout and receive payment events.
+---
+
+vantezzen/pay does not move money itself. Stripe or Polar owns checkout,
+payment methods, invoices, taxes, subscriptions, and refunds. vantezzen/pay owns
+products, prices, wallets, credits, and webhook fulfillment.
+
+Use a dedicated Stripe or Polar account for vantezzen/pay-managed products when
+you can. vantezzen/pay creates and syncs catalog objects automatically, so a
+dedicated account keeps those products separate from anything you manage by hand.
+
+## Before you start
+
+- Open the vantezzen/pay dashboard and go to **Providers**.
+- Make sure `NEXT_PUBLIC_APP_URL` points to the public URL of this vantezzen/pay
+  instance. Provider webhooks must reach that URL in production.
+- Use test or sandbox credentials while developing, then repeat the setup with
+  production credentials before launch.
+
+The dashboard setup wizard shows the exact webhook URL for each provider
+account. It looks like:
+
+```txt
+https://pay.example.com/api/webhooks/stripe/<provider-account-id>
+```
+
+## Stripe
+
+### 1. Save the Stripe secret key
+
+In vantezzen/pay, choose **Providers → Connect provider**, select **Stripe**, and
+paste a Stripe secret key.
+
+Use `sk_test_...` while developing. Use a live secret key only for the Stripe
+account that should own production products, prices, customers, and invoices.
+
+### 2. Create the Stripe event destination
+
+After saving the key, vantezzen/pay shows a webhook URL. Copy it.
+
+In the Stripe Dashboard, open the **Stripe Developer Workbench** from the bottom
+of the screen. In Workbench, open **Webhooks**, then create a new event
+destination.
+
+Use these settings:
+
+- Event source: your Stripe **Account** events.
+- Destination type: **Webhook endpoint**.
+- Endpoint URL: the webhook URL copied from vantezzen/pay.
+- Events:
+  - `checkout.session.completed`
+  - `invoice.paid`
+  - `charge.refunded`
+  - `customer.subscription.deleted`
+
+Save the destination, then copy its signing secret.
+
+### 3. Save the Stripe signing secret
+
+Paste the signing secret back into vantezzen/pay. Stripe signing secrets usually
+start with `whsec_`.
+
+For local development, the Stripe CLI can forward events to the webhook URL and
+print a temporary signing secret:
+
+```bash
+stripe listen --forward-to https://pay.example.com/api/webhooks/stripe/<provider-account-id> --events checkout.session.completed,invoice.paid,charge.refunded,customer.subscription.deleted
+```
+
+Use that CLI signing secret in your local vantezzen/pay instance.
+
+### 4. Test Stripe
+
+Create a product and price in vantezzen/pay, start checkout from your app, and
+complete payment in Stripe test mode. The order should become **paid** and the
+wallet should receive credits. Then trigger a refund in Stripe and confirm the
+webhook log records it.
+
+## Polar
+
+### 1. Choose sandbox or production
+
+Polar sandbox and production are separate environments. Use the Polar sandbox
+for local development and test purchases, then create a separate production
+provider account in vantezzen/pay before launch.
+
+Sandbox credentials come from `sandbox.polar.sh` and use the sandbox API.
+Production credentials come from your production Polar organization.
+
+### 2. Save the Polar access token
+
+In Polar, create an organization access token. Give it access to the catalog,
+checkout, customer sessions, and webhooks that vantezzen/pay manages.
+
+In vantezzen/pay, choose **Providers → Connect provider**, select **Polar**, pick
+the matching environment, and paste the organization access token.
+
+### 3. Create the Polar webhook endpoint
+
+After saving the token, vantezzen/pay shows a webhook URL. Copy it.
+
+In Polar, open the organization settings and add a webhook endpoint with that
+URL. Subscribe to:
+
+- `order.paid`
+- `order.refunded`
+- `subscription.canceled`
+- `subscription.revoked`
+
+Save the endpoint, then copy its webhook secret back into vantezzen/pay.
+
+For local Polar testing, expose your local vantezzen/pay app through a public
+tunnel and use that tunnel URL for the webhook endpoint. Polar needs a URL it
+can call directly.
+
+### 4. Test Polar
+
+Create a product and price in vantezzen/pay, start checkout from your app, and
+complete payment in Polar sandbox. The order should become **paid** and the
+wallet should receive credits. Then test a refund or subscription cancellation
+and confirm the webhook log records it.
+
+## Troubleshooting
+
+- **Checkout cannot start:** the product needs an active synced price attached
+  to a connected provider account.
+- **Events do not arrive:** confirm the provider webhook URL matches the
+  vantezzen/pay account URL exactly.
+- **Events fail signature validation:** copy the webhook signing secret again
+  from the provider and save it in vantezzen/pay.
+- **Sandbox credentials fail:** make sure the provider account environment in
+  vantezzen/pay matches the provider token or key.
+- **Catalog changes disappear:** edit products and prices in vantezzen/pay, not
+  in the provider dashboard. vantezzen/pay is the catalog source of truth.
+
+## Provider references
+
+- [Stripe webhooks](https://docs.stripe.com/webhooks)
+- [Polar authentication](https://polar.sh/docs/integrate/authentication)
+- [Polar sandbox](https://polar.sh/docs/integrate/sandbox)

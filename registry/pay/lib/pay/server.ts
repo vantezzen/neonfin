@@ -1,19 +1,19 @@
 /**
- * neonFin server client - a tiny, zero-dependency wrapper around neonFin's
+ * vantezzen/pay server client - a tiny, zero-dependency wrapper around vantezzen/pay's
  * server-only API (`/api/v1`) for apps that already have their own user
- * accounts ("external auth"). It uses your SECRET key (`nf_sk_…`).
+ * accounts ("external auth"). It uses your SECRET key (`pay_sk_…`).
  *
  * Run this ONLY on the server (route handlers, server actions, background
- * jobs). Never import it into browser code or expose `nf_sk_…` to the client -
- * for the browser use the publishable-key client (`neonfin-client`) instead.
+ * jobs). Never import it into browser code or expose `pay_sk_…` to the client -
+ * for the browser use the publishable-key client (`pay-client`) instead.
  *
  * Docs: https://pay.vantezzen.io/docs/concepts/external-auth
  */
 
-export type NeonfinServerConfig = {
-  /** Base URL of your neonFin deployment, e.g. `https://pay.vantezzen.io`. */
+export type PayServerClientConfig = {
+  /** Base URL of your vantezzen/pay deployment, e.g. `https://pay.vantezzen.io`. */
   baseUrl: string;
-  /** Secret API key (`nf_sk_…`). Server-only - never send it to the browser. */
+  /** Secret API key (`pay_sk_…`). Server-only - never send it to the browser. */
   secretKey: string;
 };
 
@@ -98,7 +98,7 @@ export type GrantInput = {
  * Error thrown for any non-2xx API response. Carries the HTTP status and the
  * API's stable machine-readable `code` - branch on those, not the message.
  */
-export class NeonfinError extends Error {
+export class PayError extends Error {
   readonly status: number;
   /** Stable error code from the API, e.g. `"wallet_not_found"`. */
   readonly code?: string;
@@ -113,7 +113,7 @@ export class NeonfinError extends Error {
     opts: { code?: string; balance?: number; requested?: number } = {},
   ) {
     super(message);
-    this.name = "NeonfinError";
+    this.name = "PayError";
     this.status = status;
     this.code = opts.code;
     this.balance = opts.balance;
@@ -126,9 +126,9 @@ export class NeonfinError extends Error {
   }
 }
 
-export type NeonfinServer = ReturnType<typeof createNeonfinServer>;
+export type PayServerClient = ReturnType<typeof createPayServerClient>;
 
-export function createNeonfinServer(config: NeonfinServerConfig) {
+export function createPayServerClient(config: PayServerClientConfig) {
   const baseUrl = config.baseUrl.replace(/\/$/, "");
 
   async function request<T>(path: string, body: unknown): Promise<T> {
@@ -148,7 +148,7 @@ export function createNeonfinServer(config: NeonfinServerConfig) {
         balance?: number;
         requested?: number;
       };
-      throw new NeonfinError(
+      throw new PayError(
         res.status,
         err.error ?? `Request failed (${res.status})`,
         { code: err.code, balance: err.balance, requested: err.requested },
@@ -177,7 +177,7 @@ export function createNeonfinServer(config: NeonfinServerConfig) {
 
   /**
    * Deduct credits from an external user's wallet when they run paid work.
-   * Throws `NeonfinError` with `isInsufficientCredits` when the balance is too
+   * Throws `PayError` with `isInsufficientCredits` when the balance is too
    * low. The required `idempotencyKey` makes retries charge exactly once.
    */
   async function deduct(input: DeductInput): Promise<DeductResult> {

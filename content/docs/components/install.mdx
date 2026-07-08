@@ -3,28 +3,28 @@ title: Installation
 description: Install individual registry items or the common component set.
 ---
 
-The registry is served from your neonFin deployment. If you use the hosted
+The registry is served from your vantezzen/pay deployment. If you use the hosted
 instance, commands start with `https://pay.vantezzen.io/r/...`. If you self-host,
 replace the domain with your own.
 
 <Callout>
-If you are following the beginner flow, create your neonFin project and
-publishable key first. See [Set up neonFin and Stripe](/docs/getting-started/dashboard).
+If you are following the beginner flow, create your vantezzen/pay project and
+publishable key first. See [Set up vantezzen/pay and Stripe](/docs/getting-started/dashboard).
 </Callout>
 
 ## Common install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-provider.json
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-credits.json
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-purchase.json
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-gate.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-provider.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-credits.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-purchase.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-gate.json
 ```
 
 ## Optional wallet dialog
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-wallet.json
 ```
 
 ## Raw client only
@@ -32,29 +32,29 @@ npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
 If you are building your own UI, install only the client:
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-client.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-client.json
 ```
 
 ## Server-side (external auth)
 
 If your app has its own user accounts, install the secret-key server client
 instead of the browser components. See
-[createNeonfinServer client](/docs/components/server).
+[createPayServerClient](/docs/components/server).
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-server.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
 ```
 
 ## Where files are installed
 
 | Item | Target file |
 |---|---|
-| `neonfin-client` | `lib/neonfin/index.ts` |
-| `neonfin-server` | `lib/neonfin/server.ts` |
-| `neonfin-provider` | `components/neonfin/provider.tsx` |
-| `neonfin-credits` | `components/neonfin/remaining-credits.tsx` |
-| `neonfin-gate` | `components/neonfin/credit-gate.tsx` |
-| `neonfin-purchase` | `components/neonfin/purchase-dialog.tsx` |
-| `neonfin-wallet` | `components/neonfin/wallet-button.tsx` and related wallet files |
+| `pay-client` | `lib/pay/index.ts` |
+| `pay-server` | `lib/pay/server.ts` |
+| `pay-provider` | `components/pay/provider.tsx` |
+| `pay-credits` | `components/pay/remaining-credits.tsx` |
+| `pay-gate` | `components/pay/credit-gate.tsx` |
+| `pay-purchase` | `components/pay/purchase-dialog.tsx` |
+| `pay-wallet` | `components/pay/wallet-button.tsx` and related wallet files |
 
 Each component page shows the imports it expects after installation.

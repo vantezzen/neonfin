@@ -12,7 +12,7 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ??
-      "postgres://neonfin:neonfin@localhost:5432/neonfin",
+      "postgres://pay:pay@localhost:5432/pay",
   },
   casing: "snake_case",
   strict: true,

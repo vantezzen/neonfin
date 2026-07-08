@@ -1,16 +1,19 @@
-# neonFin
+<p align="center">
+    <img src="src/app/icon.png" alt="vantezzen/pay" width="150"/>
+</p>
 
-neonFin is a self-hostable payments and credit-wallet app for side projects. It
+# vantezzen/pay
+
+> Charge for your side project without building billing
+
+vantezzen/pay is a self-hostable payment microservice for your side projects. It
 runs a Next.js dashboard/API, stores wallets and ledger entries in Postgres,
 syncs prices with Stripe or Polar, and serves shadcn registry components for
 consumer apps.
 
-## Useful Links
+![Dashboard](src/assets/dashboard.png)
 
-- Product docs: `content/docs/index.mdx`
-- Self-hosting: `content/docs/self-host/index.mdx`
-- Component install: `content/docs/components/install.mdx`
-- Registry config: `registry.json`
+Try it at [https://pay.vantezzen.io](https://pay.vantezzen.io) or learn how to host it yourself at [https://pay.vantezzen.io/docs/self-host](https://pay.vantezzen.io/docs/self-host).
 
 ## Local Setup
 
@@ -26,15 +29,6 @@ consumer apps.
 |---|---|
 | `bun run lint` | Run ESLint. |
 | `bun run test` | Run Bun tests. |
-| `./node_modules/.bin/tsc --noEmit --incremental false --pretty false` | Typecheck without writing incremental artifacts. |
 | `bun run db:generate` | Generate Drizzle migrations after schema changes. |
 | `bun run db:migrate` | Apply migrations. |
 | `bun run registry:build` | Build the shadcn registry output. |
-
-## Notes For Agents
-
-- Follow `AGENTS.md`; this repo uses a newer Next.js with changed APIs.
-- Do not run `bun run dev` or `bun run build` as verification unless the
-  operator explicitly asks.
-- Prefer `bun run lint`, `bun run test`, and the no-emit TypeScript command for
-  routine checks.

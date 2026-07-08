@@ -1,13 +1,13 @@
 ---
-title: Set up neonFin and Stripe
+title: Set up vantezzen/pay and Stripe
 description: Create the project, provider, product, price, and publishable key.
 ---
 
-First, let's use the neonFin dashboard to create a project, connect Stripe, and
+First, let's use the vantezzen/pay dashboard to create a project, connect Stripe, and
 finish the project setup checklist.
 
 <Callout>
-    If you are using neonFin for the first time, you can simply follow the "First steps" guide at the top of your dashboard!
+    If you are using vantezzen/pay for the first time, you can simply follow the "First steps" guide at the top of your dashboard!
     ![First steps](./first-steps.png)
 </Callout>
 
@@ -17,29 +17,29 @@ Open **Providers** and connect Stripe with a test key, for example `sk_test_...`
 
 ![Add Stripe panel](./add-stripe.png)
 
-Then add the webhook endpoint shown in neonFin to Stripe and subscribe to:
+Then add the webhook endpoint shown in vantezzen/pay to Stripe and subscribe to:
 
 - `checkout.session.completed`
 - `invoice.paid`
 - `charge.refunded`
 - `customer.subscription.deleted`
 
-Paste the webhook signing secret back into neonFin.
+Paste the webhook signing secret back into vantezzen/pay.
 
 <Callout>
 Polar is supported too.
-See [Connect a provider](/docs/getting-started/providers) when you want the
+See [Connect a provider](/docs/workflows/providers) when you want the
 Polar event list and token details.
 </Callout>
 
 ## 2. Create a project and product
 
-In the neonFin dashboard, create a project for the app you are monetizing.
-neonFin opens the project page after creation and creates a default publishable
+In the vantezzen/pay dashboard, create a project for the app you are monetizing.
+vantezzen/pay opens the project page after creation and creates a default publishable
 key for the browser SDK.
 
 <Callout>
-The default identity mode is **Credit codes (anonymous)**: neonFin automatically
+The default identity mode is **Credit codes (anonymous)**: vantezzen/pay automatically
 creates a credit wallet for each new visitor and stores a code in local storage.
 If your app already has user accounts, you can switch to **External auth** and
 attach wallets to your own user ids. See [External auth](/docs/concepts/external-auth) for details on how to implement it.
@@ -79,20 +79,20 @@ Each price is a package users can buy. For example:
 | $5 starter pack | 600 minutes | One-time |
 | $19 monthly pack | 3,000 minutes | Monthly |
 
-Attach the product to your Stripe account so neonFin can sync the provider
-catalog and create checkout sessions. neonFin creates and manages the price in
+Attach the product to your Stripe account so vantezzen/pay can sync the provider
+catalog and create checkout sessions. vantezzen/pay creates and manages the price in
 Stripe automatically - you never touch the Stripe catalog yourself.
 
 ## 5. Integrate your app
 
-Open the **Developers** tab. The default publishable key starts with `nf_pk_`
+Open the **Developers** tab. The default publishable key starts with `pay_pk_`
 and is safe to put in browser code.
 
 You will use it in the next step:
 
 ```bash title=".env.local"
-NEXT_PUBLIC_NEONFIN_URL=https://pay.vantezzen.io
-NEXT_PUBLIC_NEONFIN_KEY=nf_pk_your_key
+NEXT_PUBLIC_PAY_URL=https://pay.vantezzen.io
+NEXT_PUBLIC_PAY_KEY=pay_pk_your_key
 ```
 
 <Callout>
@@ -105,7 +105,7 @@ origins** so browser calls are limited to your sites.
 
 ## Alternatives
 
-- Want Polar instead of Stripe? See [Connect a provider](/docs/getting-started/providers).
+- Want Polar instead of Stripe? See [Connect a provider](/docs/workflows/providers).
 - Already have login? See [External auth](/docs/concepts/external-auth).
 - Need several credit pools? See [Projects, products, and prices](/docs/concepts/projects-products-prices).
 

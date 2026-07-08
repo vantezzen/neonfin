@@ -56,12 +56,12 @@ export function ProjectForm({ project }: { project?: ProjectSettings }) {
 
     textarea.scrollIntoView({ block: "center", behavior: "smooth" });
     textarea.focus({ preventScroll: true });
-    field.classList.remove("neonfin-field-highlight");
+    field.classList.remove("pay-field-highlight");
     void field.offsetWidth;
-    field.classList.add("neonfin-field-highlight");
+    field.classList.add("pay-field-highlight");
 
     const timeout = window.setTimeout(() => {
-      field.classList.remove("neonfin-field-highlight");
+      field.classList.remove("pay-field-highlight");
     }, 1000);
     return () => window.clearTimeout(timeout);
   }, [searchParams]);
@@ -233,7 +233,7 @@ function ModeHelp() {
           <DialogHeader>
             <DialogTitle>Identity modes</DialogTitle>
             <DialogDescription>
-              How neonFin knows whose credits are whose.
+              How vantezzen/pay knows whose credits are whose.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4 text-sm">

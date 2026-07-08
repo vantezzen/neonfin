@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useCredits } from "@/components/neonfin/provider";
+import { useCredits } from "@/components/pay/provider";
 
 function formatCredits(n: number): string {
   return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(6)));

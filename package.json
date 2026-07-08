@@ -1,5 +1,5 @@
 {
-  "name": "neonfin",
+  "name": "pay",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "bun test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:reset": "bun run scripts/db-reset.ts && bun run db:migrate",
+    "db:reset": "sh -c 'bun run scripts/db-reset.ts \"$@\" && bun run db:migrate' --",
     "db:seed": "bun run scripts/db-seed.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

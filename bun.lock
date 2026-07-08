@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "neonfin",
+      "name": "pay",
       "dependencies": {
         "@base-ui/react": "^1.6.0",
         "@fumadocs/base-ui": "^16.11.0",

@@ -5,7 +5,7 @@ import { DashboardNav, MobileNav } from "@/components/dashboard/nav";
 import { NavUser } from "@/components/dashboard/nav-user";
 
 export const metadata: Metadata = {
-  title: { default: "Dashboard · neonFin", template: "%s · neonFin" },
+  title: { default: "Dashboard · vantezzen/pay", template: "%s · vantezzen/pay" },
   robots: {
     index: false,
     follow: false,

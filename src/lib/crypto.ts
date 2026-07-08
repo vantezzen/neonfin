@@ -11,10 +11,10 @@ import { env } from "@/lib/env";
 const ALGO = "aes-256-gcm";
 
 function key(): Buffer {
-  const raw = Buffer.from(env().NEONFIN_ENCRYPTION_KEY, "base64");
+  const raw = Buffer.from(env().PAY_ENCRYPTION_KEY, "base64");
   if (raw.length !== 32) {
     throw new Error(
-      "NEONFIN_ENCRYPTION_KEY must decode to exactly 32 bytes (base64 of `openssl rand -base64 32`)",
+      "PAY_ENCRYPTION_KEY must decode to exactly 32 bytes (base64 of `openssl rand -base64 32`)",
     );
   }
   return raw;

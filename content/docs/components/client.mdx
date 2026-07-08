@@ -1,13 +1,13 @@
 ---
-title: createNeonfin client
+title: createPayClient
 description: Browser client for custom credit, checkout, and wallet UI.
 ---
 
-`createNeonfin()` is the zero-dependency browser client behind the React
+`createPayClient()` is the zero-dependency browser client behind the React
 components. Use it when you want custom UI but still want the same wallet,
-checkout, balance, and feature logic that `NeonfinProvider` uses internally.
+checkout, balance, and feature logic that `PayProvider` uses internally.
 
-The client uses a publishable key (`nf_pk_...`) and stores anonymous wallet
+The client uses a publishable key (`pay_pk_...`) and stores anonymous wallet
 credit codes in `localStorage`. If your app has logged-in users and you want
 credits tied to your own user ids, use the [server client](/docs/components/server)
 instead.
@@ -15,17 +15,17 @@ instead.
 ## Install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-client.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-client.json
 ```
 
 ## Create a client
 
 ```ts
-import { createNeonfin } from "@/lib/neonfin";
+import { createPayClient } from "@/lib/pay";
 
-export const neonfin = createNeonfin({
-  baseUrl: process.env.NEXT_PUBLIC_NEONFIN_URL!,
-  publishableKey: process.env.NEXT_PUBLIC_NEONFIN_KEY!,
+export const pay = createPayClient({
+  baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
+  publishableKey: process.env.NEXT_PUBLIC_PAY_KEY!,
 });
 ```
 
@@ -33,19 +33,19 @@ export const neonfin = createNeonfin({
 
 | Field | Type | Description |
 |---|---|---|
-| `baseUrl` | `string` | Public URL of your neonFin instance. |
+| `baseUrl` | `string` | Public URL of your vantezzen/pay instance. |
 | `publishableKey` | `string` | Project publishable key. Safe for browser use. |
 | `storageKey` | `string` | Optional custom `localStorage` key for credit codes. |
 
 ## Common calls
 
 ```ts
-const products = await neonfin.getProducts();
-const code = await neonfin.getOrCreateCode();
-const wallet = await neonfin.getWallet();
-const result = await neonfin.deduct(10, { idempotencyKey: "job_123" });
+const products = await pay.getProducts();
+const code = await pay.getOrCreateCode();
+const wallet = await pay.getWallet();
+const result = await pay.deduct(10, { idempotencyKey: "job_123" });
 
-await neonfin.startCheckout("price_..."); // popup on desktop, redirect on mobile
+await pay.startCheckout("price_..."); // popup on desktop, redirect on mobile
 ```
 
 ## Credit-code methods
@@ -75,7 +75,7 @@ deduct, and checkout calls clear it and create a fresh wallet automatically.
 ## Spending credits
 
 ```ts
-await neonfin.deduct(10, {
+await pay.deduct(10, {
   productId: "prod_...",
   idempotencyKey: "job_123",
   meta: { feature: "render" },
@@ -96,13 +96,13 @@ For custom purchase UI, prefer `startCheckout`. Its default `flow: "auto"` opens
 a popup on desktop and uses redirect checkout on touch/mobile devices:
 
 ```ts
-await neonfin.startCheckout("price_...");
+await pay.startCheckout("price_...");
 ```
 
 Force redirect checkout when your app cannot support popups:
 
 ```ts
-await neonfin.startCheckout("price_...", { flow: "redirect" });
+await pay.startCheckout("price_...", { flow: "redirect" });
 ```
 
 | Method | Returns | Description |
@@ -127,7 +127,7 @@ Use the portal URL when a wallet has completed at least one purchase and the
 user wants invoices, refunds, payment methods, or subscription management:
 
 ```ts
-const url = await neonfin.getPortalUrl({
+const url = await pay.getPortalUrl({
   returnUrl: window.location.href,
 });
 
@@ -141,17 +141,17 @@ window.location.href = url;
 ## Error handling
 
 ```ts
-import { NeonfinError } from "@/lib/neonfin";
+import { PayError } from "@/lib/pay";
 
 try {
-  await neonfin.deduct(100);
+  await pay.deduct(100);
 } catch (err) {
-  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+  if (err instanceof PayError && err.isInsufficientCredits) {
     console.log(`Need ${err.requested}, have ${err.balance}`);
   }
 }
 ```
 
-`NeonfinError` includes `status`, optional stable `code`, and for insufficient
+`PayError` includes `status`, optional stable `code`, and for insufficient
 credits also `balance` and `requested`. See [Errors](/docs/api/errors) for
 common status codes.

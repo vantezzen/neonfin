@@ -15,7 +15,7 @@ cancellation, and any provider-supported refund flow.
 The wallet dialog includes the billing management entry point:
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-wallet.json
 ```
 
 </Step>
@@ -27,7 +27,7 @@ Put `WalletButton` somewhere customers can find later, such as your account
 menu, billing page, or app header.
 
 ```tsx
-import { WalletButton } from "@/components/neonfin/wallet-button";
+import { WalletButton } from "@/components/pay/wallet-button";
 
 export function AccountMenu() {
   return <WalletButton>Wallet</WalletButton>;
@@ -42,7 +42,7 @@ export function AccountMenu() {
 Inside the wallet dialog, the **Billing** section calls:
 
 ```ts
-const url = await neonfin.getPortalUrl({
+const url = await pay.getPortalUrl({
   returnUrl: window.location.href,
 });
 ```
@@ -67,7 +67,7 @@ the wallet code from the device they purchased on.
 ## When a portal URL can be created
 
 The portal is available only after the wallet has completed a provider purchase.
-That purchase is when neonFin receives and stores the provider customer id.
+That purchase is when vantezzen/pay receives and stores the provider customer id.
 
 This means the portal is not available for:
 
@@ -78,28 +78,28 @@ This means the portal is not available for:
 
 ## Custom billing buttons
 
-You can build your own button with `useNeonfin()`:
+You can build your own button with `usePay()`:
 
 ```tsx
 import { useState } from "react";
-import { NeonfinError } from "@/lib/neonfin";
-import { useNeonfin } from "@/components/neonfin/provider";
+import { PayError } from "@/lib/pay";
+import { usePay } from "@/components/pay/provider";
 import { Button } from "@/components/ui/button";
 
 export function ManageBillingButton() {
-  const neonfin = useNeonfin();
+  const pay = usePay();
   const [message, setMessage] = useState<string | null>(null);
 
   async function openPortal() {
     setMessage(null);
     try {
-      const url = await neonfin.getPortalUrl({
+      const url = await pay.getPortalUrl({
         returnUrl: window.location.href,
       });
       window.location.assign(url);
     } catch (err) {
       setMessage(
-        err instanceof NeonfinError && err.code === "no_billing_customer"
+        err instanceof PayError && err.code === "no_billing_customer"
           ? "No billing history for this wallet yet."
           : "Couldn't open billing management.",
       );

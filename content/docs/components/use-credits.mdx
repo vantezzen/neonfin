@@ -11,7 +11,7 @@ product balance. That is ideal for single-product apps.
 ## Usage
 
 ```tsx
-import { useCredits } from "@/components/neonfin/provider";
+import { useCredits } from "@/components/pay/provider";
 
 export function ProcessButton() {
   const { balance, creditUnit, hasCredits, deduct, loading } = useCredits();
@@ -90,7 +90,7 @@ async function runPaidAction(jobId: string) {
 subscription tiers and one-time unlocks - reach for features:
 
 ```tsx
-import { useFeature } from "@/components/neonfin/provider";
+import { useFeature } from "@/components/pay/provider";
 
 const { enabled } = useFeature("analytics");
 ```

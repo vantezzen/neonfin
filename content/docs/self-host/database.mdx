@@ -3,7 +3,7 @@ title: Database
 description: Set up Postgres and run migrations.
 ---
 
-neonFin uses Postgres through Drizzle. Any provider that gives you a standard
+vantezzen/pay uses Postgres through Drizzle. Any provider that gives you a standard
 connection string works: Neon, Supabase, Vercel Postgres, Railway, Fly Postgres,
 or a self-managed database.
 
@@ -18,7 +18,7 @@ docker compose up -d
 The default local connection string is:
 
 ```bash
-DATABASE_URL="postgres://neonfin:neonfin@localhost:5432/neonfin"
+DATABASE_URL="postgres://pay:pay@localhost:5432/pay"
 ```
 
 ## Run migrations
@@ -42,6 +42,13 @@ bun run db:reset
 
 This wipes the local database and applies migrations again. Do not run it
 against production.
+
+If you intentionally need to reset a production database, set `NODE_ENV=production`
+and pass the explicit force flag:
+
+```bash
+bun run db:reset -- --force
+```
 
 ## Backups
 

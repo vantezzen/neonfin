@@ -141,7 +141,7 @@
     }
 }
 
-@keyframes neonfin-field-highlight {
+@keyframes pay-field-highlight {
     0%,
     100% {
         transform: translateX(0);
@@ -162,6 +162,6 @@
     }
 }
 
-.neonfin-field-highlight {
-    animation: neonfin-field-highlight 650ms ease-in-out;
+.pay-field-highlight {
+    animation: pay-field-highlight 650ms ease-in-out;
 }

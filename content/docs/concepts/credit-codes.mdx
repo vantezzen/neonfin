@@ -3,13 +3,13 @@ title: Credit codes
 description: Anonymous wallets that work without login.
 ---
 
-Credit codes are the default neonFin identity mode. They let your app sell and
+Credit codes are the default vantezzen/pay identity mode. They let your app sell and
 meter credits without building accounts.
 
 ## How they work
 
-1. The SDK asks neonFin for a wallet.
-2. neonFin returns a code like `SKIP-8F3K-L9PQ-2MVT`.
+1. The SDK asks vantezzen/pay for a wallet.
+2. vantezzen/pay returns a code like `SKIP-8F3K-L9PQ-2MVT`.
 3. The SDK stores it in `localStorage`.
 4. Reads, deductions, and checkouts use that code automatically.
 5. If the user changes browser or device, they can use `WalletButton` to copy,
@@ -33,7 +33,7 @@ instead.
 
 ## Expiry and abuse controls
 
-Anonymous projects can create free wallets, so neonFin includes two controls:
+Anonymous projects can create free wallets, so vantezzen/pay includes two controls:
 
 - **Wallets per hour** limits how many anonymous wallets one IP can create for a
   project.
@@ -48,5 +48,5 @@ The shadcn client recovers automatically for implicit stored codes. If the code
 in `localStorage` is expired or deleted, the client clears it and creates a new
 wallet on the next balance, deduct, or checkout call.
 
-Explicit recovery-code calls still throw a `NeonfinError`, so your restore form
+Explicit recovery-code calls still throw a `PayError`, so your restore form
 can tell the user the code no longer works.

@@ -225,7 +225,7 @@ const priceUpdateInput = z.object({
 });
 
 /**
- * Edit a price. neonFin-only fields (credits granted, tier label, features)
+ * Edit a price. vantezzen/pay-only fields (credits granted, tier label, features)
  * are always editable. Amount/currency/interval are locked once the price is
  * synced, because Stripe and Polar prices are immutable at the provider -
  * changing them there means deleting this price and adding a new one.

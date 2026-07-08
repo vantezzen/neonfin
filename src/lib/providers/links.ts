@@ -1,7 +1,7 @@
 /**
  * Deep links back to the underlying provider's own dashboard.
  *
- * Pure and client-safe (no secrets, no `server-only`): neonFin is the middle
+ * Pure and client-safe (no secrets, no `server-only`): vantezzen/pay is the middle
  * man, so anywhere we show a provider-owned object we also offer a jump to the
  * real source of truth. Returns `null` when a reliable link can't be built, so
  * callers simply omit the link rather than sending the user somewhere useless.

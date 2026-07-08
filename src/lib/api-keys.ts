@@ -8,8 +8,8 @@ import { randomToken } from "@/lib/id";
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const KIND_PREFIX: Record<ApiKeyKind, string> = {
-  publishable: "nf_pk_",
-  secret: "nf_sk_",
+  publishable: "pay_pk_",
+  secret: "pay_sk_",
 };
 
 /**
@@ -61,7 +61,7 @@ export async function resolveApiKey(plaintext: string): Promise<{
   kind: ApiKeyKind;
   id: string;
 } | null> {
-  if (!plaintext.startsWith("nf_pk_") && !plaintext.startsWith("nf_sk_")) {
+  if (!plaintext.startsWith("pay_pk_") && !plaintext.startsWith("pay_sk_")) {
     return null;
   }
   const hash = sha256(plaintext);

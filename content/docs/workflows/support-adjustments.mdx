@@ -39,7 +39,7 @@ workflows.
 Grant credits:
 
 ```ts
-await neonfin.grantCredits({
+await pay.grantCredits({
   externalUserId: "user_123",
   productId: "prod_...",
   amount: 50,
@@ -50,7 +50,7 @@ await neonfin.grantCredits({
 Grant a feature:
 
 ```ts
-await neonfin.grantFeature("user_123", "analytics");
+await pay.grantFeature("user_123", "analytics");
 ```
 
 </Step>
@@ -59,7 +59,7 @@ await neonfin.grantFeature("user_123", "analytics");
 ### Use stable idempotency keys
 
 Every automated credit grant should have a stable `idempotencyKey`. If your
-server retries the same support action, neonFin applies it once.
+server retries the same support action, vantezzen/pay applies it once.
 
 Good keys include support ticket ids, migration ids, or promotion ids.
 

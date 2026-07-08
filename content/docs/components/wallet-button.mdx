@@ -15,13 +15,13 @@ refund flow.
 ## Install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-wallet.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-wallet.json
 ```
 
 ## Usage
 
 ```tsx
-import { WalletButton } from "@/components/neonfin/wallet-button";
+import { WalletButton } from "@/components/pay/wallet-button";
 
 export function WalletMenu() {
   return (
@@ -39,10 +39,10 @@ export function WalletMenu() {
 The dialog can restore wallet links like:
 
 ```txt
-https://your-app.com/dashboard?__neonfin_wallet=SKIP-8F3K-L9PQ-2MVT
+https://your-app.com/dashboard?__pay_wallet=SKIP-8F3K-L9PQ-2MVT
 ```
 
-When a page opens with `__neonfin_wallet`, `WalletButton` opens the dialog,
+When a page opens with `__pay_wallet`, `WalletButton` opens the dialog,
 validates the code, saves it, refreshes balances, and removes the query
 parameter from the URL.
 

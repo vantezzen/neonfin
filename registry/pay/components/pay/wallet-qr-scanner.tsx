@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { readWalletCode, WALLET_QUERY_PARAM } from "@/lib/neonfin/qr";
+import { readWalletCode, WALLET_QUERY_PARAM } from "@/lib/pay/qr";
 
 type BarcodeDetectorResult = { rawValue: string };
 type BarcodeDetectorInstance = {

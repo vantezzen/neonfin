@@ -1,6 +1,6 @@
 ---
 title: Environment variables
-description: Required configuration for a self-hosted neonFin instance.
+description: Required configuration for a self-hosted vantezzen/pay instance.
 ---
 
 ## Required variables
@@ -8,11 +8,11 @@ description: Required configuration for a self-hosted neonFin instance.
 | Variable | Example | Notes |
 |---|---|---|
 | `DATABASE_URL` | `postgres://...` | Postgres connection string. |
-| `NEONFIN_ENCRYPTION_KEY` | `base64...` | Must decode to exactly 32 bytes. |
+| `PAY_ENCRYPTION_KEY` | `base64...` | Must decode to exactly 32 bytes. |
 | `BETTER_AUTH_SECRET` | `base64...` | Random auth secret. |
 | `BETTER_AUTH_URL` | `https://pay.example.com` | Public dashboard/auth URL. |
 | `NEXT_PUBLIC_APP_URL` | `https://pay.example.com` | Public URL used for webhooks, checkout returns, and registry links. |
-| `NEONFIN_ALLOW_SIGNUPS` | `true` or `false` | Allow new dashboard accounts. |
+| `PAY_ALLOW_SIGNUPS` | `true` or `false` | Allow new dashboard accounts. |
 
 ## Generate secrets
 
@@ -23,25 +23,25 @@ openssl rand -base64 32
 openssl rand -base64 32
 ```
 
-Use one value for `NEONFIN_ENCRYPTION_KEY` and the other for
+Use one value for `PAY_ENCRYPTION_KEY` and the other for
 `BETTER_AUTH_SECRET`.
 
 ## Local example
 
 ```bash title=".env"
-DATABASE_URL="postgres://neonfin:neonfin@localhost:5432/neonfin"
-NEONFIN_ENCRYPTION_KEY="..."
+DATABASE_URL="postgres://pay:pay@localhost:5432/pay"
+PAY_ENCRYPTION_KEY="..."
 BETTER_AUTH_SECRET="..."
 BETTER_AUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEONFIN_ALLOW_SIGNUPS="true"
+PAY_ALLOW_SIGNUPS="true"
 ```
 
 ## Production tips
 
 - Keep `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` on the same public origin
   unless you have a specific reason not to.
-- Rotate provider API keys from the provider dashboard, then update neonFin.
-- Do not rotate `NEONFIN_ENCRYPTION_KEY` casually; it encrypts stored provider
+- Rotate provider API keys from the provider dashboard, then update vantezzen/pay.
+- Do not rotate `PAY_ENCRYPTION_KEY` casually; it encrypts stored provider
   secrets.
-- Set `NEONFIN_ALLOW_SIGNUPS=false` after your first admin user exists.
+- Set `PAY_ALLOW_SIGNUPS=false` after your first admin user exists.

@@ -1,11 +1,11 @@
 ---
-title: createNeonfinServer client
+title: createPayServerClient
 description: Server-only client for external auth, grants, deductions, and checkout.
 ---
 
-`createNeonfinServer()` is the zero-dependency server client for apps that
-already have their own user accounts. It uses a secret key (`nf_sk_...`) and
-maps your user ids to neonFin wallets through `externalUserId`.
+`createPayServerClient()` is the zero-dependency server client for apps that
+already have their own user accounts. It uses a secret key (`pay_sk_...`) and
+maps your user ids to vantezzen/pay wallets through `externalUserId`.
 
 Use it only in server code: route handlers, server actions, API routes,
 background jobs, and support tooling. Never import it into browser code.
@@ -13,17 +13,17 @@ background jobs, and support tooling. Never import it into browser code.
 ## Install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-server.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
 ```
 
 ## Create a server client
 
 ```ts
-import { createNeonfinServer } from "@/lib/neonfin/server";
+import { createPayServerClient } from "@/lib/pay/server";
 
-export const neonfinServer = createNeonfinServer({
-  baseUrl: process.env.NEONFIN_URL!,
-  secretKey: process.env.NEONFIN_SECRET_KEY!,
+export const payServer = createPayServerClient({
+  baseUrl: process.env.PAY_URL!,
+  secretKey: process.env.PAY_SECRET_KEY!,
 });
 ```
 
@@ -31,8 +31,8 @@ export const neonfinServer = createNeonfinServer({
 
 | Field | Type | Description |
 |---|---|---|
-| `baseUrl` | `string` | Public URL of your neonFin instance. |
-| `secretKey` | `string` | Secret API key starting with `nf_sk_`. Keep it server-only. |
+| `baseUrl` | `string` | Public URL of your vantezzen/pay instance. |
+| `secretKey` | `string` | Secret API key starting with `pay_sk_`. Keep it server-only. |
 
 ## When to use it
 
@@ -52,7 +52,7 @@ or React components instead.
 Create or read a wallet for your own user id:
 
 ```ts
-const wallet = await neonfinServer.getOrCreateWallet(user.id);
+const wallet = await payServer.getOrCreateWallet(user.id);
 ```
 
 | Method | Returns | Description |
@@ -68,7 +68,7 @@ Grant credits from server-side workflows such as welcome credits, migrations,
 promotions, or support adjustments:
 
 ```ts
-await neonfinServer.grantCredits({
+await payServer.grantCredits({
   externalUserId: user.id,
   productId: "prod_...",
   amount: 50,
@@ -80,7 +80,7 @@ await neonfinServer.grantCredits({
 You can also grant credits to an anonymous recovery code:
 
 ```ts
-await neonfinServer.grantCredits({
+await payServer.grantCredits({
   code: "SKIP-8F3K-L9PQ-2MVT",
   amount: 50,
   idempotencyKey: "support-ticket-456",
@@ -99,7 +99,7 @@ await neonfinServer.grantCredits({
 Deduct credits when a logged-in user runs paid work:
 
 ```ts
-await neonfinServer.deduct({
+await payServer.deduct({
   externalUserId: user.id,
   productId: "prod_...",
   amount: 10,
@@ -113,14 +113,14 @@ await neonfinServer.deduct({
 | `deduct(input)` | `Promise<DeductResult>` | Deducts credits from an external user's wallet. |
 
 Always pass a stable `idempotencyKey`, such as a job id or request id. If the
-same operation is retried, neonFin applies it once.
+same operation is retried, vantezzen/pay applies it once.
 
 ## Checkout
 
 Start checkout for a logged-in user:
 
 ```ts
-const { url } = await neonfinServer.createCheckout("price_...", {
+const { url } = await payServer.createCheckout("price_...", {
   externalUserId: user.id,
   successUrl: "https://your-app.com/billing?status=success",
   cancelUrl: "https://your-app.com/billing?status=cancelled",
@@ -143,7 +143,7 @@ credit-code handling.
 Check feature access in server code:
 
 ```ts
-if (await neonfinServer.hasFeature(user.id, "analytics")) {
+if (await payServer.hasFeature(user.id, "analytics")) {
   return runAnalyticsExport();
 }
 ```
@@ -151,8 +151,8 @@ if (await neonfinServer.hasFeature(user.id, "analytics")) {
 Manually grant or revoke feature access for support, comps, or promos:
 
 ```ts
-await neonfinServer.grantFeature(user.id, "analytics");
-await neonfinServer.revokeFeature(user.id, "analytics");
+await payServer.grantFeature(user.id, "analytics");
+await payServer.revokeFeature(user.id, "analytics");
 ```
 
 | Method | Returns | Description |
@@ -164,19 +164,19 @@ await neonfinServer.revokeFeature(user.id, "analytics");
 ## Full paid action
 
 ```ts
-import { NeonfinError } from "@/lib/neonfin/server";
-import { neonfinServer } from "@/lib/neonfin/server";
+import { PayError } from "@/lib/pay/server";
+import { payServer } from "@/lib/pay/server";
 
 export async function renderVideo(userId: string, jobId: string) {
   try {
-    await neonfinServer.deduct({
+    await payServer.deduct({
       externalUserId: userId,
       amount: 10,
       idempotencyKey: jobId,
     });
   } catch (err) {
-    if (err instanceof NeonfinError && err.isInsufficientCredits) {
-      const { url } = await neonfinServer.createCheckout("price_...", {
+    if (err instanceof PayError && err.isInsufficientCredits) {
+      const { url } = await payServer.createCheckout("price_...", {
         externalUserId: userId,
         successUrl: "https://your-app.com/billing?status=success",
       });
@@ -194,22 +194,22 @@ export async function renderVideo(userId: string, jobId: string) {
 ## Error handling
 
 ```ts
-import { NeonfinError } from "@/lib/neonfin/server";
+import { PayError } from "@/lib/pay/server";
 
 try {
-  await neonfinServer.deduct({
+  await payServer.deduct({
     externalUserId: user.id,
     amount: 100,
     idempotencyKey: requestId,
   });
 } catch (err) {
-  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+  if (err instanceof PayError && err.isInsufficientCredits) {
     console.log(`Need ${err.requested}, have ${err.balance}`);
   }
 }
 ```
 
-`NeonfinError` includes `status`, optional stable `code`, and for insufficient
+`PayError` includes `status`, optional stable `code`, and for insufficient
 credits also `balance` and `requested`. See [Errors](/docs/api/errors) for
 common status codes.
 

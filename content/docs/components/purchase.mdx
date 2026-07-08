@@ -3,7 +3,7 @@ title: PurchaseButton and PurchaseDialog
 description: Show available prices and start popup or redirect checkout.
 ---
 
-`PurchaseDialog` loads your neonFin catalog, lists purchasable offers - credit
+`PurchaseDialog` loads your vantezzen/pay catalog, lists purchasable offers - credit
 packs, subscription tiers, and one-time unlocks - and starts provider checkout.
 `PurchaseButton` is a convenience wrapper that opens the dialog.
 
@@ -25,13 +25,13 @@ product, plans that unlock a feature, or your own predicate.
 ## Install
 
 ```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-purchase.json
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-purchase.json
 ```
 
 ## PurchaseButton
 
 ```tsx
-import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
 
 export function EmptyState() {
   return <PurchaseButton>Buy credits</PurchaseButton>;
@@ -69,7 +69,7 @@ Filter to credit-granting prices for a product:
 Use the dialog directly when you want custom trigger control.
 
 ```tsx
-import { PurchaseDialog } from "@/components/neonfin/purchase-dialog";
+import { PurchaseDialog } from "@/components/pay/purchase-dialog";
 import { Button } from "@/components/ui/button";
 
 <PurchaseDialog title="Choose a package" description="Pick what you need.">
@@ -142,7 +142,7 @@ In popup checkout, the original page keeps polling the order and refreshes as
 soon as the webhook marks it paid. If the customer closes or cancels the popup,
 the dialog returns to the normal selectable state with a clear message.
 
-In redirect checkout, `NeonfinProvider` sees the pending order when the user
+In redirect checkout, `PayProvider` sees the pending order when the user
 returns, polls the order, saves the issued code, and refreshes balances.
 
 That is why a simple current-page `successUrl` works for most apps.
@@ -153,8 +153,8 @@ Don't want the dialog? Call the client directly from your own components and
 you keep the same auto-resume behavior:
 
 ```tsx
-import { useNeonfin } from "@/components/neonfin/provider";
+import { usePay } from "@/components/pay/provider";
 
-const client = useNeonfin();
+const client = usePay();
 await client.startCheckout("price_...", { flow: "auto" });
 ```

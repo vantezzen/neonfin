@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SuccessPoller } from "./success-poller";
 
-export const metadata: Metadata = { title: "Payment · neonFin" };
+export const metadata: Metadata = { title: "Payment · vantezzen/pay" };
 
 // Awaiting `params` is dynamic - isolate it in a Suspense boundary so the
 // static shell prerenders (Cache Components).

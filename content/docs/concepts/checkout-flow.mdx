@@ -3,18 +3,18 @@ title: Checkout flow
 description: What happens from purchase click to credited wallet.
 ---
 
-neonFin keeps checkout wiring small in your app.
+vantezzen/pay keeps checkout wiring small in your app.
 
 ## The user flow
 
 1. The user clicks `PurchaseButton`.
-2. `PurchaseDialog` lists the matching prices configured in neonFin.
+2. `PurchaseDialog` lists the matching prices configured in vantezzen/pay.
 3. The user picks a package.
 4. The client calls `createCheckout(priceId)`.
-5. neonFin creates a Stripe or Polar checkout and returns the checkout URL.
+5. vantezzen/pay creates a Stripe or Polar checkout and returns the checkout URL.
 6. Desktop users complete checkout in a popup; mobile/touch users redirect.
-7. The provider sends a webhook to neonFin after payment.
-8. neonFin credits the wallet.
+7. The provider sends a webhook to vantezzen/pay after payment.
+8. vantezzen/pay credits the wallet.
 9. The original page or returning page refreshes the balance.
 
 ## Why webhooks matter
@@ -23,7 +23,7 @@ The webhook is the source of truth for payment. Do not grant credits just
 because a browser returns from checkout. A user can close the tab, refresh the
 page, or return before the provider has fully settled the payment.
 
-neonFin verifies the provider webhook, finds the order, and grants credits
+vantezzen/pay verifies the provider webhook, finds the order, and grants credits
 idempotently. Retried webhooks do not duplicate credits.
 
 ## Checkout return handling
@@ -33,7 +33,7 @@ The default components handle the return path:
 - `PurchaseDialog` stores the pending order id in `localStorage`.
 - Popup checkout keeps your page mounted and polls the order while the customer
   pays.
-- Redirect checkout is resumed by `NeonfinProvider` when the user returns.
+- Redirect checkout is resumed by `PayProvider` when the user returns.
 - The provider context polls until the order is paid, failed, refunded, or the
   popup is closed.
 - When the order is paid, it stores the issued code and refreshes balances.

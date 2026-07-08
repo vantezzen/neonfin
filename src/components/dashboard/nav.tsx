@@ -145,7 +145,7 @@ export function DashboardNav({ footer }: { footer?: React.ReactNode }) {
           height={26}
           className="rounded-md"
         />
-        <span className="text-sm font-semibold tracking-tight">neonFin</span>
+        <span className="text-sm font-semibold tracking-tight">vantezzen/pay</span>
       </Link>
 
       <NavSections surface="canvas" />
@@ -173,7 +173,7 @@ export function MobileNav({ footer }: { footer?: React.ReactNode }) {
           height={24}
           className="rounded-md"
         />
-        <span className="text-sm font-semibold tracking-tight">neonFin</span>
+        <span className="text-sm font-semibold tracking-tight">vantezzen/pay</span>
       </Link>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
@@ -199,7 +199,7 @@ export function MobileNav({ footer }: { footer?: React.ReactNode }) {
                 className="rounded-md"
               />
               <span className="text-sm font-semibold tracking-tight">
-                neonFin
+                vantezzen/pay
               </span>
             </Link>
             <NavSections surface="panel" onNavigate={close} />

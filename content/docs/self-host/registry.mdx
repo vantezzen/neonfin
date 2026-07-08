@@ -1,38 +1,38 @@
 ---
 title: Registry URL
-description: Serve shadcn registry files from your own neonFin domain.
+description: Serve shadcn registry files from your own vantezzen/pay domain.
 ---
 
-The shadcn components install from your neonFin instance:
+The shadcn components install from your vantezzen/pay instance:
 
 ```txt
-https://your-domain.com/r/neonfin-provider.json
+https://your-domain.com/r/pay-provider.json
 ```
 
-The registry JSON is generated from `registry.json` and `registry/neonfin/**`.
+The registry JSON is generated from `registry.json` and `registry/pay/**`.
 
 ## Consumer install commands
 
 When self-hosting, replace `pay.vantezzen.io` with your own domain:
 
 ```bash
-npx shadcn@latest add https://pay.example.com/r/neonfin-provider.json
-npx shadcn@latest add https://pay.example.com/r/neonfin-purchase.json
-npx shadcn@latest add https://pay.example.com/r/neonfin-gate.json
+npx shadcn@latest add https://pay.example.com/r/pay-provider.json
+npx shadcn@latest add https://pay.example.com/r/pay-purchase.json
+npx shadcn@latest add https://pay.example.com/r/pay-gate.json
 ```
 
 In the consuming app:
 
 ```bash title=".env.local"
-NEXT_PUBLIC_NEONFIN_URL=https://pay.example.com
-NEXT_PUBLIC_NEONFIN_KEY=nf_pk_your_key
+NEXT_PUBLIC_PAY_URL=https://pay.example.com
+NEXT_PUBLIC_PAY_KEY=pay_pk_your_key
 ```
 
 ## When the domain changes
 
-If you move the neonFin instance to a new domain:
+If you move the vantezzen/pay instance to a new domain:
 
-1. Update consuming apps' `NEXT_PUBLIC_NEONFIN_URL`.
+1. Update consuming apps' `NEXT_PUBLIC_PAY_URL`.
 2. Update shadcn install commands in your docs/readme.
 3. Update provider webhook endpoints.
 4. Rebuild/deploy so `/r/*.json` is current.

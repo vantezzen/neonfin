@@ -40,13 +40,13 @@ function sha256(input: string): string {
 }
 
 function encryptionKey(): Buffer {
-  const raw = process.env.NEONFIN_ENCRYPTION_KEY;
+  const raw = process.env.PAY_ENCRYPTION_KEY;
   if (!raw) {
-    throw new Error("NEONFIN_ENCRYPTION_KEY is not set");
+    throw new Error("PAY_ENCRYPTION_KEY is not set");
   }
   const key = Buffer.from(raw, "base64");
   if (key.length !== 32) {
-    throw new Error("NEONFIN_ENCRYPTION_KEY must decode to exactly 32 bytes");
+    throw new Error("PAY_ENCRYPTION_KEY must decode to exactly 32 bytes");
   }
   return key;
 }
@@ -65,8 +65,8 @@ function encryptSecret(plaintext: string): string {
 function apiKey(projectId: string, kind: schema.ApiKeyKind, name: string) {
   const visible =
     kind === "publishable"
-      ? `nf_pk_demo_${projectId.slice(-8)}_${name.toLowerCase()}`
-      : `nf_sk_demo_${projectId.slice(-8)}_${name.toLowerCase()}`;
+      ? `pay_pk_demo_${projectId.slice(-8)}_${name.toLowerCase()}`
+      : `pay_sk_demo_${projectId.slice(-8)}_${name.toLowerCase()}`;
 
   return {
     id: createId("key"),
@@ -242,7 +242,7 @@ try {
 
     await tx.insert(schema.user).values({
       id: userId,
-      name: "neonFin Demo",
+      name: "vantezzen/pay Demo",
       email: DEMO_EMAIL,
       emailVerified: true,
       image: null,
@@ -265,7 +265,7 @@ try {
         ownerId: userId,
         provider: "stripe",
         label: "Stripe Test - SaaS Demo",
-        secretKeyEnc: encryptSecret("sk_test_demo_neonfin_screenshots"),
+        secretKeyEnc: encryptSecret("sk_test_demo_pay_screenshots"),
         webhookSecretEnc: encryptSecret("whsec_demo_clipforge"),
         environment: "test",
         createdAt: daysAgo(89),
@@ -275,7 +275,7 @@ try {
         ownerId: userId,
         provider: "polar",
         label: "Polar Sandbox - EU Customers",
-        secretKeyEnc: encryptSecret("polar_oat_demo_neonfin_screenshots"),
+        secretKeyEnc: encryptSecret("polar_oat_demo_pay_screenshots"),
         webhookSecretEnc: encryptSecret("polar_whsec_demo_renderpilot"),
         environment: "sandbox",
         createdAt: daysAgo(74),

@@ -39,30 +39,30 @@ export function DevQuickstart({
   publishableKey: string | null;
 }) {
   const install = [
-    `npx shadcn@latest add ${appUrl}/r/neonfin-provider.json \\`,
-    `  ${appUrl}/r/neonfin-credits.json \\`,
-    `  ${appUrl}/r/neonfin-purchase.json \\`,
-    `  ${appUrl}/r/neonfin-gate.json`,
+    `npx shadcn@latest add ${appUrl}/r/pay-provider.json \\`,
+    `  ${appUrl}/r/pay-credits.json \\`,
+    `  ${appUrl}/r/pay-purchase.json \\`,
+    `  ${appUrl}/r/pay-gate.json`,
   ].join("\n");
 
   const envVars = [
-    `NEXT_PUBLIC_NEONFIN_URL=${appUrl}`,
-    `NEXT_PUBLIC_NEONFIN_KEY=${publishableKey ?? "nf_pk_…  # create a publishable key above"}`,
+    `NEXT_PUBLIC_PAY_URL=${appUrl}`,
+    `NEXT_PUBLIC_PAY_KEY=${publishableKey ?? "pay_pk_…  # create a publishable key above"}`,
   ].join("\n");
 
   const provider = [
-    `import { NeonfinProvider } from "@/components/neonfin/provider";`,
+    `import { PayProvider } from "@/components/pay/provider";`,
     ``,
-    `<NeonfinProvider`,
-    `  baseUrl={process.env.NEXT_PUBLIC_NEONFIN_URL!}`,
-    `  publishableKey={process.env.NEXT_PUBLIC_NEONFIN_KEY!}`,
+    `<PayProvider`,
+    `  baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}`,
+    `  publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}`,
     `>`,
     `  {children}`,
-    `</NeonfinProvider>`,
+    `</PayProvider>`,
   ].join("\n");
 
   const usage = [
-    `import { useCredits } from "@/components/neonfin/provider";`,
+    `import { useCredits } from "@/components/pay/provider";`,
     ``,
     `const { deduct } = useCredits();`,
     `await deduct(1); // spend one credit - wallet handled automatically`,

@@ -2,42 +2,42 @@
 
 import { useState } from "react";
 import { Check, Copy, RefreshCw } from "lucide-react";
-import { NeonfinError } from "@/lib/neonfin";
+import { PayError } from "@/lib/pay";
 import { cn } from "@/lib/utils";
-import { CreditGate } from "@/components/neonfin/credit-gate";
-import { FeatureGate } from "@/components/neonfin/feature-gate";
+import { CreditGate } from "@/components/pay/credit-gate";
+import { FeatureGate } from "@/components/pay/feature-gate";
 import {
-  NeonfinProvider,
+  PayProvider,
   useCredits,
   useFeature,
-} from "@/components/neonfin/provider";
-import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
-import { RemainingCredits } from "@/components/neonfin/remaining-credits";
-import { WalletButton } from "@/components/neonfin/wallet-button";
+} from "@/components/pay/provider";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
+import { RemainingCredits } from "@/components/pay/remaining-credits";
+import { WalletButton } from "@/components/pay/wallet-button";
 import { Button } from "@/components/ui/button";
 
-const baseUrl = process.env.NEXT_PUBLIC_EXAMPLE_NEONFIN_URL;
-const publishableKey = process.env.NEXT_PUBLIC_EXAMPLE_NEONFIN_KEY;
+const baseUrl = process.env.NEXT_PUBLIC_EXAMPLE_PAY_URL;
+const publishableKey = process.env.NEXT_PUBLIC_EXAMPLE_PAY_KEY;
 
 const snippets = {
-  provider: `import { NeonfinProvider } from "@/components/neonfin/provider";
+  provider: `import { PayProvider } from "@/components/pay/provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <NeonfinProvider
-      baseUrl={process.env.NEXT_PUBLIC_NEONFIN_URL!}
-      publishableKey={process.env.NEXT_PUBLIC_NEONFIN_KEY!}
+    <PayProvider
+      baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}
+      publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}
     >
       {children}
-    </NeonfinProvider>
+    </PayProvider>
   );
 }`,
-  remainingCredits: `import { RemainingCredits } from "@/components/neonfin/remaining-credits";
+  remainingCredits: `import { RemainingCredits } from "@/components/pay/remaining-credits";
 
 export function Balance() {
   return <RemainingCredits />;
 }`,
-  useCredits: `import { useCredits } from "@/components/neonfin/provider";
+  useCredits: `import { useCredits } from "@/components/pay/provider";
 import { Button } from "@/components/ui/button";
 
 export function SpendCreditsButton() {
@@ -49,12 +49,12 @@ export function SpendCreditsButton() {
     </Button>
   );
 }`,
-  purchase: `import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
+  purchase: `import { PurchaseButton } from "@/components/pay/purchase-dialog";
 
 export function BuyCredits() {
   return <PurchaseButton>Buy credits</PurchaseButton>;
 }`,
-  creditGate: `import { CreditGate } from "@/components/neonfin/credit-gate";
+  creditGate: `import { CreditGate } from "@/components/pay/credit-gate";
 import { Button } from "@/components/ui/button";
 
 export function PremiumAction() {
@@ -64,7 +64,7 @@ export function PremiumAction() {
     </CreditGate>
   );
 }`,
-  featureGate: `import { FeatureGate } from "@/components/neonfin/feature-gate";
+  featureGate: `import { FeatureGate } from "@/components/pay/feature-gate";
 
 export function AnalyticsPanel() {
   return (
@@ -73,7 +73,7 @@ export function AnalyticsPanel() {
     </FeatureGate>
   );
 }`,
-  wallet: `import { WalletButton } from "@/components/neonfin/wallet-button";
+  wallet: `import { WalletButton } from "@/components/pay/wallet-button";
 
 export function WalletMenu() {
   return <WalletButton />;
@@ -142,7 +142,7 @@ function ComponentExample({
 function MissingExampleConfig() {
   return (
     <p className="max-w-sm text-center text-sm text-muted-foreground">
-      Set NEXT_PUBLIC_EXAMPLE_NEONFIN_URL and NEXT_PUBLIC_EXAMPLE_NEONFIN_KEY to
+      Set NEXT_PUBLIC_EXAMPLE_PAY_URL and NEXT_PUBLIC_EXAMPLE_PAY_KEY to
       render the interactive example.
     </p>
   );
@@ -151,9 +151,9 @@ function MissingExampleConfig() {
 function LiveProvider({ children }: { children: React.ReactNode }) {
   if (!baseUrl || !publishableKey) return <MissingExampleConfig />;
   return (
-    <NeonfinProvider baseUrl={baseUrl} publishableKey={publishableKey}>
+    <PayProvider baseUrl={baseUrl} publishableKey={publishableKey}>
       {children}
-    </NeonfinProvider>
+    </PayProvider>
   );
 }
 
@@ -224,7 +224,7 @@ function UseCreditsPanel() {
       setMessage(`Spent ${amount} ${creditUnit ?? "credits"}.`);
     } catch (err) {
       setMessage(
-        err instanceof NeonfinError && err.isInsufficientCredits
+        err instanceof PayError && err.isInsufficientCredits
           ? "Not enough credits for that action."
           : "Could not spend credits. Try again.",
       );

@@ -1,4 +1,4 @@
-export const siteName = "neonFin";
+export const siteName = "vantezzen/pay";
 export const siteDescription =
   "Self-hosted credits, wallets, checkout, and shadcn payment components for small developer products.";
 

@@ -4,7 +4,7 @@ description: Unlock features with subscriptions and one-time purchases.
 ---
 
 Not everything is metered. Often you just want "does this user have access?" -
-to a subscription tier, or a feature they paid to unlock. neonFin models that
+to a subscription tier, or a feature they paid to unlock. vantezzen/pay models that
 with **features**, alongside credits.
 
 ## Features
@@ -16,7 +16,7 @@ features to a **price**:
   active.
 - On a **one-time unlock**, the feature is unlocked permanently once paid.
 
-A wallet's features are **derived, never stored** as a flag. neonFin computes
+A wallet's features are **derived, never stored** as a flag. vantezzen/pay computes
 them from the wallet's active subscriptions, its paid one-time purchases, and
 any manual grants. That means cancelling or refunding removes access
 automatically - there's no separate "revoke" step that could drift.
@@ -34,7 +34,7 @@ const { enabled } = useFeature("analytics");
 Server-side (external auth):
 
 ```ts
-if (await neonfin.hasFeature(userId, "export")) {
+if (await pay.hasFeature(userId, "export")) {
   // ...
 }
 ```
@@ -68,7 +68,7 @@ included allowance.
 ## Switching tiers
 
 A fresh checkout can't change an existing subscription - it would double-bill.
-So when a wallet already subscribes to a product, neonFin returns
+So when a wallet already subscribes to a product, vantezzen/pay returns
 `409 already_subscribed` from checkout, and the `<PurchaseDialog>` marks the
 current tier and shows **Manage subscription**, which opens the provider's
 billing portal. Stripe and Polar both handle plan changes (and proration) there.
@@ -89,8 +89,8 @@ For comps and support, grant a feature straight to a wallet - in the dashboard
 (wallet → Access → Grant feature) or via the API:
 
 ```ts
-await neonfin.grantFeature(userId, "analytics");
-await neonfin.revokeFeature(userId, "analytics");
+await pay.grantFeature(userId, "analytics");
+await pay.revokeFeature(userId, "analytics");
 ```
 
 Revoking only removes a **manual** grant. Access that comes from an active

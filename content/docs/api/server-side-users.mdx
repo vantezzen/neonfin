@@ -3,10 +3,10 @@ title: Server-side users
 description: Use secret keys when your app already has accounts.
 ---
 
-Use these endpoints from your server only. They require an `nf_sk_` key.
+Use these endpoints from your server only. They require a `pay_sk_` key.
 
 This is the endpoint reference. For the typed helper, see
-[createNeonfinServer client](/docs/components/server). For the mental model and
+[createPayServerClient](/docs/components/server). For the mental model and
 worked examples (better-auth, Clerk, Auth.js), see
 [External auth](/docs/concepts/external-auth).
 
@@ -16,7 +16,7 @@ Create a wallet tied to your own user id:
 
 ```http
 POST /api/v1/wallets/external
-Authorization: Bearer nf_sk_...
+Authorization: Bearer pay_sk_...
 Content-Type: application/json
 
 {
@@ -43,7 +43,7 @@ Grant credits to a code wallet or external user:
 
 ```http
 POST /api/v1/credit
-Authorization: Bearer nf_sk_...
+Authorization: Bearer pay_sk_...
 Content-Type: application/json
 
 {
@@ -76,7 +76,7 @@ anyone spend anyone's credits.
 
 ```http
 POST /api/v1/wallets/external/deduct
-Authorization: Bearer nf_sk_...
+Authorization: Bearer pay_sk_...
 Content-Type: application/json
 
 {
@@ -108,7 +108,7 @@ when the payment webhook arrives - no code handling involved:
 
 ```http
 POST /api/v1/checkout
-Authorization: Bearer nf_sk_...
+Authorization: Bearer pay_sk_...
 Content-Type: application/json
 
 {
@@ -127,7 +127,7 @@ The wallet returned by `getOrCreateWallet` includes `features` (unlocked slugs)
 and `subscriptions` (active plans), so you can gate server logic directly:
 
 ```ts
-if (await neonfin.hasFeature("user_123", "export")) {
+if (await pay.hasFeature("user_123", "export")) {
   // allow the export
 }
 ```
@@ -136,8 +136,8 @@ Grant or revoke a feature manually (comps, support). Revoke removes only the
 manual grant - subscription and one-time-purchase access is derived:
 
 ```ts
-await neonfin.grantFeature("user_123", "analytics");
-await neonfin.revokeFeature("user_123", "analytics");
+await pay.grantFeature("user_123", "analytics");
+await pay.revokeFeature("user_123", "analytics");
 ```
 
 See [Access & features](/docs/concepts/access-and-features) for the full model.
@@ -145,7 +145,7 @@ See [Access & features](/docs/concepts/access-and-features) for the full model.
 ## Idempotency
 
 Always pass a stable `idempotencyKey` for server grants and deductions. If your
-server retries the same logical operation, neonFin applies it once.
+server retries the same logical operation, vantezzen/pay applies it once.
 
 Good keys:
 

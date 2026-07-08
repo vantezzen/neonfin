@@ -23,7 +23,7 @@ export default async function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        description="Each side project that plugs into neonFin."
+        description="Each side project that plugs into vantezzen/pay."
         action={
           <Link href="/dashboard/projects/new" className={cn(buttonVariants())}>
             <Plus className="size-4" />

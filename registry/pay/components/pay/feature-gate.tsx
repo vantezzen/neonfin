@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { Loader2 } from "lucide-react";
-import { useFeature } from "@/components/neonfin/provider";
+import { useFeature } from "@/components/pay/provider";
 import {
   PurchaseButton,
   humanizeFeature,
   type PurchaseButtonProps,
-} from "@/components/neonfin/purchase-dialog";
+} from "@/components/pay/purchase-dialog";
 
 export type FeatureGateProps = {
   /** Feature slug required to pass the gate, e.g. "analytics" or "export". */

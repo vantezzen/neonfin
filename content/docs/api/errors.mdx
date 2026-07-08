@@ -14,7 +14,7 @@ stable machine-readable `code`:
 ```
 
 Branch on `code` (or the HTTP status) - never on the message text, which may
-change. The typed clients throw `NeonfinError` carrying `status`, `code`, and
+change. The typed clients throw `PayError` carrying `status`, `code`, and
 the message. For the common out-of-credits case you don't need to remember
 either - check `err.isInsufficientCredits`.
 
@@ -76,9 +76,9 @@ Client handling:
 
 ```ts
 try {
-  await neonfin.deduct(10, { idempotencyKey: "job_123" });
+  await pay.deduct(10, { idempotencyKey: "job_123" });
 } catch (err) {
-  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+  if (err instanceof PayError && err.isInsufficientCredits) {
     // Open your purchase dialog. err.balance / err.requested are available.
   }
 }

@@ -18,8 +18,8 @@ export default function AuthLayout({
     <div className="flex min-h-svh items-center justify-center bg-canvas p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Image src={appLogo} alt="neonFin" width={44} height={44} />
-          <span className="text-lg font-semibold tracking-tight">neonFin</span>
+          <Image src={appLogo} alt="vantezzen/pay" width={44} height={44} />
+          <span className="text-lg font-semibold tracking-tight">vantezzen/pay</span>
         </div>
         {children}
       </div>

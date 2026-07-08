@@ -24,7 +24,7 @@ export const auth = betterAuth({
         // hits to /api/auth/sign-up. The first account is always allowed so a
         // fresh self-hosted instance can bootstrap.
         before: async (userData) => {
-          if (!env().NEONFIN_ALLOW_SIGNUPS) {
+          if (!env().PAY_ALLOW_SIGNUPS) {
             const [{ count }] = await db
               .select({ count: sql<number>`count(*)::int` })
               .from(authSchema.user);

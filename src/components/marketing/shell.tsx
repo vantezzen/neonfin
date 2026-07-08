@@ -19,7 +19,7 @@ export function MarketingHeader() {
             className="rounded-md"
           />
           <span className="text-[15px] font-semibold tracking-tight">
-            neonFin
+            vantezzen/pay
           </span>
         </Link>
         <nav className="flex items-center gap-1">
@@ -72,7 +72,7 @@ export function MarketingFooter() {
             height={20}
             className="rounded"
           />
-          <span className="font-medium text-foreground">neonFin</span>
+          <span className="font-medium text-foreground">vantezzen/pay</span>
           <span>· payments for side projects</span>
         </div>
         <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">

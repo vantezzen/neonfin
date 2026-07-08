@@ -3,7 +3,7 @@ title: Components
 description: shadcn registry components and utilities for adding credits to your app.
 ---
 
-The neonFin registry copies source files into your project. They are not a black
+The vantezzen/pay registry copies source files into your project. They are not a black
 box package: you can inspect them, adjust copy, change styling, and compose them
 with your existing shadcn components.
 
@@ -11,7 +11,7 @@ with your existing shadcn components.
 
 Most apps use:
 
-- [`NeonfinProvider`](/docs/components/provider)
+- [`PayProvider`](/docs/components/provider)
 - [`useCredits`](/docs/components/use-credits)
 - [`RemainingCredits`](/docs/components/remaining-credits)
 - [`CreditGate`](/docs/components/credit-gate)
@@ -24,12 +24,12 @@ wallet menu for copying, restoring, or transferring their code.
 
 | Registry item | Use it for |
 |---|---|
-| `neonfin-client` | Raw typed API client in `lib/neonfin/index.ts` |
-| `neonfin-provider` | React context, balance loading, checkout resume |
-| `neonfin-credits` | Inline balance display |
-| `neonfin-gate` | Hide or replace UI when credits are too low |
-| `neonfin-purchase` | Price picker and popup/redirect checkout |
-| `neonfin-wallet` | Wallet dialog with code restore and transfer |
+| `pay-client` | Raw typed API client in `lib/pay/index.ts` |
+| `pay-provider` | React context, balance loading, checkout resume |
+| `pay-credits` | Inline balance display |
+| `pay-gate` | Hide or replace UI when credits are too low |
+| `pay-purchase` | Price picker and popup/redirect checkout |
+| `pay-wallet` | Wallet dialog with code restore and transfer |
 
 ## Component design
 
@@ -38,5 +38,5 @@ on your local `button`, `dialog`, and `input` components, so they inherit your
 theme and can be edited like the rest of your UI.
 
 For a guided first integration, start with
-[Set up neonFin and Stripe](/docs/getting-started/dashboard), then install the
+[Set up vantezzen/pay and Stripe](/docs/getting-started/dashboard), then install the
 components after you have a publishable key.

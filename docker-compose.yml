@@ -3,18 +3,18 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: neonfin
-      POSTGRES_PASSWORD: neonfin
-      POSTGRES_DB: neonfin
+      POSTGRES_USER: pay
+      POSTGRES_PASSWORD: pay
+      POSTGRES_DB: pay
     ports:
       - "5432:5432"
     volumes:
-      - neonfin-pgdata:/var/lib/postgresql/data
+      - pay-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neonfin"]
+      test: ["CMD-SHELL", "pg_isready -U pay"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  neonfin-pgdata:
+  pay-pgdata:

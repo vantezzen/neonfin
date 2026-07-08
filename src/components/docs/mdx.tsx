@@ -8,7 +8,7 @@ import {
   RemainingCreditsLiveDemo,
   UseCreditsLiveDemo,
   WalletLiveDemo,
-} from "@/components/docs/neonfin-component-demos";
+} from "@/components/docs/pay-component-demos";
 import type { MDXComponents } from "mdx/types";
 
 export function getMDXComponents(components?: MDXComponents) {

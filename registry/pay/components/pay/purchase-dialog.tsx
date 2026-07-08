@@ -15,16 +15,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  NeonfinError,
+  PayError,
   type CheckoutFlow,
   type Price,
   type Product,
-} from "@/lib/neonfin";
+} from "@/lib/pay";
 import {
-  useNeonfin,
-  useNeonfinCheckout,
+  usePay,
+  usePayCheckout,
   useSubscriptions,
-} from "@/components/neonfin/provider";
+} from "@/components/pay/provider";
 
 function formatMoney(cents: number, currency: string): string {
   try {
@@ -207,8 +207,8 @@ export function PurchaseDialog({
   emptyMessage = "No purchase options are available yet.",
   renderOption,
 }: PurchaseDialogProps) {
-  const client = useNeonfin();
-  const startCheckout = useNeonfinCheckout();
+  const client = usePay();
+  const startCheckout = usePayCheckout();
   const subscriptions = useSubscriptions();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -243,23 +243,23 @@ export function PurchaseDialog({
       setOpen(false);
     } catch (err) {
       setBusy(null);
-      if (err instanceof NeonfinError && err.code === "already_subscribed") {
+      if (err instanceof PayError && err.code === "already_subscribed") {
         setError(
           "You already have a plan for this. Use “Manage subscription” to change it.",
         );
       } else if (
-        err instanceof NeonfinError &&
+        err instanceof PayError &&
         err.code === "popup_blocked"
       ) {
         setError(
           "The checkout popup was blocked. Allow popups or use redirect checkout.",
         );
       } else if (
-        err instanceof NeonfinError &&
+        err instanceof PayError &&
         err.code === "checkout_cancelled"
       ) {
         setError("Checkout was cancelled. No charge was made.");
-      } else if (err instanceof NeonfinError && err.code === "checkout_closed") {
+      } else if (err instanceof PayError && err.code === "checkout_closed") {
         setError("Checkout was closed before payment completed.");
       } else {
         setError("Couldn't start checkout. Please try again.");

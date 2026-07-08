@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: Start your first neonFin integration with Stripe, credit codes, and one product.
+description: Start your first vantezzen/pay integration with Stripe, credit codes, and one product.
 ---
 
 This guide follows the easiest setup:
@@ -18,18 +18,18 @@ setups are supported too, but they are easier to understand after this flow.
 
 You need:
 
-- A neonFin instance, either hosted or [self-hosted](/docs/self-host).
+- A vantezzen/pay instance, either hosted or [self-hosted](/docs/self-host).
 - A Stripe account in test mode.
 - A React app using Tailwind and shadcn.
 
 <Callout>
 If your app is not using shadcn yet, run `npx shadcn@latest init` in that app
-before installing neonFin components.
+before installing vantezzen/pay components.
 </Callout>
 
 ## The path
 
-1. [Set up neonFin and Stripe](/docs/getting-started/dashboard).
+1. [Set up vantezzen/pay and Stripe](/docs/getting-started/dashboard).
 2. [Install the SDK and components](/docs/getting-started/install).
 3. [Gate your first feature](/docs/getting-started/first-feature).
 4. [Check the go-live list](/docs/getting-started/go-live).
@@ -44,11 +44,11 @@ If a coding agent (Claude Code, Cursor, Copilot, …) is doing the integration,
 paste it this prompt after you have a publishable key:
 
 ```text
-Integrate neonFin credits into this app.
+Integrate vantezzen/pay credits into this app.
 1. Install the components:
-   npx shadcn@latest add https://pay.vantezzen.io/r/neonfin-provider.json https://pay.vantezzen.io/r/neonfin-credits.json https://pay.vantezzen.io/r/neonfin-purchase.json https://pay.vantezzen.io/r/neonfin-gate.json
-2. Add NEXT_PUBLIC_NEONFIN_URL and NEXT_PUBLIC_NEONFIN_KEY to the env, then
-   wrap the app in <NeonfinProvider baseUrl publishableKey>.
+   npx shadcn@latest add https://pay.vantezzen.io/r/pay-provider.json https://pay.vantezzen.io/r/pay-credits.json https://pay.vantezzen.io/r/pay-purchase.json https://pay.vantezzen.io/r/pay-gate.json
+2. Add NEXT_PUBLIC_PAY_URL and NEXT_PUBLIC_PAY_KEY to the env, then
+   wrap the app in <PayProvider baseUrl publishableKey>.
 3. Gate the paid feature with <CreditGate cost={N}> and charge with
    useCredits().deduct(N, { idempotencyKey }) when the work starts.
 Docs: https://pay.vantezzen.io/docs/getting-started

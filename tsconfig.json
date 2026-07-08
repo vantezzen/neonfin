@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@registry/*": ["./registry/neonfin/*"],
+      "@registry/*": ["./registry/pay/*"],
       "collections/*": ["./.source/*"],
     },
   },

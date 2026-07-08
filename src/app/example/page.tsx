@@ -9,13 +9,13 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { NeonfinError } from "@/lib/neonfin";
-import { CreditGate } from "@/components/neonfin/credit-gate";
-import { FeatureGate } from "@/components/neonfin/feature-gate";
-import { useCredits } from "@/components/neonfin/provider";
-import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
-import { RemainingCredits } from "@/components/neonfin/remaining-credits";
-import { WalletButton } from "@/components/neonfin/wallet-button";
+import { PayError } from "@/lib/pay";
+import { CreditGate } from "@/components/pay/credit-gate";
+import { FeatureGate } from "@/components/pay/feature-gate";
+import { useCredits } from "@/components/pay/provider";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
+import { RemainingCredits } from "@/components/pay/remaining-credits";
+import { WalletButton } from "@/components/pay/wallet-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +37,7 @@ function ExamplePage() {
       setNote(`Spent ${amount} credits.`);
     } catch (err) {
       setNote(
-        err instanceof NeonfinError && err.isInsufficientCredits
+        err instanceof PayError && err.isInsufficientCredits
           ? "Not enough credits - buy more below."
           : "Something went wrong. Try again.",
       );
@@ -52,7 +52,7 @@ function ExamplePage() {
           <span className="text-xs font-medium tracking-wide text-muted-foreground">
             React SDK example
           </span>
-          <h1 className="text-2xl font-semibold tracking-tight">neonFin</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">vantezzen/pay</h1>
         </div>
         <div className="flex items-center gap-3 rounded-xl border bg-background px-4 py-2.5">
           <div className="flex flex-col">
@@ -66,7 +66,7 @@ function ExamplePage() {
       </header>
 
       <p className="max-w-2xl text-sm text-muted-foreground">
-        These are the drop-in neonFin components - balance display, metered
+        These are the drop-in vantezzen/pay components - balance display, metered
         spending, a purchase flow, feature gating, and wallet recovery.
         Everything updates live against your wallet. Checkout runs in Stripe
         test mode, so pay with{" "}

@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "neonFin - credits and checkout for side projects",
+    title: "vantezzen/pay - credits and checkout for side projects",
     description:
       "Self-hosted credits, wallets, checkout, and shadcn payment components for small developer products.",
     url: "/",
@@ -46,7 +46,7 @@ const GATE_SNIPPET = `const { deduct } = useCredits();
 const STEPS = [
   {
     title: "Connect a provider once",
-    body: "Paste a Stripe or Polar key. neonFin manages the catalog and listens for payments.",
+    body: "Paste a Stripe or Polar key. vantezzen/pay manages the catalog and listens for payments.",
   },
   {
     title: "Define products & credits",
@@ -72,7 +72,7 @@ const FEATURES = [
   {
     icon: Plug,
     title: "No extra fees, providers keep the money",
-    body: "Taxes, invoices, and subscriptions stay with Stripe or Polar. neonFin adds no extra layers or fees.",
+    body: "Taxes, invoices, and subscriptions stay with Stripe or Polar. vantezzen/pay adds no extra layers or fees.",
   },
   {
     icon: KeyRound,
@@ -140,7 +140,7 @@ function Nav() {
             className="rounded-md"
           />
           <span className="text-[15px] font-semibold tracking-tight">
-            neonFin
+            vantezzen/pay
           </span>
         </Link>
         <nav className="flex items-center gap-1">
@@ -289,14 +289,14 @@ function Features() {
     <section className="border-y bg-canvas">
       <div className="mx-auto w-full max-w-5xl px-6 py-20 sm:py-28">
         <span className="font-mono text-[11px] tracking-widest text-muted-foreground">
-          Why neonFin
+          Why vantezzen/pay
         </span>
         <h2 className="mt-2 max-w-md text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
           The layer Stripe leaves to you - handled
         </h2>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
           Providers move money. The wallets, metering, and UI around them are
-          what eat the week - that layer is neonFin.
+          what eat the week - that layer is vantezzen/pay.
         </p>
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, body }) => (
@@ -317,7 +317,7 @@ function Features() {
 
         <Image
           src={dashboardImage}
-          alt="neonFin dashboard"
+          alt="vantezzen/pay dashboard"
           width={1200}
           className={cn("mt-16 rounded-xl shadow-sm")}
         />
@@ -356,7 +356,7 @@ function FinalCta() {
           Ship the fun part
         </h2>
         <p className="relative mx-auto mt-4 max-w-md text-sm leading-relaxed text-balance text-primary-foreground/70">
-          Set up neonFin once. Every side project after that gets payments for
+          Set up vantezzen/pay once. Every side project after that gets payments for
           the cost of a copy-paste.
         </p>
         <div className="relative mt-8 flex justify-center">
@@ -393,7 +393,7 @@ function Footer() {
             height={20}
             className="rounded"
           />
-          <span className="font-medium text-foreground">neonFin</span>
+          <span className="font-medium text-foreground">vantezzen/pay</span>
           <span>· payments for side projects</span>
         </div>
         <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">

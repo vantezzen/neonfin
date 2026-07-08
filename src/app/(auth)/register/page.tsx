@@ -5,7 +5,7 @@ import { signupsOpen } from "@/lib/auth/signup";
 import { Card, CardContent } from "@/components/ui/card";
 import { RegisterForm } from "./register-form";
 
-export const metadata: Metadata = { title: "Create account · neonFin" };
+export const metadata: Metadata = { title: "Create account · vantezzen/pay" };
 
 // signupsOpen() may read the DB (dynamic) when the env flag is off - isolate
 // it in a Suspense boundary for Cache Components.

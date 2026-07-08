@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { Loader2 } from "lucide-react";
-import { useCredits } from "@/components/neonfin/provider";
+import { useCredits } from "@/components/pay/provider";
 import {
   PurchaseButton,
   type PurchaseButtonProps,
-} from "@/components/neonfin/purchase-dialog";
+} from "@/components/pay/purchase-dialog";
 
 export type CreditGateProps = {
   /** Credits required to pass the gate. */

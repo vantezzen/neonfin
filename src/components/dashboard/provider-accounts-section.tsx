@@ -63,7 +63,7 @@ export function ProviderAccountsSection({
       <EmptyState
         icon={<Plug />}
         title="No providers connected"
-        description="Use “Connect provider” above with a Stripe or Polar API key. neonFin creates and syncs the product catalog and receives webhooks - you never manage the catalog in the provider dashboard."
+        description="Use “Connect provider” above with a Stripe or Polar API key. vantezzen/pay creates and syncs the product catalog and receives webhooks - you never manage the catalog in the provider dashboard."
       />
     );
   }

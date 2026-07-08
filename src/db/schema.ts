@@ -155,7 +155,7 @@ export const prices = pgTable(
     // Credits granted on purchase / included each cycle, e.g. 600 for "10 hours".
     // "0" = no credits (pure access offer).
     creditsGranted: credits("credits_granted").notNull(),
-    // Feature slugs this offer unlocks (neonFin-only; never synced to provider).
+    // Feature slugs this offer unlocks (vantezzen/pay-only; never synced to provider).
     features: text("features").array().notNull().default([]),
     interval: text("interval")
       .$type<PriceInterval>()
@@ -443,7 +443,7 @@ export const apiKeys = pgTable(
     kind: text("kind").$type<ApiKeyKind>().notNull(),
     name: text("name").notNull().default("default"),
     keyHash: text("key_hash").notNull(),
-    // Display prefix, e.g. "nf_pk_7F3K" - enough to identify without revealing.
+    // Display prefix, e.g. "pay_pk_7F3K" - enough to identify without revealing.
     prefix: text("prefix").notNull(),
     // Full plaintext, stored ONLY for publishable keys (public by design so they
     // can be shown/copied anytime). Always null for secret keys.

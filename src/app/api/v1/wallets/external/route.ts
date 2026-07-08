@@ -13,7 +13,7 @@ const bodySchema = z.object({
 /**
  * Get-or-create a wallet keyed by the caller's own user id. Server-side only
  * (secret key) - this is how "external auth" projects map their users to
- * neonFin wallets. Idempotent per externalUserId.
+ * vantezzen/pay wallets. Idempotent per externalUserId.
  */
 export async function POST(req: Request): Promise<Response> {
   const auth = await authenticate(req, { require: "secret" });

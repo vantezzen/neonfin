@@ -12,10 +12,10 @@ plan is active. The app normally checks access with `FeatureGate`,
 
 ### Create a subscription product
 
-In the neonFin dashboard, create a product with type **Subscription**. Give it a
+In the vantezzen/pay dashboard, create a product with type **Subscription**. Give it a
 clear credit unit even if the plan is mostly about feature access.
 
-Attach the product to Stripe or Polar so neonFin can create provider checkout
+Attach the product to Stripe or Polar so vantezzen/pay can create provider checkout
 sessions and receive webhooks.
 
 </Step>
@@ -56,7 +56,7 @@ should accumulate.
 Use `FeatureGate` when you want to hide UI until the wallet has access:
 
 ```tsx
-import { FeatureGate } from "@/components/neonfin/feature-gate";
+import { FeatureGate } from "@/components/pay/feature-gate";
 
 export function AnalyticsPanel() {
   return (
@@ -90,7 +90,7 @@ provider handles plan changes, proration, and cancellation.
 
 ## What happens after purchase
 
-When the provider sends the payment webhook, neonFin:
+When the provider sends the payment webhook, vantezzen/pay:
 
 - marks the order as paid
 - creates or updates the wallet
@@ -104,7 +104,7 @@ and manual grants. There is no separate feature flag to keep in sync.
 ## Cancellation behavior
 
 When a customer cancels in the provider portal, access continues until the
-provider reports that the subscription has actually ended. At that point neonFin
+provider reports that the subscription has actually ended. At that point vantezzen/pay
 marks the subscription canceled, and subscription-derived features stop showing
 up in the wallet.
 

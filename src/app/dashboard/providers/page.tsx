@@ -28,7 +28,7 @@ export default async function ProvidersPage({
     <>
       <PageHeader
         title="Providers"
-        description="Connect Stripe or Polar with an API key - neonFin manages the catalog and webhooks from there. Keys are encrypted at rest."
+        description="Connect Stripe or Polar with an API key - vantezzen/pay manages the catalog and webhooks from there. Keys are encrypted at rest."
         action={<ProviderConnectWizard appUrl={appUrl} />}
       />
       {notice ? (

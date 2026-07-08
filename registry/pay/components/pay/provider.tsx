@@ -11,18 +11,18 @@ import {
   useState,
 } from "react";
 import {
-  createNeonfin,
-  NeonfinError,
+  createPayClient,
+  PayError,
   type Balance,
   type CheckoutResult,
   type DeductResult,
-  type NeonfinClient,
+  type PayClient,
   type StartCheckoutOptions,
   type Subscription,
-} from "@/lib/neonfin";
+} from "@/lib/pay";
 
-type NeonfinContextValue = {
-  client: NeonfinClient;
+type PayContextValue = {
+  client: PayClient;
   balances: Balance[];
   features: string[];
   subscriptions: Subscription[];
@@ -39,23 +39,23 @@ type NeonfinContextValue = {
   confirming: boolean;
 };
 
-const NeonfinContext = createContext<NeonfinContextValue | null>(null);
+const PayContext = createContext<PayContextValue | null>(null);
 
-export type NeonfinProviderProps = {
-  /** Base URL of your neonFin deployment, e.g. `https://pay.vantezzen.io`. */
+export type PayProviderProps = {
+  /** Base URL of your vantezzen/pay deployment, e.g. `https://pay.vantezzen.io`. */
   baseUrl: string;
-  /** Publishable API key (`nf_pk_…`). */
+  /** Publishable API key (`pay_pk_…`). */
   publishableKey: string;
   children: React.ReactNode;
 };
 
-export function NeonfinProvider({
+export function PayProvider({
   baseUrl,
   publishableKey,
   children,
-}: NeonfinProviderProps) {
+}: PayProviderProps) {
   const client = useMemo(
-    () => createNeonfin({ baseUrl, publishableKey }),
+    () => createPayClient({ baseUrl, publishableKey }),
     [baseUrl, publishableKey],
   );
 
@@ -81,7 +81,7 @@ export function NeonfinProvider({
       hasLoaded.current = true;
     } catch (e) {
       setError(
-        e instanceof NeonfinError ? e.message : "Failed to load credits",
+        e instanceof PayError ? e.message : "Failed to load credits",
       );
     } finally {
       setLoading(false);
@@ -136,7 +136,7 @@ export function NeonfinProvider({
           return;
         }
       } catch (err) {
-        if (err instanceof NeonfinError && err.code === "order_not_found") {
+        if (err instanceof PayError && err.code === "order_not_found") {
           window.localStorage.removeItem(client.pendingOrderKey);
           return;
         }
@@ -156,7 +156,7 @@ export function NeonfinProvider({
     };
   }, [client, refresh]);
 
-  const value = useMemo<NeonfinContextValue>(
+  const value = useMemo<PayContextValue>(
     () => ({
       client,
       balances,
@@ -182,31 +182,31 @@ export function NeonfinProvider({
   );
 
   return (
-    <NeonfinContext.Provider value={value}>{children}</NeonfinContext.Provider>
+    <PayContext.Provider value={value}>{children}</PayContext.Provider>
   );
 }
 
-function useNeonfinContext(): NeonfinContextValue {
-  const ctx = useContext(NeonfinContext);
+function usePayContext(): PayContextValue {
+  const ctx = useContext(PayContext);
   if (!ctx) {
-    throw new Error("useNeonfin must be used within a <NeonfinProvider>");
+    throw new Error("usePay must be used within a <PayProvider>");
   }
   return ctx;
 }
 
 /** Access the raw client (for advanced calls like getProducts/getPortalUrl). */
-export function useNeonfin(): NeonfinClient {
-  return useNeonfinContext().client;
+export function usePay(): PayClient {
+  return usePayContext().client;
 }
 
 /** Checkout helper that refreshes context after popup checkout completes. */
-export function useNeonfinCheckout(): NeonfinContextValue["startCheckout"] {
-  return useNeonfinContext().startCheckout;
+export function usePayCheckout(): PayContextValue["startCheckout"] {
+  return usePayContext().startCheckout;
 }
 
 /** All of the current wallet's active subscriptions. */
 export function useSubscriptions(): Subscription[] {
-  return useNeonfinContext().subscriptions;
+  return usePayContext().subscriptions;
 }
 
 export type UseCredits = {
@@ -234,7 +234,7 @@ export type UseCredits = {
  */
 export function useCredits(productId?: string): UseCredits {
   const { client, balances, loading, error, refresh, confirming } =
-    useNeonfinContext();
+    usePayContext();
 
   const current = productId
     ? balances.find((b) => b.productId === productId)
@@ -284,7 +284,7 @@ export type UseFeature = {
  * "show this only to paying users" check.
  */
 export function useFeature(feature: string): UseFeature {
-  const { features, loading, confirming, refresh } = useNeonfinContext();
+  const { features, loading, confirming, refresh } = usePayContext();
   return {
     enabled: features.includes(feature),
     loading,
@@ -308,7 +308,7 @@ export type UseSubscription = {
  * `productId` is omitted). Use it to show the current tier / "Manage plan".
  */
 export function useSubscription(productId?: string): UseSubscription {
-  const { subscriptions, loading, confirming, refresh } = useNeonfinContext();
+  const { subscriptions, loading, confirming, refresh } = usePayContext();
   const subscription =
     (productId
       ? subscriptions.find((s) => s.productId === productId)

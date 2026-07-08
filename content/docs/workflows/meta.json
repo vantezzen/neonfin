@@ -2,6 +2,7 @@
   "title": "Common workflows",
   "pages": [
     "index",
+    "providers",
     "subscriptions",
     "billing-portal",
     "refunds",

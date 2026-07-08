@@ -144,7 +144,7 @@ export function ProductsSection({
         <EmptyState
           icon={<Package />}
           title="No products yet"
-          description="Sell credits, a subscription, or a one-time unlock - pick a shape and neonFin handles the rest."
+          description="Sell credits, a subscription, or a one-time unlock - pick a shape and vantezzen/pay handles the rest."
           action={
             <NewProductButton
               projectId={projectId}

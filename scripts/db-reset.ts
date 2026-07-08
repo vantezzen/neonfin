@@ -10,8 +10,11 @@ if (!url) {
   console.error("DATABASE_URL is not set");
   process.exit(1);
 }
-if (process.env.NODE_ENV === "production") {
-  console.error("Refusing to reset the database with NODE_ENV=production");
+const force = process.argv.includes("--force");
+if (process.env.NODE_ENV === "production" && !force) {
+  console.error(
+    "Refusing to reset the database with NODE_ENV=production. Pass --force to continue.",
+  );
   process.exit(1);
 }
 

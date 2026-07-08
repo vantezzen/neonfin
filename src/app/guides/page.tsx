@@ -6,12 +6,12 @@ import { guides } from "@/lib/marketing";
 export const metadata: Metadata = {
   title: "Guides for Side Project Billing",
   description:
-    "Practical neonFin guides for billing side projects, no-auth monetization, shadcn payment components, and self-hosted payment layers.",
+    "Practical vantezzen/pay guides for billing side projects, no-auth monetization, shadcn payment components, and self-hosted payment layers.",
   alternates: {
     canonical: "/guides",
   },
   openGraph: {
-    title: "Guides for side project billing · neonFin",
+    title: "Guides for side project billing · vantezzen/pay",
     description:
       "Learn how to charge for small developer products without building the billing layer from scratch.",
     url: "/guides",

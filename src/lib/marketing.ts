@@ -34,7 +34,7 @@ export const guides: MarketingPage[] = [
     title: "Billing for side projects",
     seoTitle: "Billing for Side Projects: Add Payments Without Building Billing",
     description:
-      "A practical guide to charging for small developer products with checkout, wallets, credits, webhooks, and billing UI handled by neonFin.",
+      "A practical guide to charging for small developer products with checkout, wallets, credits, webhooks, and billing UI handled by vantezzen/pay.",
     eyebrow: "Side project billing",
     intent:
       "For developers who have a useful tool and want to charge for it without spending a week wiring billing infrastructure.",
@@ -42,7 +42,7 @@ export const guides: MarketingPage[] = [
     tags: ["Side projects", "Checkout", "Webhooks", "Developer tools"],
     heroBullets: [
       "Use Stripe or Polar for the money movement.",
-      "Use neonFin for the app-facing billing layer.",
+      "Use vantezzen/pay for the app-facing billing layer.",
       "Reuse one billing microservice across every project you ship.",
     ],
     sections: [
@@ -59,10 +59,10 @@ export const guides: MarketingPage[] = [
       },
       {
         title: "The division of responsibility",
-        body: "Keep the payment provider responsible for payment processing, invoices, taxes, cards, refunds, and subscription billing. Put neonFin between your app and that provider so your product code only has to ask simple questions: can this user buy, spend, or access this feature?",
+        body: "Keep the payment provider responsible for payment processing, invoices, taxes, cards, refunds, and subscription billing. Put vantezzen/pay between your app and that provider so your product code only has to ask simple questions: can this user buy, spend, or access this feature?",
         bullets: [
           "Stripe or Polar owns money, invoices, tax behavior, and payment methods.",
-          "neonFin owns projects, products, prices, wallets, credits, gates, and fulfillment.",
+          "vantezzen/pay owns projects, products, prices, wallets, credits, gates, and fulfillment.",
           "Your app owns the product experience and calls a small client API.",
         ],
       },
@@ -70,7 +70,7 @@ export const guides: MarketingPage[] = [
         title: "A minimal integration path",
         body: "Start with the smallest useful path: one project, one provider, one product, one price, and one gated action. Add subscriptions, one-time feature unlocks, or external auth only when the project actually needs them.",
         bullets: [
-          "Create a neonFin project for the app you want to monetize.",
+          "Create a vantezzen/pay project for the app you want to monetize.",
           "Connect Stripe or Polar once from the provider screen.",
           "Create a product and price that match what the user buys.",
           "Install the shadcn registry components into your app.",
@@ -86,7 +86,7 @@ export const guides: MarketingPage[] = [
       },
       {
         title: "When this is the right fit",
-        body: "neonFin is intentionally strongest for small developer products: AI wrappers, generators, file processors, internal utilities, indie SaaS experiments, templates, and tools that are useful enough to charge for but too small to deserve a bespoke billing system.",
+        body: "vantezzen/pay is intentionally strongest for small developer products: AI wrappers, generators, file processors, internal utilities, indie SaaS experiments, templates, and tools that are useful enough to charge for but too small to deserve a bespoke billing system.",
         bullets: [
           "You want to charge in an afternoon, not turn billing into a sprint.",
           "You ship multiple small tools and want one shared billing service.",
@@ -97,19 +97,19 @@ export const guides: MarketingPage[] = [
     ],
     faqs: [
       {
-        question: "Is neonFin a replacement for Stripe or Polar?",
+        question: "Is vantezzen/pay a replacement for Stripe or Polar?",
         answer:
-          "No. Stripe and Polar still process payments. neonFin handles the app-facing layer around them: products, wallets, checkout creation, gates, webhooks, and support operations.",
+          "No. Stripe and Polar still process payments. vantezzen/pay handles the app-facing layer around them: products, wallets, checkout creation, gates, webhooks, and support operations.",
       },
       {
-        question: "Can I use neonFin for more than one side project?",
+        question: "Can I use vantezzen/pay for more than one side project?",
         answer:
-          "Yes. That is the point of the billing microservice model: set up neonFin once, then create separate projects for the small tools you ship.",
+          "Yes. That is the point of the billing microservice model: set up vantezzen/pay once, then create separate projects for the small tools you ship.",
       },
       {
         question: "Do users need accounts?",
         answer:
-          "No. Credit-code projects can sell and restore wallets without login. If your app already has accounts, neonFin can attach wallets to your own user ids instead.",
+          "No. Credit-code projects can sell and restore wallets without login. If your app already has accounts, vantezzen/pay can attach wallets to your own user ids instead.",
       },
     ],
     cta: {
@@ -145,13 +145,13 @@ export const guides: MarketingPage[] = [
         ],
       },
       {
-        title: "How neonFin credit codes work",
+        title: "How vantezzen/pay credit codes work",
         body: "A credit-code project creates a wallet for the browser and stores a recovery code. The app can show balance, spend credits, and open checkout without knowing who the person is. The customer can copy the code or transfer it to another device.",
         bullets: [
           "The wallet stores balances, unlocked features, and subscription-derived access.",
           "The code is the recovery key for the wallet.",
           "Stripe or Polar still handles the checkout and billing portal.",
-          "neonFin fulfills the webhook and updates the same wallet after payment.",
+          "vantezzen/pay fulfills the webhook and updates the same wallet after payment.",
         ],
       },
       {
@@ -164,13 +164,13 @@ export const guides: MarketingPage[] = [
           "After checkout, resume the app and refresh wallet state.",
           "Show the wallet button somewhere stable so users can copy or restore the code.",
         ],
-        code: `<NeonfinProvider publishableKey={publishableKey}>
+        code: `<PayProvider publishableKey={publishableKey}>
   <RemainingCredits />
   <WalletButton />
   <CreditGate cost={1}>
     <GenerateButton />
   </CreditGate>
-</NeonfinProvider>`,
+</PayProvider>`,
       },
       {
         title: "When to switch to external auth",
@@ -186,7 +186,7 @@ export const guides: MarketingPage[] = [
       {
         question: "Can anonymous users manage subscriptions?",
         answer:
-          "Yes, after a purchase creates a provider customer. neonFin can open the provider billing portal for the wallet when that billing customer exists.",
+          "Yes, after a purchase creates a provider customer. vantezzen/pay can open the provider billing portal for the wallet when that billing customer exists.",
       },
       {
         question: "What happens if a user loses the code?",
@@ -217,7 +217,7 @@ export const guides: MarketingPage[] = [
     updated: "2026-07-07",
     tags: ["shadcn", "Payment components", "React", "Checkout UI"],
     heroBullets: [
-      "Install source files from your neonFin registry.",
+      "Install source files from your vantezzen/pay registry.",
       "Keep payment UI consistent with your existing theme.",
       "Compose checkout, wallets, balances, and gates like normal React components.",
     ],
@@ -233,10 +233,10 @@ export const guides: MarketingPage[] = [
         ],
       },
       {
-        title: "The core neonFin components",
+        title: "The core vantezzen/pay components",
         body: "The registry gives you the common payment UI pieces most small apps need. They can be used together for a complete flow or separately when you want custom screens.",
         bullets: [
-          "NeonfinProvider loads wallet state and resumes checkout confirmation.",
+          "PayProvider loads wallet state and resumes checkout confirmation.",
           "RemainingCredits shows a live balance for the current wallet.",
           "PurchaseButton and PurchaseDialog list offers and start checkout.",
           "CreditGate renders paid UI only when enough credits exist.",
@@ -247,7 +247,7 @@ export const guides: MarketingPage[] = [
       {
         title: "A simple paid action",
         body: "For a credit-based action, put the provider around the paid part of the app, show the balance, then gate the action by the number of credits it costs.",
-        code: `<NeonfinProvider publishableKey={publishableKey}>
+        code: `<PayProvider publishableKey={publishableKey}>
   <div className="flex items-center gap-3">
     <RemainingCredits productSlug="video-minutes" />
     <WalletButton />
@@ -258,11 +258,11 @@ export const guides: MarketingPage[] = [
       Process video
     </Button>
   </CreditGate>
-</NeonfinProvider>`,
+</PayProvider>`,
       },
       {
         title: "SEO benefit of component-led docs",
-        body: "Each component maps to a real search problem: payment component, purchase dialog, credit gate, feature gate, wallet recovery, and checkout UI. The docs should stay implementation-focused so searchers and AI systems can understand exactly what neonFin provides.",
+        body: "Each component maps to a real search problem: payment component, purchase dialog, credit gate, feature gate, wallet recovery, and checkout UI. The docs should stay implementation-focused so searchers and AI systems can understand exactly what vantezzen/pay provides.",
         bullets: [
           "Use descriptive page titles rather than internal package names alone.",
           "Show one complete example per component page.",
@@ -280,7 +280,7 @@ export const guides: MarketingPage[] = [
       {
         question: "Can I use custom UI instead?",
         answer:
-          "Yes. The components use the same neonFin client and API you can call directly for fully custom screens.",
+          "Yes. The components use the same vantezzen/pay client and API you can call directly for fully custom screens.",
       },
       {
         question: "Do the components replace Stripe Checkout?",
@@ -322,8 +322,8 @@ export const guides: MarketingPage[] = [
         ],
       },
       {
-        title: "What neonFin runs",
-        body: "neonFin is a small billing service, not a payment processor. It runs the dashboard, public API, checkout creation, webhook ingestion, wallet ledger, product catalog, and shadcn registry.",
+        title: "What vantezzen/pay runs",
+        body: "vantezzen/pay is a small billing service, not a payment processor. It runs the dashboard, public API, checkout creation, webhook ingestion, wallet ledger, product catalog, and shadcn registry.",
         bullets: [
           "Dashboard pages for projects, providers, products, prices, orders, wallets, and webhooks.",
           "Public client APIs for wallets, checkout, credits, and feature access.",
@@ -343,32 +343,32 @@ export const guides: MarketingPage[] = [
       },
       {
         title: "The app integration stays small",
-        body: "Each project only needs its publishable key, allowed origins, installed components, and the paid actions that call neonFin. The provider wiring stays inside the shared payment layer.",
-        code: `npx shadcn@latest add https://pay.example.com/r/neonfin-client.json
-npx shadcn@latest add https://pay.example.com/r/neonfin-provider.json
-npx shadcn@latest add https://pay.example.com/r/neonfin-credits.json`,
+        body: "Each project only needs its publishable key, allowed origins, installed components, and the paid actions that call vantezzen/pay. The provider wiring stays inside the shared payment layer.",
+        code: `npx shadcn@latest add https://pay.example.com/r/pay-client.json
+npx shadcn@latest add https://pay.example.com/r/pay-provider.json
+npx shadcn@latest add https://pay.example.com/r/pay-credits.json`,
       },
     ],
     faqs: [
       {
         question: "Does self-hosting mean I handle card data?",
         answer:
-          "No. Checkout still happens with Stripe or Polar. neonFin stores app-facing billing state and provider references, not card details.",
+          "No. Checkout still happens with Stripe or Polar. vantezzen/pay stores app-facing billing state and provider references, not card details.",
       },
       {
-        question: "Can one neonFin deployment power multiple projects?",
+        question: "Can one vantezzen/pay deployment power multiple projects?",
         answer:
           "Yes. A project maps to one app and has its own API keys, products, prices, and allowed origins.",
       },
       {
         question: "Do I need a dedicated Stripe or Polar account?",
         answer:
-          "A dedicated provider account is recommended when possible because neonFin manages catalog objects and webhooks for the connected account.",
+          "A dedicated provider account is recommended when possible because vantezzen/pay manages catalog objects and webhooks for the connected account.",
       },
     ],
     cta: {
       title: "Run billing once, reuse it everywhere",
-      body: "Deploy neonFin on your domain, connect a provider, then plug each new side project into the same payment layer.",
+      body: "Deploy vantezzen/pay on your domain, connect a provider, then plug each new side project into the same payment layer.",
     },
   },
 ];
@@ -376,11 +376,11 @@ npx shadcn@latest add https://pay.example.com/r/neonfin-credits.json`,
 export const comparisons: MarketingPage[] = [
   {
     type: "comparison",
-    slug: "stripe-vs-neonfin",
-    title: "Stripe vs neonFin",
-    seoTitle: "Stripe vs neonFin: Payment Provider vs Side Project Billing Layer",
+    slug: "stripe-vs-vantezzen-pay",
+    title: "Stripe vs vantezzen/pay",
+    seoTitle: "Stripe vs vantezzen/pay: Payment Provider vs Side Project Billing Layer",
     description:
-      "Stripe processes payments. neonFin adds the small app-facing billing layer side projects still need: wallets, gates, checkout UI, webhook fulfillment, and support tools.",
+      "Stripe processes payments. vantezzen/pay adds the small app-facing billing layer side projects still need: wallets, gates, checkout UI, webhook fulfillment, and support tools.",
     eyebrow: "Comparison",
     intent:
       "For developers deciding whether using Stripe directly is enough for a small paid tool.",
@@ -388,16 +388,16 @@ export const comparisons: MarketingPage[] = [
     tags: ["Stripe", "Billing layer", "Checkout", "Credits"],
     heroBullets: [
       "Use Stripe for payments, invoices, cards, taxes, and subscriptions.",
-      "Use neonFin for product access, wallets, credit spending, gates, and app UI.",
-      "The comparison is not either/or. neonFin sits on top of Stripe.",
+      "Use vantezzen/pay for product access, wallets, credit spending, gates, and app UI.",
+      "The comparison is not either/or. vantezzen/pay sits on top of Stripe.",
     ],
     sections: [
       {
         title: "The short answer",
-        body: "Stripe is the payment provider. neonFin is the billing microservice that makes Stripe easy to reuse inside small products. If you only need a checkout link, Stripe may be enough. If your app needs to know what the user can spend or access after checkout, you still need an app-facing layer.",
+        body: "Stripe is the payment provider. vantezzen/pay is the billing microservice that makes Stripe easy to reuse inside small products. If you only need a checkout link, Stripe may be enough. If your app needs to know what the user can spend or access after checkout, you still need an app-facing layer.",
         bullets: [
           "Stripe is excellent at charging customers and managing provider-side billing objects.",
-          "neonFin handles the product-specific state your app needs after a payment succeeds.",
+          "vantezzen/pay handles the product-specific state your app needs after a payment succeeds.",
           "Most side projects do not want to write that same glue code again and again.",
         ],
       },
@@ -412,8 +412,8 @@ export const comparisons: MarketingPage[] = [
         ],
       },
       {
-        title: "Where neonFin fits",
-        body: "neonFin turns provider events into product access your app can use immediately.",
+        title: "Where vantezzen/pay fits",
+        body: "vantezzen/pay turns provider events into product access your app can use immediately.",
         bullets: [
           "Credit wallets and retry-safe usage deductions.",
           "Anonymous recovery codes for projects without login.",
@@ -432,8 +432,8 @@ export const comparisons: MarketingPage[] = [
         ],
       },
       {
-        title: "Use neonFin with Stripe when",
-        body: "neonFin is useful when billing is necessary but not the product you want to spend your week building.",
+        title: "Use vantezzen/pay with Stripe when",
+        body: "vantezzen/pay is useful when billing is necessary but not the product you want to spend your week building.",
         bullets: [
           "You ship multiple small tools and want one reusable payment layer.",
           "You sell credits, usage packs, feature unlocks, or small subscriptions.",
@@ -444,33 +444,33 @@ export const comparisons: MarketingPage[] = [
     ],
     faqs: [
       {
-        question: "Does neonFin replace Stripe Billing?",
+        question: "Does vantezzen/pay replace Stripe Billing?",
         answer:
-          "No. neonFin uses Stripe as the provider and keeps Stripe responsible for provider-side billing. neonFin handles the app-facing layer around it.",
+          "No. vantezzen/pay uses Stripe as the provider and keeps Stripe responsible for provider-side billing. vantezzen/pay handles the app-facing layer around it.",
       },
       {
         question: "Why not just build this with Stripe webhooks?",
         answer:
-          "You can. neonFin exists because every side project otherwise repeats the same webhook fulfillment, wallet state, access checks, purchase UI, support adjustments, and recovery flows.",
+          "You can. vantezzen/pay exists because every side project otherwise repeats the same webhook fulfillment, wallet state, access checks, purchase UI, support adjustments, and recovery flows.",
       },
       {
         question: "Can I switch providers later?",
         answer:
-          "neonFin supports Stripe and Polar as providers. Your app integrates with neonFin instead of hard-coding every provider detail into product UI.",
+          "vantezzen/pay supports Stripe and Polar as providers. Your app integrates with vantezzen/pay instead of hard-coding every provider detail into product UI.",
       },
     ],
     cta: {
       title: "Keep Stripe. Stop rebuilding the layer around it.",
-      body: "Connect Stripe to neonFin, then let each project talk to the same small billing API and component set.",
+      body: "Connect Stripe to vantezzen/pay, then let each project talk to the same small billing API and component set.",
     },
   },
   {
     type: "comparison",
-    slug: "build-vs-neonfin",
-    title: "Build billing yourself vs neonFin",
-    seoTitle: "Build Billing Yourself vs neonFin for Side Projects",
+    slug: "build-vs-vantezzen-pay",
+    title: "Build billing yourself vs vantezzen/pay",
+    seoTitle: "Build Billing Yourself vs vantezzen/pay for Side Projects",
     description:
-      "A practical comparison of custom billing glue code versus using neonFin as the reusable billing microservice for small developer products.",
+      "A practical comparison of custom billing glue code versus using vantezzen/pay as the reusable billing microservice for small developer products.",
     eyebrow: "Comparison",
     intent:
       "For developers weighing a custom billing integration against a reusable side project billing layer.",
@@ -478,7 +478,7 @@ export const comparisons: MarketingPage[] = [
     tags: ["Build vs buy", "Side projects", "Billing infrastructure"],
     heroBullets: [
       "Custom billing gives maximum control.",
-      "neonFin gives a complete small-product path faster.",
+      "vantezzen/pay gives a complete small-product path faster.",
       "The tradeoff is not ideology. It is maintenance surface.",
     ],
     sections: [
@@ -504,8 +504,8 @@ export const comparisons: MarketingPage[] = [
         ],
       },
       {
-        title: "When neonFin is right",
-        body: "neonFin is for the common small-product case: charging is necessary, but billing is not the thing users came for.",
+        title: "When vantezzen/pay is right",
+        body: "vantezzen/pay is for the common small-product case: charging is necessary, but billing is not the thing users came for.",
         bullets: [
           "The project is useful enough to charge for, but small enough that billing would dominate the build.",
           "You want credits, one-time feature unlocks, subscriptions, or a simple mix of all three.",
@@ -518,21 +518,21 @@ export const comparisons: MarketingPage[] = [
         body: "The real cost of billing is not the first integration. It is remembering how every old project handles renewals, refunds, failed webhooks, balance fixes, and customer recovery six months later.",
         bullets: [
           "Custom integrations create one-off operational behavior per project.",
-          "neonFin centralizes those behaviors in one small service.",
+          "vantezzen/pay centralizes those behaviors in one small service.",
           "Each new project gets the same payment path instead of another bespoke integration.",
         ],
       },
     ],
     faqs: [
       {
-        question: "Is neonFin only for prototypes?",
+        question: "Is vantezzen/pay only for prototypes?",
         answer:
           "No. The code should be treated as production billing infrastructure. The product focus is small developer products, not throwaway demos.",
       },
       {
         question: "What do I lose by not building from scratch?",
         answer:
-          "You accept neonFin's product model: projects, products, prices, wallets, credits, features, and provider accounts. If your billing model does not fit those concepts, custom work may be better.",
+          "You accept vantezzen/pay's product model: projects, products, prices, wallets, credits, features, and provider accounts. If your billing model does not fit those concepts, custom work may be better.",
       },
       {
         question: "Can I still customize the UI?",
@@ -542,7 +542,7 @@ export const comparisons: MarketingPage[] = [
     ],
     cta: {
       title: "Spend custom work where users notice it",
-      body: "Use neonFin for the recurring billing plumbing and keep your custom engineering time for the product itself.",
+      body: "Use vantezzen/pay for the recurring billing plumbing and keep your custom engineering time for the product itself.",
     },
   },
 ];

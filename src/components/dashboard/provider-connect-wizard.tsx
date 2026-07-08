@@ -93,7 +93,7 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
         <DialogTitle>Connect provider</DialogTitle>
         <DialogDescription>
           {step === 0
-            ? "Paste your API key - neonFin manages the rest."
+            ? "Paste your API key - vantezzen/pay manages the rest."
             : currentStep === 1
               ? "Register the webhook endpoint so payments get recorded."
               : "Add the signing secret to finish."}
@@ -107,7 +107,7 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
           <div className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              neonFin creates and manages this project&apos;s products &amp;
+              vantezzen/pay creates and manages this project&apos;s products &amp;
               prices inside your provider account automatically. We recommend a{" "}
               <span className="font-medium text-foreground">
                 dedicated provider account
@@ -156,7 +156,7 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
             hint={
               provider === "polar"
                 ? "Polar → Settings → Developers. Use an organization access token with catalog, checkout, customer session, and webhook scopes."
-                : "Stripe → Developers → API keys. Use sk_test_… while developing."
+                : "Stripe → Workbench (bottom bar) → API keys. Use sk_test_… while developing."
             }
           >
             <Input
@@ -196,7 +196,8 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
                 </>
               ) : (
                 <>
-                  Stripe → Developers → Webhooks → Add endpoint. Subscribe to{" "}
+                  Stripe → Workbench (bottom bar) → Webhooks → Create an event
+                  destination. Subscribe to{" "}
                   <code>checkout.session.completed</code>,{" "}
                   <code>invoice.paid</code>, <code>charge.refunded</code>, and{" "}
                   <code>customer.subscription.deleted</code>.
@@ -233,7 +234,7 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
             hint={
               provider === "polar"
                 ? "Polar shows this after the endpoint is created."
-                : "The CLI prints it on start; the dashboard shows it under the endpoint’s “Signing secret”."
+                : "The CLI prints it on start; Workbench shows it under the event destination's signing secret."
             }
           >
             <Input

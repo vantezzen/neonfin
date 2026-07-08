@@ -16,10 +16,10 @@ This example charges 10 processing minutes.
 ```tsx title="components/process-button.tsx"
 "use client";
 
-import { CreditGate } from "@/components/neonfin/credit-gate";
-import { RemainingCredits } from "@/components/neonfin/remaining-credits";
-import { PurchaseButton } from "@/components/neonfin/purchase-dialog";
-import { useCredits } from "@/components/neonfin/provider";
+import { CreditGate } from "@/components/pay/credit-gate";
+import { RemainingCredits } from "@/components/pay/remaining-credits";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
+import { useCredits } from "@/components/pay/provider";
 import { Button } from "@/components/ui/button";
 
 const COST = 10;
@@ -73,12 +73,12 @@ fail even after `CreditGate` let the user through. Catch it and show the
 purchase dialog instead of an error:
 
 ```tsx
-import { NeonfinError } from "@/lib/neonfin";
+import { PayError } from "@/lib/pay";
 
 try {
   await deduct(COST, { idempotencyKey: jobId });
 } catch (err) {
-  if (err instanceof NeonfinError && err.isInsufficientCredits) {
+  if (err instanceof PayError && err.isInsufficientCredits) {
     setShowPurchase(true); // e.g. a controlled <PurchaseDialog open={...}>
     return;
   }
@@ -89,13 +89,13 @@ try {
 ## Buying more credits
 
 `PurchaseButton` opens a dialog with the purchasable prices you configured in
-neonFin. When the user chooses one:
+vantezzen/pay. When the user chooses one:
 
-1. neonFin creates a provider checkout.
+1. vantezzen/pay creates a provider checkout.
 2. The user pays in Stripe.
 3. On desktop, the checkout popup closes and your page stays mounted. On
    mobile, the provider redirects back to your app.
-4. `NeonfinProvider` confirms the order and refreshes the balance.
+4. `PayProvider` confirms the order and refreshes the balance.
 
 You do not need to write a checkout callback page for the common case.
 

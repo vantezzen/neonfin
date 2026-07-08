@@ -46,7 +46,7 @@ export function SuccessPoller({ orderId }: { orderId: string }) {
     if (!window.opener) return;
 
     window.opener.postMessage(
-      { source: "neonfin", type: "checkout_paid", orderId },
+      { source: "pay", type: "checkout_paid", orderId },
       "*",
     );
     window.setTimeout(() => window.close(), 900);
