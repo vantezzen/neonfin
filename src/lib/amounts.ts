@@ -18,12 +18,13 @@ function hasScale(n: number, scale: number): boolean {
 
 function creditAmount<T extends z.ZodType<number>>(
   schema: T,
-  opts: { mode: "positive" | "nonNegative" | "signed" },
+  opts: { mode: "positive" | "nonNegative" | "signed" | "full" },
 ) {
   return schema
     .refine(Number.isFinite, "Amount must be finite")
     .refine(
       (n) => {
+        if (opts.mode === "full") return true;
         if (opts.mode === "signed") return n !== 0;
         if (opts.mode === "positive") return n > 0;
         return n >= 0;
@@ -64,6 +65,9 @@ export const nonNegativeCreditAmountSchema = creditAmount(z.number(), {
 export const signedCreditAmountSchema = creditAmount(z.number(), {
   mode: "signed",
 });
+export const fullCreditAmountSchema = creditAmount(z.number(), {
+  mode: "full",
+});
 
 export const coercePositiveCreditAmountSchema = creditAmount(
   z.coerce.number(),
@@ -81,5 +85,5 @@ export const coerceSignedCreditAmountSchema = creditAmount(z.coerce.number(), {
 export const priceAmountSchema = priceAmount(z.coerce.number());
 
 export function assertCreditDelta(n: number): void {
-  nonNegativeCreditAmountSchema.parse(n);
+  fullCreditAmountSchema.parse(n);
 }
