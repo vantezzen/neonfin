@@ -1,5 +1,5 @@
 ---
-title: AI agent integration guide
+title: AI agent guide
 description: Instructions for coding agents that integrate vantezzen/pay into an existing app.
 ---
 
@@ -33,10 +33,10 @@ user wants wallets attached to those accounts.
 
 ## Read the relevant docs
 
-Use targeted docs first:
+You can read `https://pay.vantezzen.io/docs/llms.txt` for list of all docs pages, but the following pages are usually most important:
 
-- `/docs/llms.txt` lists all docs pages.
 - `/docs/getting-started/install.mdx` covers installation and env vars.
+- `/docs/getting-started/first-feature.mdx` covers a basic example of gating a feature using credits.
 - `/docs/components/provider.mdx` covers `PayProvider`.
 - `/docs/components/credit-gate.mdx` covers credit-gated actions.
 - `/docs/components/feature-gate.mdx` covers feature-gated UI.
@@ -44,9 +44,7 @@ Use targeted docs first:
 - `/docs/components/wallet-button.mdx` covers anonymous wallet recovery.
 - `/docs/concepts/external-auth.mdx` covers apps with existing user accounts.
 
-Use `/docs/llms-full.txt` only when the targeted pages are not enough. On docs
-pages, ask for Markdown with an `Accept` header that prefers Markdown if your
-HTTP client supports it.
+`/docs/llms-full.txt` will give you the full content of all docs pages. This is very huge and should be used only when the targeted pages are not enough. Append ".mdx" to any docs page path to get the raw Markdown source.
 
 ## Install the app-side components
 
@@ -58,21 +56,15 @@ npx shadcn@latest add \
   https://pay.vantezzen.io/r/pay-provider.json \
   https://pay.vantezzen.io/r/pay-credits.json \
   https://pay.vantezzen.io/r/pay-purchase.json \
-  https://pay.vantezzen.io/r/pay-gate.json
-```
-
-Install the wallet dialog when users need to restore or transfer anonymous
-wallets across devices:
-
-```bash
-npx shadcn@latest add https://pay.vantezzen.io/r/pay-wallet.json
+  https://pay.vantezzen.io/r/pay-gate.json \
+  https://pay.vantezzen.io/r/pay-wallet.json
 ```
 
 If the user self-hosts vantezzen/pay, replace `https://pay.vantezzen.io` with
 their vantezzen/pay domain.
 
 For external-auth projects, also read `/docs/concepts/external-auth.mdx`. Those
-projects usually need:
+projects usually need the server SDK:
 
 ```bash
 npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
@@ -81,18 +73,21 @@ npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
 ## Add environment placeholders
 
 Do not invent real keys. Add placeholders to the app's env example and, if the
-user wants it, to local env files:
+user wants it, to local env files. If you are already supplied with real keys, add those to the real env file, not the example.
 
 ```bash title=".env.local"
 NEXT_PUBLIC_PAY_URL=https://pay.vantezzen.io
 NEXT_PUBLIC_PAY_KEY=pay_pk_replace_me
 ```
 
-For self-hosted vantezzen/pay, use the user's own public vantezzen/pay URL. For
-external-auth server integrations, use server-only env vars:
+Here we're using "NEXT_PUBLIC_" to make variables publicly available - if the project doesn't use Next, instead use the framework's public env var prefix.
+
+For self-hosted vantezzen/pay, use the user's own public vantezzen/pay URL.
+
+For external-auth server integrations, use server-only env vars:
 
 ```bash title=".env.local"
-PAY_URL=https://pay.vantezzen.io
+NEXT_PUBLIC_PAY_URL=https://pay.vantezzen.io
 PAY_SECRET_KEY=pay_sk_replace_me
 ```
 
@@ -127,14 +122,12 @@ If the app has a narrower authenticated shell or dashboard layout, put
 
 ## Add wallet and balance UI
 
-Show the current balance near paid work or in the app shell:
+Show the current balance in the app shell (e.g. in the header or sidebar) or near paid work:
 
 ```tsx
 import { RemainingCredits } from "@/components/pay/remaining-credits";
 
-<span>
-  Balance: <RemainingCredits />
-</span>
+<RemainingCredits />
 ```
 
 For credit-code projects, add wallet recovery somewhere persistent, usually the
@@ -143,16 +136,78 @@ header, sidebar, account menu, or settings page:
 ```tsx
 import { WalletButton } from "@/components/pay/wallet-button";
 
+<WalletButton />
+// or with custom styling:
 <WalletButton variant="outline" size="sm" />
 ```
 
 Skip `WalletButton` only when the project uses external auth and wallets are
 attached to logged-in users on the server.
 
-## Gate consumable credit actions
+## Gate paid actions
+
+Next we should gate the paid work itself. Which gate to use depends on whether the paid work is a consumable action or a feature that stays unlocked.
+
+### Gate consumable credit actions
 
 Use credits for paid work that is consumed per run, such as minutes, generated
 images, exports, API calls, or processed files.
+
+```tsx title="components/paid-action.tsx"
+"use client";
+
+import { CreditGate } from "@/components/pay/credit-gate";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
+import { useCredits } from "@/components/pay/provider";
+import { Button } from "@/components/ui/button";
+
+const COST = 10;
+
+export function PaidAction() {
+  return (
+    <CreditGate
+      cost={COST}
+    >
+      <Button disabled={loading}>
+        Run paid action
+      </Button>
+    </CreditGate>
+  );
+}
+```
+
+Important: `CreditGate` only checks access. It does not spend credits. Deduct
+inside the click handler, form action, or job-start path that actually starts
+the paid work. Use a stable `idempotencyKey` for retries.
+
+### Gate feature access
+
+Use features for access that should stay unlocked while a subscription is
+active, after a one-time purchase, or after a manual grant.
+
+```tsx
+import { FeatureGate } from "@/components/pay/feature-gate";
+
+export function AnalyticsSection() {
+  return (
+    <FeatureGate feature="analytics">
+      <AnalyticsDashboard />
+    </FeatureGate>
+  );
+}
+```
+
+Use the same feature slug in the vantezzen/pay dashboard when configuring the
+price that unlocks the feature.
+
+## Deduct credits
+
+Next, deduct credits in the paid work path. This is usually a click handler, form action, or job-start path. Deduct only after the user has confirmed the paid
+action.
+
+When deducing credits, its best to pass a stable `idempotencyKey` for retryable work, such as a job id or request id. If you omit it, the client generates one, which is fine for a single button click but not for server retries.
+
+### Deduct in a client click handler
 
 ```tsx title="components/paid-action.tsx"
 "use client";
@@ -191,50 +246,49 @@ export function PaidAction() {
 }
 ```
 
-Important: `CreditGate` only checks access. It does not spend credits. Deduct
-inside the click handler, form action, or job-start path that actually starts
-the paid work. Use a stable `idempotencyKey` for retries.
+### Deduct in a server action or API route
 
-## Gate feature access
+```ts title="app/api/run-paid-work/route.ts"
+import { createPayServerClient } from "@/lib/pay/server";
 
-Use features for access that should stay unlocked while a subscription is
-active, after a one-time purchase, or after a manual grant.
+export const payServer = createPayServerClient({
+  baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
+  secretKey: process.env.PAY_SECRET_KEY!, // pay_sk_… - server only
+});
 
-```tsx
-import { FeatureGate } from "@/components/pay/feature-gate";
-
-export function AnalyticsSection() {
-  return (
-    <FeatureGate feature="analytics">
-      <AnalyticsDashboard />
-    </FeatureGate>
-  );
+export async function GET() {
+  const session = await getAuth(); // your auth session
+  
+  try {
+    // 1. Charge for the work (creates the wallet lazily via getOrCreateWallet
+    //    on signup, or grant a welcome balance first).
+    await payServer.deduct({
+      externalUserId: userId,
+      amount: 10,
+      idempotencyKey: jobId, // retries never double-charge
+    });
+  } catch (err) {
+    if (err instanceof PayError && err.isInsufficientCredits) {
+      // 2. Out of credits → send the user to checkout or show a message. The client can also show a purchase dialog instead of redirecting.
+      const { url } = await payServer.createCheckout("price_...", {
+        externalUserId: userId,
+        successUrl: "https://your-app.com/billing?status=success",
+      });
+      return { needsPayment: url };
+    }
+    throw err;
+  }
+  // 3. Run the paid work.
+  return startRenderJob(jobId);
 }
 ```
 
-Use the same feature slug in the vantezzen/pay dashboard when configuring the
-price that unlocks the feature.
+Or for feature-gated work, check access with `hasFeature()` instead of deducting credits:
 
-## Add purchase entry points
-
-`CreditGate` and `FeatureGate` include scoped purchase fallbacks by default. Add
-explicit purchase buttons in empty states, pricing cards, or account screens
-when that makes the flow clearer:
-
-```tsx
-import { PurchaseButton } from "@/components/pay/purchase-dialog";
-
-<PurchaseButton filters={{ grantsCredits: true }}>
-  Buy credits
-</PurchaseButton>
-```
-
-For one feature:
-
-```tsx
-<PurchaseButton filters={{ features: ["analytics"] }}>
-  Unlock analytics
-</PurchaseButton>
+```ts title="app/api/run-paid-work/route.ts"
+if (await payServer.hasFeature(user.id, "analytics")) {
+  return runAnalyticsExport();
+}
 ```
 
 ## Tell the user what to do in vantezzen/pay
@@ -245,19 +299,20 @@ After code integration, direct the user to:
 
 Tell them to complete these dashboard steps:
 
-1. Open **Providers** and press **Connect provider**.
-2. Choose **Stripe** or **Polar**, paste the provider key, add the webhook URL
-   shown by vantezzen/pay to the provider, then paste the webhook signing secret
-   back into vantezzen/pay.
-3. Open **Projects** and press **New project**.
-4. Create or open the project for this app.
-5. Open the project **Products** tab and add the product users are paying for.
+0. If not already, create a vantezzen/pay account and log in.
+1. Follow the **Get started** steps at the top to connect to Stripe or Polar
+2. Follow the **Get started** steps at the top to create a new project or open **Projects** and press **New project**.
+5. In the new project, follow the **First steps** guide at the top to create a new product. 
+  - Here the type should be that same as what we implemented (Credit pack, Subscription or One-time unlock).
+  - The name should be the top-level product name (e.g. "Processing time" or "Membership").
+  - If its credits, the "Credit unit" should be the matching unit (e.g. "minutes" or "images").
 6. Add a price, pack, or subscription tier matching the code:
-   - For `CreditGate`, configure credits granted by the purchased price.
-   - For `FeatureGate`, configure the feature slug used in code.
+   - For `CreditGate`/Credit features, configure credits granted by the purchased price, e.g. 100 credits for 9.99 USD.
+   - For `FeatureGate`/Subscription or one-time purchases, configure the feature slug used in code (e.g. "analytics").
 7. Open the project **Developers** tab.
 8. Copy `NEXT_PUBLIC_PAY_URL` and `NEXT_PUBLIC_PAY_KEY` into the app env file,
    replacing the placeholders added earlier.
+  - If the app uses external auth, the user also has to click on "Secret key" and copy `PAY_SECRET_KEY` into the app env file.
 9. Restart the app process if its framework requires env variables to be loaded
    at startup.
 
@@ -269,11 +324,4 @@ and registry URL instead of `pay.vantezzen.io`.
 Run the target project's normal checks: typecheck, lint, and focused tests. Do
 not remove tests to make the integration pass.
 
-Then summarize:
-
-- where `PayProvider` was added
-- where credits or features are gated
-- where wallet or purchase controls were added
-- which env vars still need real dashboard values
-- which dashboard product, price, credit amount, or feature slug must match the
-  code
+Finally, summarize what you did and what the user should do next.

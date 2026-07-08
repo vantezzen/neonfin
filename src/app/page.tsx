@@ -249,6 +249,26 @@ function Demo() {
   );
 }
 
+function AiPrompt() {
+  const prompt = [
+    `Integrate vantezzen/pay into this app from start to finish. For that, please read the guide at https://pay.vantezzen.io/docs/agent.mdx`,
+  ].join("\n");
+
+  return (
+    <section className="mx-auto w-full max-w-5xl px-6 mt-3">
+      <div className="rounded-2xl border bg-canvas shadow-xs p-8 grid gap-3">
+        <p className="leading-relaxed">Using an AI Agent?</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Paste this into your agent and it will integrate vantezzen/pay into
+          your app.
+        </p>
+
+        <CodeSnippet code={prompt} />
+      </div>
+    </section>
+  );
+}
+
 /* -------------------------------------------------------------- steps */
 
 function Steps() {
@@ -356,8 +376,8 @@ function FinalCta() {
           Ship the fun part
         </h2>
         <p className="relative mx-auto mt-4 max-w-md text-sm leading-relaxed text-balance text-primary-foreground/70">
-          Set up vantezzen/pay once. Every side project after that gets payments for
-          the cost of a copy-paste.
+          Set up vantezzen/pay once. Every side project after that gets payments
+          for the cost of a copy-paste.
         </p>
         <div className="relative mt-8 flex justify-center">
           <Suspense
@@ -456,6 +476,7 @@ export default function Home() {
       <main className="flex-1">
         <Hero />
         <Demo />
+        <AiPrompt />
         <Steps />
         <Features />
         <FinalCta />

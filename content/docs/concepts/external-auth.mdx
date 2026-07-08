@@ -46,7 +46,7 @@ npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
 import { createPayServerClient } from "@/lib/pay/server";
 
 export const payServer = createPayServerClient({
-  baseUrl: process.env.PAY_URL!,
+  baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
   secretKey: process.env.PAY_SECRET_KEY!, // pay_sk_… - server only
 });
 ```
