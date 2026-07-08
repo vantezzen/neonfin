@@ -14,6 +14,15 @@ This guide follows the easiest setup:
 That is the path most side projects should try first. Polar and existing-auth
 setups are supported too, but they are easier to understand after this flow.
 
+<Callout title="Setting up with an AI agent?">
+If a coding agent (Claude Code, Cursor, Copilot, …) is doing the integration, just use this prompt:
+
+```text
+Integrate vantezzen/pay into this app from start to finish.
+For that, please read the guide at https://pay.vantezzen.io/docs/agent.mdx
+```
+</Callout>
+
 ## Before you start
 
 You need:
@@ -37,21 +46,3 @@ before installing vantezzen/pay components.
 By the end, your app will have working anonymous credit wallets. Users do not
 need to create an account unless your app already has authentication and you
 choose external auth mode.
-
-## Setting up with an AI agent?
-
-If a coding agent (Claude Code, Cursor, Copilot, …) is doing the integration,
-paste it this prompt after you have a publishable key:
-
-```text
-Integrate vantezzen/pay credits into this app.
-1. Install the components:
-   npx shadcn@latest add https://pay.vantezzen.io/r/pay-provider.json https://pay.vantezzen.io/r/pay-credits.json https://pay.vantezzen.io/r/pay-purchase.json https://pay.vantezzen.io/r/pay-gate.json
-2. Add NEXT_PUBLIC_PAY_URL and NEXT_PUBLIC_PAY_KEY to the env, then
-   wrap the app in <PayProvider baseUrl publishableKey>.
-3. Gate the paid feature with <CreditGate cost={N}> and charge with
-   useCredits().deduct(N, { idempotencyKey }) when the work starts.
-Docs: https://pay.vantezzen.io/docs/getting-started
-```
-
-Swap `pay.vantezzen.io` for your own domain if you self-host.

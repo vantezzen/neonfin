@@ -12,6 +12,7 @@ import { DeleteProjectButton } from "@/components/dashboard/delete-project-butto
 import { ProjectTabs } from "@/components/dashboard/project-tabs";
 import { ProjectFirstSteps } from "@/components/dashboard/project-first-steps";
 import { CopyInline } from "@/components/app/copy";
+import { DevAiCoding } from "@/components/dashboard/dev-ai-coding";
 
 const MODE_LABEL = {
   credit_codes: "Anonymous credit codes",
@@ -79,6 +80,7 @@ export default async function ProjectDetailPage({
         developers={
           <div className="flex flex-col gap-10">
             <ApiKeysSection projectId={project.id} keys={project.apiKeys} />
+            <DevAiCoding appUrl={appUrl} publishableKey={publishableKey} />
             <DevQuickstart appUrl={appUrl} publishableKey={publishableKey} />
           </div>
         }

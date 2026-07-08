@@ -1,5 +1,5 @@
 import "./styles.css";
-import { source } from "@/lib/source";
+import { source } from "@/lib/docs/source";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { baseOptions } from "@/components/docs/layout.shared";

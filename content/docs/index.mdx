@@ -17,8 +17,18 @@ on top of them and handles the surrounding work.
 It is for the tools that are useful enough to charge for, but too small to
 deserve a week of billing infrastructure.
 
-<Callout>
+<Callout title="Want to see a complete integration?">
     Want to know what the final integration looks like? Check out the [example app](/example) for a complete example.
+</Callout>
+
+
+<Callout title="Setting up with an AI agent?">
+If a coding agent (Claude Code, Cursor, Copilot, …) is doing the integration, just use this prompt:
+
+```text
+Integrate vantezzen/pay into this app from start to finish.
+For that, please read the guide at https://pay.vantezzen.io/docs/agent.mdx
+```
 </Callout>
 
 ## Why not just use Stripe or Polar directly?
@@ -63,6 +73,8 @@ codes and attach wallets to your own user ids.
 
 - [Getting started](/docs/getting-started) follows the easiest path: Stripe,
   credit codes, one product, one gated feature.
+- [AI agent integration guide](/docs/agent) gives coding agents a complete
+  start-to-finish implementation workflow.
 - [Common workflows](/docs/workflows) shows how to handle subscriptions,
   billing portals, refunds, and support adjustments.
 - [Components & utils](/docs/components) documents every shadcn registry item.

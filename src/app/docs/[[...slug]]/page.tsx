@@ -1,9 +1,11 @@
-import { source } from "@/lib/source";
+import { source } from "@/lib/docs/source";
 import {
   DocsBody,
   DocsDescription,
   DocsPage,
   DocsTitle,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
 } from "fumadocs-ui/layouts/docs/page";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/components/docs/mdx";
@@ -22,6 +24,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   if (!page) notFound();
   const movedTo = movedDocs.get(page.url);
   if (movedTo && movedTo !== page.url) permanentRedirect(movedTo);
+  const markdownUrl = `${page.url}.mdx`;
 
   const MDX = page.data.body;
 
@@ -29,6 +32,13 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
+      <div className="flex flex-row gap-2 items-center border-b pt-2 pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover
+          markdownUrl={markdownUrl}
+          githubUrl={`https://github.com/vantezzen/pay/blob/main/content/docs/${page.path}`}
+        />
+      </div>
       <DocsBody>
         <MDX
           components={getMDXComponents({

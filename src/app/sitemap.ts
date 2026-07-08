@@ -1,9 +1,13 @@
 import type { MetadataRoute } from "next";
-import { source } from "@/lib/source";
+import { source } from "@/lib/docs/source";
 import { marketingPages, marketingPath } from "@/lib/marketing";
 import { siteUrl } from "@/lib/seo";
 
-const movedDocs = new Set(["/docs/installation", "/docs/client", "/docs/deploy"]);
+const movedDocs = new Set([
+  "/docs/installation",
+  "/docs/client",
+  "/docs/deploy",
+]);
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const docs = source
