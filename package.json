@@ -11,6 +11,7 @@
     "provider-service": "bun run --cwd services/provider start",
     "provider-service:dev": "bun run --cwd services/provider dev",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit && bun run --cwd services/provider typecheck",
     "test": "bun test ./src",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
