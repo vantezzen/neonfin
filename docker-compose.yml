@@ -16,5 +16,27 @@ services:
       timeout: 5s
       retries: 5
 
+  provider-service:
+    profiles: ["secure"]
+    build:
+      context: .
+      dockerfile: Dockerfile.provider-service
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${PROVIDER_DATABASE_URL:-postgres://pay:pay@postgres:5432/pay}
+      PAY_SECRETS_PROVIDER: ${PAY_SECRETS_PROVIDER:-env}
+      PAY_ENCRYPTION_KEY: ${PAY_ENCRYPTION_KEY}
+      PAY_PROVIDER_SERVICE_SECRET: ${PAY_PROVIDER_SERVICE_SECRET}
+      PAY_PROVIDER_SERVICE_PORT: "3001"
+      VAULT_ADDR: ${VAULT_ADDR:-}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_TRANSIT_MOUNT: ${VAULT_TRANSIT_MOUNT:-transit}
+      VAULT_TRANSIT_KEY: ${VAULT_TRANSIT_KEY:-pay-provider-secrets}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
 volumes:
   pay-pgdata:

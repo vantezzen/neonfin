@@ -2,7 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { webhookEvents } from "@/db/schema";
 import { processNormalizedEvent } from "@/lib/fulfillment";
-import { getProvider, getProviderAccount } from "@/lib/providers";
+import {
+  getProviderAccountMeta,
+  verifyProviderWebhook,
+} from "@/lib/provider-service/client";
 
 // Provider-specific signature header.
 const SIG_HEADER: Record<string, string> = {
@@ -16,7 +19,7 @@ export async function POST(
 ): Promise<Response> {
   const { provider, accountId } = await ctx.params;
 
-  const account = await getProviderAccount(accountId);
+  const account = await getProviderAccountMeta(accountId);
   if (!account || account.provider !== provider) {
     return Response.json(
       { error: "Unknown webhook endpoint" },
@@ -33,7 +36,12 @@ export async function POST(
   // Verify against exactly this account's secret - no brute-forcing tenants.
   let event;
   try {
-    event = await getProvider(account).verifyAndNormalize(rawBody, req.headers);
+    event = await verifyProviderWebhook({
+      accountId: account.id,
+      provider: account.provider,
+      rawBody,
+      headers: req.headers,
+    });
   } catch {
     return Response.json(
       { error: "Signature verification failed" },

@@ -3,15 +3,16 @@ title: Self-host vantezzen/pay
 description: Run vantezzen/pay on your own domain with your own database and provider accounts.
 ---
 
-Self-hosting vantezzen/pay means running one Next.js app and one Postgres database.
-Your users still check out through Stripe or Polar; vantezzen/pay handles products,
-wallets, credits, webhooks, and the shadcn registry.
+Self-hosting vantezzen/pay means running the Next.js app, the provider service,
+and Postgres. Your users still check out through Stripe or Polar; vantezzen/pay
+handles products, wallets, credits, webhooks, and the shadcn registry.
 
 ## What you need
 
 - A public domain for vantezzen/pay, for example `https://pay.example.com`.
 - A Postgres database.
-- Environment variables for auth, encryption, and public URLs.
+- Environment variables for auth, provider-service access, provider-service
+  secret storage, and public URLs.
 - Stripe or Polar credentials.
 - A way to run database migrations after deploy.
 
@@ -19,11 +20,12 @@ wallets, credits, webhooks, and the shadcn registry.
 
 1. [Set environment variables](/docs/self-host/environment).
 2. [Create and migrate Postgres](/docs/self-host/database).
-3. [Deploy the Next.js app](/docs/self-host/deployment).
-4. [Connect Stripe or Polar](/docs/workflows/providers) - provider setup is
+3. [Deploy the provider service](/docs/self-host/provider-service).
+4. [Deploy the Next.js app](/docs/self-host/deployment).
+5. [Connect Stripe or Polar](/docs/workflows/providers) - provider setup is
    the same for hosted and self-hosted instances.
-5. [Use your registry URL](/docs/self-host/registry).
-6. [Follow operational checks](/docs/self-host/operations).
+6. [Use your registry URL](/docs/self-host/registry).
+7. [Follow operational checks](/docs/self-host/operations).
 
 <Callout>
 After creating your admin account, set `PAY_ALLOW_SIGNUPS=false` unless you

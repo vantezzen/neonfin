@@ -10,6 +10,7 @@ vantezzen/pay sits in the payment path, so operate it like a small billing servi
 - Webhook events are being processed.
 - Orders move from pending to paid after checkout.
 - Provider webhook secrets are present.
+- Provider service healthcheck returns OK.
 - Database backups are running.
 - Signup access is locked down if the instance is private.
 - Consuming apps use the correct publishable key and base URL.
@@ -38,6 +39,7 @@ table on high-traffic instances.
 | Symptom | Check |
 |---|---|
 | Checkout cannot start | Product has an active synced price and provider account. |
+| Checkout returns provider error | Provider service is reachable and `PAY_PROVIDER_SERVICE_SECRET` matches on both services. |
 | Paid checkout did not credit wallet | Provider webhook endpoint and signing secret. |
 | Browser app gets `403 Origin not allowed` | Project allowed origins include the app origin. |
 | Users see `Insufficient credits` | Purchase UI is visible and prices are active. |

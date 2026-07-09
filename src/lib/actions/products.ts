@@ -15,8 +15,12 @@ import {
   requireOwnedProject,
   requireOwnedProviderAccount,
 } from "@/lib/auth/dal";
-import { getProvider, getProviderAccount } from "@/lib/providers";
 import { parseFeatureKeys } from "@/lib/features";
+import {
+  createProviderPrice,
+  createProviderProduct,
+  getProviderAccountMeta,
+} from "@/lib/provider-service/client";
 import { actionError, type FormState } from "./state";
 
 function refresh(projectId: string) {
@@ -317,18 +321,14 @@ async function syncProductPrices(productId: string): Promise<void> {
   });
   if (!product?.providerAccountId) return;
 
-  const account = await getProviderAccount(product.providerAccountId);
+  const account = await getProviderAccountMeta(product.providerAccountId);
   if (!account) return;
-  const provider = getProvider(account);
+  const catalogMode =
+    account.provider === "stripe" ? "shared_product" : "price_product";
 
   let providerProductId = product.providerProductId;
-  if (provider.catalogMode === "shared_product" && !providerProductId) {
-    if (!provider.createProduct) {
-      throw new Error(
-        `${account.provider} cannot create shared catalog products`,
-      );
-    }
-    const created = await provider.createProduct({
+  if (catalogMode === "shared_product" && !providerProductId) {
+    const created = await createProviderProduct(account.id, {
       name: product.name,
       description: product.description ?? undefined,
     });
@@ -342,9 +342,9 @@ async function syncProductPrices(productId: string): Promise<void> {
   for (const price of product.prices) {
     if (price.providerPriceId) continue;
     const { providerPriceId, providerProductId: createdProductId } =
-      await provider.createPrice({
+      await createProviderPrice(account.id, {
         providerProductId:
-          provider.catalogMode === "shared_product"
+          catalogMode === "shared_product"
             ? (providerProductId ?? undefined)
             : undefined,
         // Polar makes one product per price - name it by tier so the provider

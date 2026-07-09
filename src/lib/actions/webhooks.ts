@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { providerAccounts, webhookEvents } from "@/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { processNormalizedEvent } from "@/lib/fulfillment";
-import { getProvider } from "@/lib/providers";
+import { normalizeProviderWebhook } from "@/lib/provider-service/client";
 
 export async function replayWebhookEvent(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -21,14 +21,23 @@ export async function replayWebhookEvent(formData: FormData): Promise<void> {
       eq(providerAccounts.id, event.providerAccountId),
       eq(providerAccounts.ownerId, user.id),
     ),
+    columns: {
+      id: true,
+      provider: true,
+      ownerId: true,
+      label: true,
+      environment: true,
+      createdAt: true,
+    },
   });
   if (!account) return;
 
   try {
-    const normalized = getProvider(account).normalizeStoredPayload(
-      event.payload,
-      event.providerEventId,
-    );
+    const normalized = await normalizeProviderWebhook({
+      provider: account.provider,
+      payload: event.payload,
+      providerEventId: event.providerEventId,
+    });
     const status = await processNormalizedEvent(normalized, account.id);
     await db
       .update(webhookEvents)

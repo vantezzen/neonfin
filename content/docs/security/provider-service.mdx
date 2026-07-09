@@ -1,0 +1,163 @@
+---
+title: Provider service
+description: Run provider operations outside the public Next.js web process.
+---
+
+The provider service is a small Bun HTTP service that owns stored Stripe/Polar
+API key use. It is not an AI agent and should not be exposed to browsers.
+
+## Responsibilities
+
+The service handles:
+
+- provider account creation and secret updates
+- provider product and price creation
+- checkout session creation
+- billing portal/customer session creation
+- webhook signature verification
+- stored webhook payload normalization for replay
+
+New provider credentials are still submitted through the dashboard web app
+before the web app forwards them to this service. The service boundary protects
+stored keys and provider SDK operations; it does not make a live compromised web
+process unable to see a key being entered at that moment.
+
+The service does not handle wallets, credits, access checks, dashboard auth, or
+public API authentication. Those stay in the Next.js app.
+
+## Environment
+
+The provider service is its own Bun package with its own dependencies and
+environment file. For local development:
+
+```bash
+cd services/provider
+bun install
+cp .env.example .env
+```
+
+Set these on the provider service:
+
+```bash
+DATABASE_URL="postgres://..."
+PAY_PROVIDER_SERVICE_SECRET="long-random-shared-secret"
+PAY_PROVIDER_SERVICE_PORT="3001"
+PAY_SECRETS_PROVIDER="env"
+PAY_ENCRYPTION_KEY="base64-32-byte-key"
+```
+
+Set these on the web app:
+
+```bash
+DATABASE_URL="postgres://..."
+PAY_PROVIDER_SERVICE_URL="http://provider-service:3001"
+PAY_PROVIDER_SERVICE_SECRET="same-long-random-shared-secret"
+BETTER_AUTH_SECRET="..."
+BETTER_AUTH_URL="https://pay.example.com"
+NEXT_PUBLIC_APP_URL="https://pay.example.com"
+PAY_ALLOW_SIGNUPS="false"
+```
+
+`PAY_ENCRYPTION_KEY`, `PAY_SECRETS_PROVIDER`, and `VAULT_*` variables should be
+present on the provider service, not the public web app. The web app logs a
+server warning if it sees provider-only variables.
+
+## Secrets providers
+
+`PAY_SECRETS_PROVIDER=env` is the default. The provider service encrypts stored
+provider credentials with AES-256-GCM and `PAY_ENCRYPTION_KEY`. New ciphertexts
+include authenticated context for the provider account id, provider, and secret
+purpose. Older ciphertexts without the envelope are still decryptable for
+migration.
+
+`PAY_SECRETS_PROVIDER=vault` uses Vault Transit:
+
+```bash
+PAY_SECRETS_PROVIDER="vault"
+VAULT_ADDR="https://vault.example.com"
+VAULT_TOKEN="..."
+VAULT_TRANSIT_MOUNT="transit"
+VAULT_TRANSIT_KEY="pay-provider-secrets"
+```
+
+Vault Transit keeps the encryption key out of the provider service and database.
+The provider service sends base64 plaintext to
+`/v1/<mount>/encrypt/<key>` and stores the returned Vault ciphertext. Decrypt
+uses `/v1/<mount>/decrypt/<key>`.
+
+Vault does not make provider operations impossible during a provider-service
+compromise. It helps with DB-only compromise, key custody, audit logs, token
+scoping, and rotation. Keep the provider-service API narrow and private.
+
+## Local run
+
+Start Postgres:
+
+```bash
+docker compose up -d postgres
+```
+
+Start the provider service:
+
+```bash
+bun run --cwd services/provider dev
+```
+
+Then run the Next.js app in your own terminal. The web app calls
+`PAY_PROVIDER_SERVICE_URL` for provider operations.
+
+## Docker Compose
+
+The default `docker-compose.yml` still starts only Postgres. To also run the
+provider service:
+
+```bash
+docker compose --profile secure up -d
+```
+
+For hosts that deploy services separately, use:
+
+```bash
+docker compose -f docker-compose.provider-service.yml up -d
+```
+
+That file runs only the provider service and expects `DATABASE_URL`,
+`PAY_PROVIDER_SERVICE_SECRET`, and either `PAY_ENCRYPTION_KEY` or Vault Transit
+variables in the deployment environment.
+
+## Dokploy
+
+Deploy the provider service as its own service:
+
+- Dockerfile: `Dockerfile.provider-service`
+- Port: `3001`
+- Healthcheck path: `/healthz`
+- Environment: provider-service variables from above
+
+Deploy the Next.js app separately and set `PAY_PROVIDER_SERVICE_URL` to the
+private/internal URL Dokploy gives the provider service. Use the same
+`PAY_PROVIDER_SERVICE_SECRET` on both services.
+
+## Vercel Services
+
+Vercel supports Dockerfile-backed services and private service bindings. The
+repo includes `vercel.json` with:
+
+- `web`: the Next.js app
+- `provider-service`: the Bun HTTP service using `Dockerfile.provider-service`
+- an internal binding that injects the provider service URL into
+  `PAY_PROVIDER_SERVICE_URL`
+- a rewrite that sends public traffic only to `web`
+
+Set `PAY_PROVIDER_SERVICE_SECRET` for both services. Set `PAY_ENCRYPTION_KEY` or
+Vault Transit variables only for `provider-service`.
+
+## Production checks
+
+- The provider service is reachable from the web app.
+- The provider service is not reachable from the public internet unless your
+  host requires it and the bearer secret is set.
+- The web app does not have `PAY_ENCRYPTION_KEY`, `PAY_SECRETS_PROVIDER`, or
+  `VAULT_*`.
+- Provider API keys are restricted in Stripe/Polar.
+- Provider webhook delivery succeeds and orders move from pending to paid.

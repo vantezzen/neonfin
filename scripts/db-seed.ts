@@ -1,4 +1,5 @@
 import { createCipheriv, createHash, randomBytes } from "node:crypto";
+import { join } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { hashPassword } from "better-auth/crypto";
 import { eq, inArray } from "drizzle-orm";
@@ -8,12 +9,13 @@ import * as schema from "../src/db/schema";
 import { createId } from "../src/lib/id";
 
 loadEnvConfig(process.cwd());
+const databaseUrl = process.env.DATABASE_URL;
+loadEnvConfig(join(process.cwd(), "services/provider"), undefined, console, true);
 
 const DEMO_EMAIL = "pay@vantezzen.io";
 const DEMO_PASSWORD = "1234";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   console.error("DATABASE_URL is not set");
   process.exit(1);
@@ -39,10 +41,28 @@ function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
 
+type Provider = "stripe" | "polar";
+type SecretPurpose = "provider_api_key" | "webhook_secret";
+
+interface SecretContext {
+  accountId: string;
+  provider: Provider;
+  purpose: SecretPurpose;
+}
+
+function contextBytes(context: SecretContext): Buffer {
+  return Buffer.from(
+    `${context.provider}:${context.accountId}:${context.purpose}`,
+    "utf8",
+  );
+}
+
 function encryptionKey(): Buffer {
   const raw = process.env.PAY_ENCRYPTION_KEY;
   if (!raw) {
-    throw new Error("PAY_ENCRYPTION_KEY is not set");
+    throw new Error(
+      "PAY_ENCRYPTION_KEY is not set in services/provider/.env or the process environment",
+    );
   }
   const key = Buffer.from(raw, "base64");
   if (key.length !== 32) {
@@ -51,15 +71,70 @@ function encryptionKey(): Buffer {
   return key;
 }
 
-function encryptSecret(plaintext: string): string {
+async function encryptSecret(
+  plaintext: string,
+  context: SecretContext,
+): Promise<string> {
+  const provider = process.env.PAY_SECRETS_PROVIDER ?? "env";
+  if (provider === "vault") {
+    return vaultEncrypt(plaintext, context);
+  }
+  if (provider !== "env") {
+    throw new Error('PAY_SECRETS_PROVIDER must be "env" or "vault"');
+  }
+
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  cipher.setAAD(contextBytes(context));
   const ciphertext = Buffer.concat([
     cipher.update(plaintext, "utf8"),
     cipher.final(),
   ]);
   const tag = cipher.getAuthTag();
-  return [iv, tag, ciphertext].map((b) => b.toString("base64url")).join(".");
+  const body = [iv, tag, ciphertext]
+    .map((b) => b.toString("base64url"))
+    .join(".");
+  return `env:v1:${body}`;
+}
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+async function vaultEncrypt(
+  plaintext: string,
+  context: SecretContext,
+): Promise<string> {
+  const address = requiredEnv("VAULT_ADDR").replace(/\/+$/, "");
+  const mount = (process.env.VAULT_TRANSIT_MOUNT ?? "transit").replace(
+    /^\/+|\/+$/g,
+    "",
+  );
+  const res = await fetch(
+    `${address}/v1/${mount}/encrypt/${requiredEnv("VAULT_TRANSIT_KEY")}`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-vault-token": requiredEnv("VAULT_TOKEN"),
+      },
+      body: JSON.stringify({
+        plaintext: Buffer.from(plaintext, "utf8").toString("base64"),
+        context: contextBytes(context).toString("base64"),
+      }),
+    },
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    data?: { ciphertext?: string };
+    errors?: string[];
+  };
+  if (!res.ok || !data.data?.ciphertext) {
+    const message = data.errors?.join("; ") || `${res.status} ${res.statusText}`;
+    throw new Error(`Vault Transit encrypt failed: ${message}`);
+  }
+  return data.data.ciphertext;
 }
 
 function apiKey(projectId: string, kind: schema.ApiKeyKind, name: string) {
@@ -265,8 +340,16 @@ try {
         ownerId: userId,
         provider: "stripe",
         label: "Stripe Test - SaaS Demo",
-        secretKeyEnc: encryptSecret("sk_test_demo_pay_screenshots"),
-        webhookSecretEnc: encryptSecret("whsec_demo_clipforge"),
+        secretKeyEnc: await encryptSecret("sk_test_demo_pay_screenshots", {
+          accountId: stripeAccountId,
+          provider: "stripe",
+          purpose: "provider_api_key",
+        }),
+        webhookSecretEnc: await encryptSecret("whsec_demo_clipforge", {
+          accountId: stripeAccountId,
+          provider: "stripe",
+          purpose: "webhook_secret",
+        }),
         environment: "test",
         createdAt: daysAgo(89),
       },
@@ -275,8 +358,19 @@ try {
         ownerId: userId,
         provider: "polar",
         label: "Polar Sandbox - EU Customers",
-        secretKeyEnc: encryptSecret("polar_oat_demo_pay_screenshots"),
-        webhookSecretEnc: encryptSecret("polar_whsec_demo_renderpilot"),
+        secretKeyEnc: await encryptSecret("polar_oat_demo_pay_screenshots", {
+          accountId: polarAccountId,
+          provider: "polar",
+          purpose: "provider_api_key",
+        }),
+        webhookSecretEnc: await encryptSecret(
+          "polar_whsec_demo_renderpilot",
+          {
+            accountId: polarAccountId,
+            provider: "polar",
+            purpose: "webhook_secret",
+          },
+        ),
         environment: "sandbox",
         createdAt: daysAgo(74),
       },

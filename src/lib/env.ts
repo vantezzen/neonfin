@@ -3,9 +3,8 @@ import { z } from "zod";
 
 const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  PAY_ENCRYPTION_KEY: z
-    .string()
-    .min(1, "PAY_ENCRYPTION_KEY is required (base64, 32 bytes)"),
+  PAY_PROVIDER_SERVICE_URL: z.string().url().optional(),
+  PAY_PROVIDER_SERVICE_SECRET: z.string().min(16).optional(),
   // Signs better-auth sessions.
   BETTER_AUTH_SECRET: z
     .string()
@@ -21,6 +20,31 @@ const schema = z.object({
 });
 
 let cached: z.infer<typeof schema> | null = null;
+let warnedProviderOnlySecrets = false;
+
+const providerOnlyEnv = [
+  "PAY_ENCRYPTION_KEY",
+  "PAY_SECRETS_PROVIDER",
+  "PAY_PROVIDER_SERVICE_PORT",
+  "VAULT_ADDR",
+  "VAULT_TOKEN",
+  "VAULT_TRANSIT_MOUNT",
+  "VAULT_TRANSIT_KEY",
+];
+
+function warnProviderOnlyEnv() {
+  if (warnedProviderOnlySecrets) return;
+  warnedProviderOnlySecrets = true;
+
+  const present = providerOnlyEnv.filter((key) => process.env[key]);
+  if (present.length === 0) return;
+
+  console.warn(
+    `[vantezzen/pay] Provider-service-only env vars are present in the Next.js service: ${present.join(
+      ", ",
+    )}. Move them to services/provider/.env or the provider service deployment.`,
+  );
+}
 
 /**
  * Validated, server-only environment. Parsed lazily on first access so the
@@ -35,6 +59,7 @@ export function env(): z.infer<typeof schema> {
       .join("\n");
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
+  warnProviderOnlyEnv();
   cached = parsed.data;
   return cached;
 }

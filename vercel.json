@@ -1,0 +1,26 @@
+{
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "provider-service",
+          "format": "url",
+          "env": "PAY_PROVIDER_SERVICE_URL"
+        }
+      ]
+    },
+    "provider-service": {
+      "root": ".",
+      "dockerfile": "Dockerfile.provider-service"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": { "service": "web" }
+    }
+  ]
+}

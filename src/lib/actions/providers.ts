@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { products, providerAccounts } from "@/db/schema";
+import { products } from "@/db/schema";
 import { requireUser, requireOwnedProviderAccount } from "@/lib/auth/dal";
-import { encryptSecret } from "@/lib/crypto";
+import {
+  createProviderAccount,
+  deleteProviderAccountSecret,
+  saveProviderWebhookSecret,
+  updateProviderAccountSecret,
+} from "@/lib/provider-service/client";
 import { actionError, type FormState } from "./state";
 
 const input = z.object({
@@ -37,16 +42,13 @@ export async function connectProviderStart(
       secretKey: formData.get("secretKey"),
       environment: formData.get("environment") || "production",
     });
-    const [row] = await db
-      .insert(providerAccounts)
-      .values({
-        ownerId: user.id,
-        provider: parsed.provider,
-        label: parsed.label,
-        environment: parsed.environment,
-        secretKeyEnc: encryptSecret(parsed.secretKey),
-      })
-      .returning({ id: providerAccounts.id });
+    const row = await createProviderAccount({
+      ownerId: user.id,
+      provider: parsed.provider,
+      label: parsed.label,
+      environment: parsed.environment,
+      secretKey: parsed.secretKey,
+    });
     // Intentionally NOT revalidating here: this runs mid-wizard (step 0 → 1).
     // Revalidating /dashboard/providers would re-render the accounts section and
     // remount the open ProviderConnectWizard (empty-state → list branch swap),
@@ -69,10 +71,7 @@ export async function saveWebhookSecret(
   try {
     const secret = String(formData.get("webhookSecret") ?? "").trim();
     if (!secret) return { error: "Paste the webhook signing secret" };
-    await db
-      .update(providerAccounts)
-      .set({ webhookSecretEnc: encryptSecret(secret) })
-      .where(eq(providerAccounts.id, id));
+    await saveProviderWebhookSecret(id, secret);
     revalidatePath("/dashboard/providers");
     revalidatePath("/dashboard");
     return { ok: true };
@@ -94,14 +93,13 @@ export async function updateProviderAccount(
     const webhookSecret = String(formData.get("webhookSecret") ?? "");
 
     // Only overwrite secrets when a new value is supplied - blank means "keep".
-    const patch: Record<string, unknown> = { label, environment };
-    if (secretKey) patch.secretKeyEnc = encryptSecret(secretKey);
-    if (webhookSecret) patch.webhookSecretEnc = encryptSecret(webhookSecret);
-
-    await db
-      .update(providerAccounts)
-      .set(patch)
-      .where(eq(providerAccounts.id, id));
+    await updateProviderAccountSecret({
+      accountId: id,
+      label,
+      environment,
+      ...(secretKey ? { secretKey } : {}),
+      ...(webhookSecret ? { webhookSecret } : {}),
+    });
     revalidatePath("/dashboard/providers");
     revalidatePath("/dashboard");
     return { ok: true };
@@ -120,7 +118,7 @@ export async function deleteProviderAccount(formData: FormData): Promise<void> {
     columns: { id: true },
   });
   if (attached) redirect("/dashboard/providers?error=account-in-use");
-  await db.delete(providerAccounts).where(eq(providerAccounts.id, id));
+  await deleteProviderAccountSecret(id);
   revalidatePath("/dashboard/providers");
   revalidatePath("/dashboard");
 }

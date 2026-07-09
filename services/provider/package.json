@@ -1,0 +1,21 @@
+{
+  "name": "@vantezzen/pay-provider-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@polar-sh/sdk": "^0.48.1",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9",
+    "stripe": "^22.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

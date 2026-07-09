@@ -1,14 +1,13 @@
-import "server-only";
 import { Polar } from "@polar-sh/sdk";
-import { validateEvent } from "@polar-sh/sdk/webhooks";
 import type { PresentmentCurrency } from "@polar-sh/sdk/models/components/presentmentcurrency.js";
 import type { SubscriptionRecurringInterval } from "@polar-sh/sdk/models/components/subscriptionrecurringinterval.js";
+import { validateEvent } from "@polar-sh/sdk/webhooks";
 import type {
   CreateCheckoutInput,
   CreatePriceInput,
   NormalizedEvent,
   PaymentProvider,
-} from "./types";
+} from "../../contract";
 
 type PolarWebhookEvent = ReturnType<typeof validateEvent>;
 
@@ -72,9 +71,6 @@ export class PolarProvider implements PaymentProvider {
     );
 
     return {
-      // Polar checkouts select products, not standalone price ids. Because this
-      // adapter creates one Polar product per vantezzen/pay price, the product id is
-      // the durable checkout reference stored in `prices.providerPriceId`.
       providerPriceId: product.id,
       providerProductId: product.id,
     };
@@ -107,61 +103,14 @@ export class PolarProvider implements PaymentProvider {
       Object.fromEntries(headers.entries()),
       this.webhookSecret,
     );
-    return this.normalizePolarEvent(event, header(headers, "webhook-id"));
+    return normalizePolarEvent(event, header(headers, "webhook-id"));
   }
 
   normalizeStoredPayload(
     payload: unknown,
     providerEventId: string,
   ): NormalizedEvent {
-    return this.normalizePolarEvent(payload as PolarWebhookEvent, providerEventId);
-  }
-
-  private normalizePolarEvent(
-    event: PolarWebhookEvent,
-    providerEventId: string,
-  ): NormalizedEvent {
-    const base = { providerEventId, rawType: event.type };
-
-    switch (event.type) {
-      case "order.paid":
-        return {
-          ...base,
-          type:
-            event.data.billingReason === "subscription_cycle"
-              ? "subscription.renewed"
-              : "order.paid",
-          providerCheckoutId: event.data.checkoutId ?? undefined,
-          providerCustomerId: event.data.customerId,
-          providerSubscriptionId: event.data.subscriptionId ?? undefined,
-          currentPeriodEnd: event.data.subscription?.currentPeriodEnd ?? undefined,
-          metadata: stringMetadata(event.data.metadata),
-        };
-      case "order.refunded":
-        return {
-          ...base,
-          type: "order.refunded",
-          providerCheckoutId: event.data.checkoutId ?? undefined,
-          providerCustomerId: event.data.customerId,
-          providerSubscriptionId: event.data.subscriptionId ?? undefined,
-          metadata: stringMetadata(event.data.metadata),
-        };
-      // A scheduled cancellation - access continues until the period ends, so
-      // don't end it yet. Polar sends `subscription.revoked` at the real end.
-      case "subscription.canceled":
-        return { ...base, type: "ignored" };
-      case "subscription.revoked":
-        return {
-          ...base,
-          type: "subscription.ended",
-          providerCustomerId: event.data.customerId,
-          providerSubscriptionId: event.data.id,
-          currentPeriodEnd: event.data.currentPeriodEnd ?? undefined,
-          metadata: stringMetadata(event.data.metadata),
-        };
-      default:
-        return { ...base, type: "ignored" };
-    }
+    return normalizePolarEvent(payload as PolarWebhookEvent, providerEventId);
   }
 
   async getPortalUrl(customerId: string, returnUrl: string) {
@@ -170,5 +119,63 @@ export class PolarProvider implements PaymentProvider {
       returnUrl,
     });
     return session.customerPortalUrl;
+  }
+}
+
+export function verifyPolarWebhook(
+  rawBody: string,
+  headers: Headers,
+  webhookSecret: string,
+): NormalizedEvent {
+  const event = validateEvent(
+    rawBody,
+    Object.fromEntries(headers.entries()),
+    webhookSecret,
+  );
+  return normalizePolarEvent(event, header(headers, "webhook-id"));
+}
+
+export function normalizePolarEvent(
+  event: PolarWebhookEvent,
+  providerEventId: string,
+): NormalizedEvent {
+  const base = { providerEventId, rawType: event.type };
+
+  switch (event.type) {
+    case "order.paid":
+      return {
+        ...base,
+        type:
+          event.data.billingReason === "subscription_cycle"
+            ? "subscription.renewed"
+            : "order.paid",
+        providerCheckoutId: event.data.checkoutId ?? undefined,
+        providerCustomerId: event.data.customerId,
+        providerSubscriptionId: event.data.subscriptionId ?? undefined,
+        currentPeriodEnd: event.data.subscription?.currentPeriodEnd ?? undefined,
+        metadata: stringMetadata(event.data.metadata),
+      };
+    case "order.refunded":
+      return {
+        ...base,
+        type: "order.refunded",
+        providerCheckoutId: event.data.checkoutId ?? undefined,
+        providerCustomerId: event.data.customerId,
+        providerSubscriptionId: event.data.subscriptionId ?? undefined,
+        metadata: stringMetadata(event.data.metadata),
+      };
+    case "subscription.canceled":
+      return { ...base, type: "ignored" };
+    case "subscription.revoked":
+      return {
+        ...base,
+        type: "subscription.ended",
+        providerCustomerId: event.data.customerId,
+        providerSubscriptionId: event.data.id,
+        currentPeriodEnd: event.data.currentPeriodEnd ?? undefined,
+        metadata: stringMetadata(event.data.metadata),
+      };
+    default:
+      return { ...base, type: "ignored" };
   }
 }

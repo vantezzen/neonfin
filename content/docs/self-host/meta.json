@@ -4,6 +4,7 @@
     "index",
     "environment",
     "database",
+    "provider-service",
     "registry",
     "deployment",
     "operations"

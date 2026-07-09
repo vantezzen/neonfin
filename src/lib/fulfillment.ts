@@ -23,7 +23,7 @@ import {
   WalletExpiredError,
   type Tx,
 } from "@/lib/credits";
-import type { NormalizedEvent } from "@/lib/providers/types";
+import type { NormalizedEvent } from "@/lib/provider-service/types";
 
 export type FulfillmentResult = "processed" | "skipped";
 

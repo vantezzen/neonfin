@@ -1,0 +1,31 @@
+---
+title: Provider service
+description: Deploy the secure provider service for self-hosted instances.
+---
+
+Production self-hosted instances should run the
+[provider service](/docs/security/provider-service). It keeps Stripe/Polar API
+key use outside the public Next.js process while preserving a small deployment
+shape: one web service, one provider service, and Postgres.
+
+## Minimal topology
+
+- `web`: Next.js dashboard, docs, public API, wallet/order fulfillment.
+- `provider-service`: Bun HTTP service for provider secrets and provider SDK
+  calls.
+- `postgres`: shared database.
+
+Set `PAY_PROVIDER_SERVICE_URL` and `PAY_PROVIDER_SERVICE_SECRET` on the web app.
+Set the same `PAY_PROVIDER_SERVICE_SECRET` plus either `PAY_ENCRYPTION_KEY` or
+Vault Transit variables on the provider service.
+
+The provider service has its own package and env file:
+
+```bash
+cd services/provider
+bun install
+cp .env.example .env
+```
+
+See [Security → Provider service](/docs/security/provider-service) for local,
+Docker Compose, Dokploy, and Vercel examples.

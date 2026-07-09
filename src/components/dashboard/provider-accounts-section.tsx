@@ -197,12 +197,16 @@ function EditButton({ account }: { account: Account }) {
       </Field>
       <Field
         label={account.provider === "polar" ? "Access token" : "Secret key"}
-        hint="Blank = keep current"
+        hint={
+          account.provider === "polar"
+            ? "Blank = keep current. Use a scoped organization access token."
+            : "Blank = keep current. Use a Stripe restricted key when possible."
+        }
       >
         <Input
           name="secretKey"
           type="password"
-          placeholder={account.provider === "polar" ? "polar_oat_…" : "sk_…"}
+          placeholder={account.provider === "polar" ? "polar_oat_…" : "rk_…"}
         />
       </Field>
       <Field label="Webhook signing secret" hint="Blank = keep current">

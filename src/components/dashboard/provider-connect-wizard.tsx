@@ -93,7 +93,7 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
         <DialogTitle>Connect provider</DialogTitle>
         <DialogDescription>
           {step === 0
-            ? "Paste your API key - vantezzen/pay manages the rest."
+            ? "Paste a restricted provider key - vantezzen/pay manages the rest."
             : currentStep === 1
               ? "Register the webhook endpoint so payments get recorded."
               : "Add the signing secret to finish."}
@@ -156,13 +156,13 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
             hint={
               provider === "polar"
                 ? "Polar → Settings → Developers. Use an organization access token with catalog, checkout, customer session, and webhook scopes."
-                : "Stripe → Workbench (bottom bar) → API keys. Use sk_test_… while developing."
+                : "Stripe → Workbench (bottom bar) → API keys. Use a restricted key with catalog, checkout, customer, and billing portal access."
             }
           >
             <Input
               name="secretKey"
               type="password"
-              placeholder={provider === "polar" ? "polar_oat_…" : "sk_test_…"}
+              placeholder={provider === "polar" ? "polar_oat_…" : "rk_test_…"}
               required
               autoFocus
             />

@@ -3,38 +3,65 @@ title: Environment variables
 description: Required configuration for a self-hosted vantezzen/pay instance.
 ---
 
-## Required variables
+## Web app variables
 
 | Variable | Example | Notes |
 |---|---|---|
 | `DATABASE_URL` | `postgres://...` | Postgres connection string. |
-| `PAY_ENCRYPTION_KEY` | `base64...` | Must decode to exactly 32 bytes. |
+| `PAY_PROVIDER_SERVICE_URL` | `http://provider-service:3001` | Internal URL the web app uses for provider operations. |
+| `PAY_PROVIDER_SERVICE_SECRET` | `base64...` | Shared secret between the web app and provider service. |
 | `BETTER_AUTH_SECRET` | `base64...` | Random auth secret. |
 | `BETTER_AUTH_URL` | `https://pay.example.com` | Public dashboard/auth URL. |
 | `NEXT_PUBLIC_APP_URL` | `https://pay.example.com` | Public URL used for webhooks, checkout returns, and registry links. |
 | `PAY_ALLOW_SIGNUPS` | `true` or `false` | Allow new dashboard accounts. |
 
+## Provider service variables
+
+Put these in `services/provider/.env` or the provider service deployment:
+
+| Variable | Example | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgres://...` | Postgres connection string. Can use a narrower DB role. |
+| `PAY_PROVIDER_SERVICE_SECRET` | `base64...` | Same shared secret as the web app. |
+| `PAY_PROVIDER_SERVICE_PORT` | `3001` | Local port. |
+| `PAY_SECRETS_PROVIDER` | `env` or `vault` | Defaults to `env`. |
+| `PAY_ENCRYPTION_KEY` | `base64...` | Required for `PAY_SECRETS_PROVIDER=env`; must decode to exactly 32 bytes. |
+| `VAULT_ADDR` | `https://vault.example.com` | Required for `PAY_SECRETS_PROVIDER=vault`. |
+| `VAULT_TOKEN` | `hvs...` | Vault token for Transit encrypt/decrypt. |
+| `VAULT_TRANSIT_MOUNT` | `transit` | Vault Transit mount path. |
+| `VAULT_TRANSIT_KEY` | `pay-provider-secrets` | Vault Transit key name. |
+
 ## Generate secrets
 
-Generate both secrets locally:
+Generate secrets locally:
 
 ```bash
 openssl rand -base64 32
 openssl rand -base64 32
+openssl rand -base64 32
 ```
 
-Use one value for `PAY_ENCRYPTION_KEY` and the other for
-`BETTER_AUTH_SECRET`.
+Use one value for `BETTER_AUTH_SECRET`, one for `PAY_PROVIDER_SERVICE_SECRET`,
+and one for `PAY_ENCRYPTION_KEY` if you use the default env secrets provider.
 
 ## Local example
 
 ```bash title=".env"
 DATABASE_URL="postgres://pay:pay@localhost:5432/pay"
-PAY_ENCRYPTION_KEY="..."
+PAY_PROVIDER_SERVICE_URL="http://localhost:3001"
+PAY_PROVIDER_SERVICE_SECRET="..."
 BETTER_AUTH_SECRET="..."
 BETTER_AUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 PAY_ALLOW_SIGNUPS="true"
+```
+
+```bash title="services/provider/.env"
+DATABASE_URL="postgres://pay:pay@localhost:5432/pay"
+PAY_PROVIDER_SERVICE_SECRET="..."
+PAY_PROVIDER_SERVICE_PORT="3001"
+PAY_SECRETS_PROVIDER="env"
+PAY_ENCRYPTION_KEY="..."
 ```
 
 ## Production tips
@@ -42,6 +69,8 @@ PAY_ALLOW_SIGNUPS="true"
 - Keep `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` on the same public origin
   unless you have a specific reason not to.
 - Rotate provider API keys from the provider dashboard, then update vantezzen/pay.
+- Put `PAY_ENCRYPTION_KEY`, `PAY_SECRETS_PROVIDER`, and `VAULT_*` on the
+  provider service, not the public web app.
 - Do not rotate `PAY_ENCRYPTION_KEY` casually; it encrypts stored provider
   secrets.
 - Set `PAY_ALLOW_SIGNUPS=false` after your first admin user exists.

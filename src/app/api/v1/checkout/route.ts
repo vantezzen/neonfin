@@ -17,8 +17,11 @@ import {
   WalletExpiredError,
 } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
-import { getProvider, getProviderAccount } from "@/lib/providers";
 import { providerErrorMessage } from "@/lib/api/provider-errors";
+import {
+  createProviderCheckout,
+  getProviderAccountMeta,
+} from "@/lib/provider-service/client";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -130,7 +133,7 @@ export async function POST(req: Request): Promise<Response> {
       cors,
     );
   }
-  const account = await getProviderAccount(price.product.providerAccountId);
+  const account = await getProviderAccountMeta(price.product.providerAccountId);
   if (!account)
     return apiError(400, "provider_account_missing", "Provider account missing", cors);
 
@@ -207,7 +210,7 @@ export async function POST(req: Request): Promise<Response> {
   const base = env().NEXT_PUBLIC_APP_URL;
   const mode = price.product.type === "subscription" ? "subscription" : "payment";
   try {
-    const { url, checkoutId } = await getProvider(account).createCheckout({
+    const { url, checkoutId } = await createProviderCheckout(account.id, {
       providerPriceId: price.providerPriceId,
       mode,
       successUrl: input.successUrl ?? `${base}/pay/success/${order.id}`,

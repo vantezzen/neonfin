@@ -11,8 +11,11 @@ import {
 } from "@/lib/api/http";
 import { findActiveCodeWallet, WalletExpiredError } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
-import { getProvider, getProviderAccount } from "@/lib/providers";
 import { providerErrorMessage } from "@/lib/api/provider-errors";
+import {
+  getProviderAccountMeta,
+  getProviderPortalUrl,
+} from "@/lib/provider-service/client";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -78,7 +81,7 @@ export async function GET(
   if (!providerAccountId) {
     return apiError(400, "no_billing_customer", "No provider account for this wallet", cors);
   }
-  const account = await getProviderAccount(providerAccountId);
+  const account = await getProviderAccountMeta(providerAccountId);
   if (!account)
     return apiError(400, "provider_account_missing", "Provider account missing", cors);
 
@@ -93,7 +96,8 @@ export async function GET(
     );
   }
   try {
-    const url = await getProvider(account).getPortalUrl(
+    const url = await getProviderPortalUrl(
+      account.id,
       wallet.providerCustomerId,
       returnUrl,
     );

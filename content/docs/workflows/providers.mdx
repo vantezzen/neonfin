@@ -28,13 +28,16 @@ https://pay.example.com/api/webhooks/stripe/<provider-account-id>
 
 ## Stripe
 
-### 1. Save the Stripe secret key
+### 1. Save a Stripe restricted key
 
 In vantezzen/pay, choose **Providers → Connect provider**, select **Stripe**, and
-paste a Stripe secret key.
+paste a Stripe restricted API key.
 
-Use `sk_test_...` while developing. Use a live secret key only for the Stripe
-account that should own production products, prices, customers, and invoices.
+Use a restricted key (`rk_test_...` or `rk_live_...`) instead of an unrestricted
+secret key when possible. The key needs permissions for the catalog objects,
+checkout sessions, billing portal sessions, and customer/session reads that
+vantezzen/pay manages. If your host has stable egress, restrict the key to that
+IP range or network policy in Stripe.
 
 ### 2. Create the Stripe event destination
 
@@ -89,7 +92,7 @@ provider account in vantezzen/pay before launch.
 Sandbox credentials come from `sandbox.polar.sh` and use the sandbox API.
 Production credentials come from your production Polar organization.
 
-### 2. Save the Polar access token
+### 2. Save a scoped Polar access token
 
 In Polar, create an organization access token. Give it access to the catalog,
 checkout, customer sessions, and webhooks that vantezzen/pay manages.
@@ -126,6 +129,9 @@ and confirm the webhook log records it.
 
 - **Checkout cannot start:** the product needs an active synced price attached
   to a connected provider account.
+- **Checkout returns a provider error:** confirm the provider service is running
+  and that the web app/provider service share the same
+  `PAY_PROVIDER_SERVICE_SECRET`.
 - **Events do not arrive:** confirm the provider webhook URL matches the
   vantezzen/pay account URL exactly.
 - **Events fail signature validation:** copy the webhook signing secret again
@@ -138,5 +144,6 @@ and confirm the webhook log records it.
 ## Provider references
 
 - [Stripe webhooks](https://docs.stripe.com/webhooks)
+- [Stripe restricted API keys](https://docs.stripe.com/keys/restricted-api-keys)
 - [Polar authentication](https://polar.sh/docs/integrate/authentication)
 - [Polar sandbox](https://polar.sh/docs/integrate/sandbox)

@@ -72,6 +72,14 @@ export async function requireOwnedProviderAccount(accountId: string) {
       eq(providerAccounts.id, accountId),
       eq(providerAccounts.ownerId, user.id),
     ),
+    columns: {
+      id: true,
+      ownerId: true,
+      provider: true,
+      label: true,
+      environment: true,
+      createdAt: true,
+    },
   });
   if (!account) redirect("/dashboard/providers");
   return account;

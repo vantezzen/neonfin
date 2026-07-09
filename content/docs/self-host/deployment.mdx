@@ -1,22 +1,28 @@
 ---
 title: Deployment
-description: Deploy the vantezzen/pay Next.js app.
+description: Deploy the vantezzen/pay Next.js app and connect it to the provider service.
 ---
 
-vantezzen/pay is a standard Next.js app. Vercel is the simplest target, but any host
-that can run Next.js with environment variables and Postgres access works.
+vantezzen/pay's public surface is a standard Next.js app. Provider API keys live
+in the separate provider service; the web app calls it through
+`PAY_PROVIDER_SERVICE_URL`.
 
 ## Vercel
 
 1. Import the repository.
 2. Set the environment variables from [Environment variables](/docs/self-host/environment).
-3. Deploy.
-4. Run `bun run db:migrate` once against production.
-5. Visit `/register` and create your admin account.
-6. Set `PAY_ALLOW_SIGNUPS=false`.
+3. Make sure the provider service is deployed and reachable by the web app.
+4. Deploy.
+5. Run `bun run db:migrate` once against production.
+6. Visit `/register` and create your admin account.
+7. Set `PAY_ALLOW_SIGNUPS=false`.
 
 The build script generates the shadcn registry JSON before building the app, so
 the registry is served from `/r`.
+
+With Vercel Services, the included `vercel.json` defines a `web` service and a
+`provider-service` service. The provider service URL is injected into the web app
+as `PAY_PROVIDER_SERVICE_URL` over Vercel's internal service binding.
 
 ## Other hosts
 
@@ -27,6 +33,8 @@ Your host must support:
 - HTTPS public URL for webhooks.
 - Persistent Postgres database.
 - Environment variables.
+- Private network access to the provider service, or a protected provider
+  service URL with `PAY_PROVIDER_SERVICE_SECRET`.
 
 ### Trusted proxy
 

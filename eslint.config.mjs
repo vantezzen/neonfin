@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     ".source/**",
     // Consumer-targeted shadcn registry sources are validated by `shadcn build`.
     "registry/**",
+    // Standalone Bun package with its own dependencies and typecheck.
+    "services/provider/**",
   ]),
 ]);
 

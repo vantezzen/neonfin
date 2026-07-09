@@ -1,0 +1,18 @@
+services:
+  provider-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.provider-service
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PAY_SECRETS_PROVIDER: ${PAY_SECRETS_PROVIDER:-env}
+      PAY_ENCRYPTION_KEY: ${PAY_ENCRYPTION_KEY}
+      PAY_PROVIDER_SERVICE_SECRET: ${PAY_PROVIDER_SERVICE_SECRET}
+      PAY_PROVIDER_SERVICE_PORT: "3001"
+      VAULT_ADDR: ${VAULT_ADDR:-}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_TRANSIT_MOUNT: ${VAULT_TRANSIT_MOUNT:-transit}
+      VAULT_TRANSIT_KEY: ${VAULT_TRANSIT_KEY:-pay-provider-secrets}
+    ports:
+      - "3001:3001"

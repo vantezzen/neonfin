@@ -1,0 +1,78 @@
+---
+title: Security model
+description: How vantezzen/pay protects provider credentials and payment state.
+---
+
+vantezzen/pay never handles card numbers. Stripe or Polar owns checkout,
+payment methods, invoices, taxes, refunds, and subscription billing. vantezzen/pay
+stores app-facing billing state: projects, products, prices, wallets, orders,
+subscriptions, feature access, API keys, provider references, and webhook logs.
+
+## Provider credentials
+
+Provider API keys are the most sensitive operational secret in vantezzen/pay.
+Use the [provider service](/docs/security/provider-service) in production so the
+public Next.js app does not decrypt or use stored Stripe/Polar API keys directly.
+
+In the provider-service deployment:
+
+- The public web app calls a small internal HTTP service.
+- The provider service owns provider API key encryption/decryption.
+- The provider service can use local AES-GCM encryption or Vault Transit for
+  stored credentials.
+- New provider credentials still pass through the dashboard action when a user
+  creates or updates a provider account, then are immediately forwarded to the
+  provider service for storage.
+- Webhook verification uses only webhook signing secrets.
+- The web app still handles wallet/order fulfillment after an event is verified.
+- The provider service exposes named operations, not a generic decrypt endpoint
+  and not an arbitrary Stripe/Polar proxy.
+
+## What this protects
+
+The provider service is meant to limit blast radius:
+
+- A database-only leak does not reveal plaintext provider API keys.
+- A web app code path cannot accidentally touch provider API keys.
+- A web app compromise cannot read stored provider API keys from the web process.
+- A live web app compromise during provider setup could still capture a newly
+  submitted credential before it reaches the provider service.
+- Provider calls can be audited and narrowed to checkout, catalog sync, billing
+  portal creation, webhook verification, and stored event normalization.
+
+The web app can still call the provider service for allowed operations. That is
+why provider API keys should be restricted at Stripe/Polar and why the provider
+service should not be exposed publicly.
+
+## Hard limits
+
+No deployment can honestly claim that no trust is required. If an attacker gets
+host-level access to both the web app and provider service, the service boundary
+is gone. If the provider service exposes a generic decrypt endpoint or arbitrary
+provider proxy, it has effectively handed the web app the key again.
+
+Keep the contract narrow:
+
+- allow `createCheckout`
+- allow `createPortalSession`
+- allow catalog sync operations
+- allow webhook verification and normalization
+- never allow `decryptSecret`
+- never allow `{ method, path, body }` provider proxy calls
+
+## Legal and compliance
+
+For a hosted instance, prepare the surrounding trust material before onboarding
+real customers:
+
+- privacy policy
+- terms of service
+- Impressum where required
+- data processing agreement for EU customers
+- subprocessor list
+- incident response and breach notification process
+- security contact and `/.well-known/security.txt`
+
+Do not claim PCI compliance casually. The accurate claim is that card data goes
+directly to Stripe or Polar; merchants still need to satisfy their own PCI and
+legal obligations.

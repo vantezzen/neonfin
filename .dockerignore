@@ -1,0 +1,9 @@
+.git
+.next
+build
+out
+node_modules
+**/node_modules
+.env*
+!.env.example
+!services/provider/.env.example

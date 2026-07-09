@@ -1,0 +1,12 @@
+FROM oven/bun:1 AS deps
+WORKDIR /app/services/provider
+COPY services/provider/package.json services/provider/bun.lock ./
+RUN bun install --frozen-lockfile --production
+
+FROM oven/bun:1
+WORKDIR /app/services/provider
+ENV NODE_ENV=production
+COPY --from=deps /app/services/provider/node_modules ./node_modules
+COPY shared /app/shared
+COPY services/provider ./
+CMD ["bun", "src/server.ts"]
