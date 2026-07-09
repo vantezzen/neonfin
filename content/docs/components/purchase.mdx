@@ -64,6 +64,18 @@ Filter to credit-granting prices for a product:
 </PurchaseButton>
 ```
 
+vantezzen/pay allows entering provider promotion or discount codes at checkout. If you want to disable this, pass `allowPromotionCodes={false}`:
+
+```tsx
+<PurchaseButton allowPromotionCodes={false}>Buy credits</PurchaseButton>
+```
+
+If you want to start the checkout with a discount code already applied:
+
+```tsx
+<PurchaseButton discountCode="LAUNCH10">Buy credits for 10% off</PurchaseButton>
+```
+
 ## PurchaseDialog
 
 Use the dialog directly when you want custom trigger control.
@@ -96,10 +108,12 @@ Controlled usage:
 | `productId` | `string` | All products | Limit purchase options to one product. |
 | `filters` | `PurchaseFilters` | All prices | Filter products/prices shown in the dialog. |
 | `children` | `React.ReactNode` | Filter-aware label | Button label. |
-| `title` | `string` | `Get access` | Dialog title. |
+| `title` | `string` | `Buy credits or subscription` | Dialog title. |
 | `description` | `string` | `Choose an option to continue.` | Dialog description. |
 | `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
+| `allowPromotionCodes` | `boolean` | `false` | Lets customers enter a provider promotion or discount code at checkout. |
+| `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 | `className` | `string` | - | Extra classes. |
 | Button props | `React.ComponentProps<typeof Button>` | - | Forwarded to the local shadcn button. |
@@ -113,10 +127,12 @@ Controlled usage:
 | `open` | `boolean` | Internal state | Controlled open state. |
 | `onOpenChange` | `(open: boolean) => void` | Internal setter | Controlled open callback. |
 | `children` | `React.ReactNode` | - | Optional trigger element. |
-| `title` | `string` | `Get access` | Dialog title. |
+| `title` | `string` | `Buy credits or subscription` | Dialog title. |
 | `description` | `string` | `Choose an option to continue.` | Dialog description. |
 | `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
+| `allowPromotionCodes` | `boolean` | `false` | Lets customers enter a provider promotion or discount code at checkout. |
+| `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 
 ### PurchaseFilters
@@ -135,15 +151,17 @@ true }}`. The default `FeatureGate` fallback uses `filters={{ features:
 
 ## Checkout return behavior
 
-The dialog calls `client.startCheckout(priceId, { flow })`, which stores the
-order id in `localStorage`.
+The dialog calls `client.startCheckout(priceId, { flow, allowPromotionCodes,
+discountCode })`, which stores the order id in `localStorage`.
 
 In popup checkout, the original page keeps polling the order and refreshes as
 soon as the webhook marks it paid. If the customer closes or cancels the popup,
 the dialog returns to the normal selectable state with a clear message.
 
 In redirect checkout, `PayProvider` sees the pending order when the user
-returns, polls the order, saves the issued code, and refreshes balances.
+returns, polls the order, saves the issued code for credit-code wallets, and
+refreshes balances. External-auth wallets refresh through your same-origin
+bridge and do not use browser recovery codes.
 
 That is why a simple current-page `successUrl` works for most apps.
 

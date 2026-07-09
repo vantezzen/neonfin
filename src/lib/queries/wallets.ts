@@ -1,9 +1,10 @@
 import "server-only";
-import { and, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   featureGrants,
   ledgerEntries,
+  orders,
   projects,
   subscriptions,
   wallets,
@@ -17,7 +18,7 @@ async function ownedProjectIds(ownerId: string): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-/** Wallets across the owner's projects, newest-seen first, filtered by code. */
+/** Wallets across the owner's projects, newest-seen first. */
 export async function listWallets(
   ownerId: string,
   opts: { search?: string; limit?: number } = {},
@@ -28,8 +29,41 @@ export async function listWallets(
   const search = opts.search?.trim();
   // Escape LIKE wildcards so a search for "50%" matches literally.
   const escaped = search?.replace(/[\\%_]/g, (m) => `\\${m}`);
+  const pattern = escaped ? `%${escaped}%` : undefined;
+  const orderWalletIds = pattern
+    ? await db
+        .select({ walletId: orders.walletId })
+        .from(orders)
+        .where(
+          and(
+            inArray(orders.projectId, ids),
+            isNotNull(orders.walletId),
+            or(
+              ilike(orders.id, pattern),
+              ilike(orders.providerCheckoutId, pattern),
+              ilike(orders.providerCustomerId, pattern),
+              ilike(orders.customerEmail, pattern),
+              ilike(orders.issuedCode, pattern),
+            ),
+          ),
+        )
+        .limit(opts.limit ?? 100)
+        .then((rows) => [
+          ...new Set(
+            rows.flatMap((row) => (row.walletId ? [row.walletId] : [])),
+          ),
+        ])
+    : [];
+  const searchWhere = pattern
+    ? or(
+        ilike(wallets.code, pattern),
+        ilike(wallets.externalUserId, pattern),
+        ilike(wallets.providerCustomerId, pattern),
+        ...(orderWalletIds.length ? [inArray(wallets.id, orderWalletIds)] : []),
+      )
+    : undefined;
   return db.query.wallets.findMany({
-    where: escaped ? and(scoped, ilike(wallets.code, `%${escaped}%`)) : scoped,
+    where: searchWhere ? and(scoped, searchWhere) : scoped,
     orderBy: desc(wallets.lastSeenAt),
     limit: opts.limit ?? 100,
     with: {

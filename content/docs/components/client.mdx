@@ -7,10 +7,10 @@ description: Browser client for custom credit, checkout, and wallet UI.
 components. Use it when you want custom UI but still want the same wallet,
 checkout, balance, and feature logic that `PayProvider` uses internally.
 
-The client uses a publishable key (`pay_pk_...`) and stores anonymous wallet
-credit codes in `localStorage`. If your app has logged-in users and you want
-credits tied to your own user ids, use the [server client](/docs/components/server)
-instead.
+By default the client uses a publishable key (`pay_pk_...`) and stores
+anonymous wallet credit codes in `localStorage`. For logged-in external-auth
+apps, configure `mode: "external_auth"` and expose same-origin bridge routes
+backed by the [server client](/docs/components/server).
 
 ## Install
 
@@ -35,7 +35,14 @@ export const pay = createPayClient({
 |---|---|---|
 | `baseUrl` | `string` | Public URL of your vantezzen/pay instance. |
 | `publishableKey` | `string` | Project publishable key. Safe for browser use. |
+| `mode` | `"credit_codes" \| "external_auth"` | Identity mode. Defaults to `credit_codes`. |
+| `externalUserId` | `string` | Stable user id from your app. Required for external auth. |
+| `externalApiBasePath` | `string` | Same-origin bridge path for external-auth server calls. Defaults to `/api/pay`. |
 | `storageKey` | `string` | Optional custom `localStorage` key for credit codes. |
+
+External-auth bridge routes should validate the current session server-side and
+use `pay_sk_...` through `createPayServerClient()`. Never put a secret key in
+browser code.
 
 ## Common calls
 
@@ -46,6 +53,8 @@ const wallet = await pay.getWallet();
 const result = await pay.deduct(10, { idempotencyKey: "job_123" });
 
 await pay.startCheckout("price_..."); // popup on desktop, redirect on mobile
+await pay.startCheckout("price_...", { allowPromotionCodes: true });
+await pay.startCheckout("price_...", { discountCode: "LAUNCH10" });
 ```
 
 ## Credit-code methods
@@ -105,11 +114,35 @@ Force redirect checkout when your app cannot support popups:
 await pay.startCheckout("price_...", { flow: "redirect" });
 ```
 
+Let buyers enter a provider promotion or discount code at checkout:
+
+```ts
+await pay.startCheckout("price_...", { allowPromotionCodes: true });
+```
+
+Or start checkout from a specific offer button with a code already applied or
+prefilled:
+
+```ts
+await pay.startCheckout("price_...", { discountCode: "LAUNCH10" });
+```
+
 | Method | Returns | Description |
 |---|---|---|
 | `startCheckout(priceId, opts?)` | `Promise<CheckoutResult>` | One-call checkout. Creates the session, remembers the order, and uses popup or redirect checkout. |
 | `createCheckout(priceId, opts?)` | `Promise<CheckoutResult>` | Lower-level checkout. Returns the provider URL; you handle redirect and resume. |
 | `getOrder(ref)` | `Promise<OrderStatus>` | Polls an order by order id or provider checkout id. |
+
+Checkout options:
+
+| Option | Type | Description |
+|---|---|---|
+| `flow` | `"auto" \| "popup" \| "redirect"` | Checkout window behavior for `startCheckout`. |
+| `successUrl` | `string` | Provider success redirect. Defaults to the current page for redirect flow. |
+| `cancelUrl` | `string` | Provider cancel redirect. |
+| `customerEmail` | `string` | Pre-fills the checkout email when the provider supports it. |
+| `allowPromotionCodes` | `boolean` | Lets the customer enter a provider promotion or discount code. |
+| `discountCode` | `string` | Applies or pre-fills a specific provider promotion or discount code. |
 
 `CheckoutResult` contains:
 

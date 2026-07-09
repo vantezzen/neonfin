@@ -1,6 +1,6 @@
 ---
 title: WalletButton
-description: Let users copy, restore, transfer, and manage an anonymous wallet.
+description: Let users manage a code wallet or logged-in billing account.
 ---
 
 `WalletButton` opens a compact wallet dialog. Users can copy the wallet code,
@@ -9,6 +9,14 @@ browsers that support native camera scanning. Wallets with billing history also
 get a **Manage** button that opens the provider billing portal for invoices,
 payment methods, subscription changes, cancellation, and any provider-supported
 refund flow.
+
+After a successful popup checkout or redirect resume, `WalletButton` shows a
+small temporary reminder that opens the dialog so anonymous buyers can save
+their recovery code while the purchase is still fresh.
+
+In `PayProvider mode="external_auth"`, the same button hides recovery-code and
+QR controls because the wallet is tied to the signed-in account. It shows only
+the billing management path.
 
 <WalletLiveDemo />
 
@@ -45,6 +53,21 @@ https://your-app.com/dashboard?__pay_wallet=SKIP-8F3K-L9PQ-2MVT
 When a page opens with `__pay_wallet`, `WalletButton` opens the dialog,
 validates the code, saves it, refreshes balances, and removes the query
 parameter from the URL.
+
+## Lost wallet codes
+
+Anonymous wallet codes are recovery keys. The dialog includes a **Lost wallet?**
+link to the hosted recovery page on your vantezzen/pay instance. The page asks
+for the buyer's provider receipt email and, when matching paid wallets exist,
+sends the wallet code plus recovery QR to that same address.
+
+The page always returns the same message, so it does not reveal whether an email
+matched a wallet. If email recovery cannot help, you can still use the dashboard
+support flow: search by email, order id, checkout id, provider customer id, or
+issued code, then verify the purchase in Stripe or Polar before sharing a code.
+
+See [Lost wallet recovery](/docs/workflows/lost-wallets) for the recommended
+support process.
 
 ## Direct pieces
 

@@ -1,0 +1,61 @@
+---
+title: Provider capability matrix
+description: What vantezzen/pay handles directly and what Stripe or Polar handle.
+---
+
+vantezzen/pay is the app-facing payment wrapper. Stripe and Polar still own the
+payment-provider layer: checkout, payment methods, invoices, taxes, refunds,
+and customer portals. This matrix shows what the current integration supports.
+
+| Capability | Stripe | Polar | Notes |
+|---|---|---|---|
+| Provider-hosted checkout | Yes | Yes | vantezzen/pay creates the provider checkout session and redirects the buyer. |
+| Credit packs | Yes | Yes | Fulfilled by vantezzen/pay after the paid webhook. |
+| Subscriptions | Yes | Yes | Renewals refresh/add included credits and keep feature access active. |
+| One-time feature unlocks | Yes | Yes | Features are stored in vantezzen/pay, not the provider catalog. |
+| Billing portal | Yes | Yes | Opens Stripe Billing Portal or Polar customer portal after a paid order creates a provider customer. |
+| Customer-entered promo codes | Yes | Yes | Use `allowPromotionCodes: true`. |
+| App-selected discount code | Yes | Partial | Stripe applies an active promotion code. Polar pre-fills `discount_code` on the checkout URL. |
+| Checkout email prefill | Yes | Yes | Use `customerEmail` on checkout. |
+| Provider email capture | Yes | Yes | vantezzen/pay stores provider-returned customer email on the order when webhooks include it. |
+| Email wallet recovery | Yes | Yes | Paid code wallets can be emailed back to the provider receipt email when `RESEND_*` is configured. |
+| Full refunds | Yes | Yes | Refund webhooks mark the order refunded and claw back purchase credits. |
+| Partial refunds | Provider only | Provider only | vantezzen/pay currently treats access as order-level, so partial access changes need manual support handling. |
+| Taxes and tax invoices | Provider | Provider | Configure tax/VAT rules in Stripe or Polar. vantezzen/pay does not become the merchant of record. |
+| Payment methods | Provider | Provider | Cards, wallets, and local payment methods are provider configuration. |
+| Dashboard support lookup | Yes | Yes | Search wallets by code, email, order id, checkout id, provider customer id, or external user id. |
+| Local testing | Stripe CLI | Public tunnel | Stripe can forward webhooks locally. Polar needs a public URL it can reach. |
+
+## Discount behavior
+
+`allowPromotionCodes` means the buyer can type a code during checkout.
+
+`discountCode` is for app-owned offer buttons such as "Buy credits for 10% off":
+
+- Stripe: vantezzen/pay looks up an active Stripe promotion code by its human
+  code and applies the promotion code id to the Checkout Session.
+- Polar: vantezzen/pay enables discount-code entry and appends
+  `discount_code=...` to the checkout URL, which pre-fills the provider
+  checkout code field.
+
+Keep your actual promotion/discount definitions in Stripe or Polar. vantezzen/pay
+passes the code through but does not create discounts for you.
+
+## Where to configure provider-owned behavior
+
+| Behavior | Configure in |
+|---|---|
+| Tax collection and invoices | Stripe or Polar |
+| Accepted payment methods | Stripe or Polar |
+| Refund rules and refund emails | Stripe or Polar |
+| Promotion/discount definitions | Stripe or Polar |
+| Customer portal branding | Stripe or Polar |
+| Products, prices, credits, features, wallet rules | vantezzen/pay |
+
+## Related docs
+
+- [Connect a payment provider](/docs/workflows/providers)
+- [Subscriptions](/docs/workflows/subscriptions)
+- [Billing portal](/docs/workflows/billing-portal)
+- [Refunds](/docs/workflows/refunds)
+- [Lost wallet recovery](/docs/workflows/lost-wallets)

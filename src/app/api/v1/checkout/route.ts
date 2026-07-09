@@ -35,6 +35,8 @@ const bodySchema = z
     successUrl: z.string().url().optional(),
     cancelUrl: z.string().url().optional(),
     customerEmail: z.string().email().optional(),
+    allowPromotionCodes: z.boolean().optional(),
+    discountCode: z.string().trim().min(1).max(120).optional(),
   })
   .refine((b) => !(b.code && b.externalUserId), {
     message: "Pass either code or externalUserId, not both",
@@ -196,6 +198,7 @@ export async function POST(req: Request): Promise<Response> {
       provider: account.provider,
       amountCents: price.amountCents,
       currency: price.currency,
+      customerEmail: input.customerEmail ?? null,
       productIdSnapshot: price.productId,
       creditUnitSnapshot: price.product.creditUnit,
       creditsGrantedSnapshot: price.creditsGranted,
@@ -216,6 +219,8 @@ export async function POST(req: Request): Promise<Response> {
       successUrl: input.successUrl ?? `${base}/pay/success/${order.id}`,
       cancelUrl: input.cancelUrl ?? `${base}/pay/cancelled`,
       customerEmail: input.customerEmail,
+      allowPromotionCodes: input.allowPromotionCodes,
+      discountCode: input.discountCode,
       metadata: {
         orderId: order.id,
         projectId: project.id,

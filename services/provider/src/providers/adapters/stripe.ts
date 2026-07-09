@@ -52,7 +52,23 @@ export class StripeProvider implements PaymentProvider {
     return { providerPriceId: price.id };
   }
 
+  private async discountFromCode(discountCode: string) {
+    const { data } = await this.stripe.promotionCodes.list({
+      active: true,
+      code: discountCode,
+      limit: 1,
+    });
+    const promotionCode = data[0];
+    if (!promotionCode) {
+      throw new Error("Stripe promotion code not found");
+    }
+    return [{ promotion_code: promotionCode.id }];
+  }
+
   async createCheckout(input: CreateCheckoutInput) {
+    const discounts = input.discountCode
+      ? await this.discountFromCode(input.discountCode)
+      : undefined;
     const session = await this.stripe.checkout.sessions.create({
       mode: input.mode,
       line_items: [{ price: input.providerPriceId, quantity: 1 }],
@@ -60,6 +76,11 @@ export class StripeProvider implements PaymentProvider {
       cancel_url: input.cancelUrl,
       metadata: input.metadata,
       ...(input.customerEmail ? { customer_email: input.customerEmail } : {}),
+      ...(discounts
+        ? { discounts }
+        : input.allowPromotionCodes
+          ? { allow_promotion_codes: true }
+          : {}),
       ...(input.mode === "subscription"
         ? { subscription_data: { metadata: input.metadata } }
         : { payment_intent_data: { metadata: input.metadata } }),
@@ -134,6 +155,7 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
         providerCheckoutId: s.id,
         providerCustomerId: (s.customer as string) ?? undefined,
         providerSubscriptionId: readSubscriptionId(s.subscription),
+        customerEmail: s.customer_details?.email ?? s.customer_email ?? undefined,
         metadata: (s.metadata as Record<string, string>) ?? {},
       };
     }
@@ -144,6 +166,7 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
         ...base,
         type: "order.refunded",
         providerCustomerId: (c.customer as string) ?? undefined,
+        customerEmail: c.billing_details.email ?? undefined,
         metadata: (c.metadata as Record<string, string>) ?? {},
       };
     }
@@ -161,6 +184,7 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
             ? invoice.customer
             : invoice.customer?.id,
         providerSubscriptionId: readSubscriptionId(details?.subscription),
+        customerEmail: invoice.customer_email ?? undefined,
         currentPeriodEnd: unixToDate(invoice.lines.data[0]?.period?.end),
         metadata:
           (details?.metadata as Record<string, string>) ??

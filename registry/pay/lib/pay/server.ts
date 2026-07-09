@@ -77,6 +77,15 @@ export type CheckoutInput = {
   cancelUrl?: string;
   /** Pre-fill the checkout email. */
   customerEmail?: string;
+  /** Let customers enter a provider promotion/discount code at checkout. */
+  allowPromotionCodes?: boolean;
+  /** Apply or prefill a provider promotion/discount code for this checkout. */
+  discountCode?: string;
+};
+
+export type PortalInput = {
+  /** Where the provider returns after billing management. */
+  returnUrl?: string;
 };
 
 export type GrantInput = {
@@ -197,6 +206,21 @@ export function createPayServerClient(config: PayServerClientConfig) {
   }
 
   /**
+   * Create a provider portal URL for an external-auth user. Use this for
+   * managing subscriptions, payment methods, and invoices.
+   */
+  async function createPortalUrl(
+    externalUserId: string,
+    input: PortalInput = {},
+  ): Promise<string> {
+    const { url } = await request<{ url: string }>("/wallets/external/portal", {
+      externalUserId,
+      ...input,
+    });
+    return url;
+  }
+
+  /**
    * Manually grant a feature to a user (comps, support, promos). Idempotent.
    * Returns the wallet's full feature list after the change.
    */
@@ -241,6 +265,7 @@ export function createPayServerClient(config: PayServerClientConfig) {
     grantCredits,
     deduct,
     createCheckout,
+    createPortalUrl,
     grantFeature,
     revokeFeature,
     hasFeature,

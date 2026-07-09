@@ -16,13 +16,24 @@ import {
   type Balance,
   type CheckoutResult,
   type DeductResult,
+  type OrderStatus,
   type PayClient,
   type StartCheckoutOptions,
   type Subscription,
 } from "@/lib/pay";
 
+export const PAY_CHECKOUT_PAID_EVENT = "pay:checkout-paid";
+
+function notifyCheckoutPaid(order: OrderStatus): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(PAY_CHECKOUT_PAID_EVENT, { detail: order }),
+  );
+}
+
 type PayContextValue = {
   client: PayClient;
+  mode: "credit_codes" | "external_auth";
   balances: Balance[];
   features: string[];
   subscriptions: Subscription[];
@@ -46,17 +57,44 @@ export type PayProviderProps = {
   baseUrl: string;
   /** Publishable API key (`pay_pk_…`). */
   publishableKey: string;
+  /** `credit_codes` for anonymous wallets, `external_auth` for logged-in users. */
+  mode?: "credit_codes" | "external_auth";
+  /** Your app's stable user id. Required for `external_auth`. */
+  externalUserId?: string;
+  /** Same-origin bridge path for external-auth server calls. */
+  externalApiBasePath?: string;
+  /** localStorage key used for credit-code wallets. */
+  storageKey?: string;
   children: React.ReactNode;
 };
 
 export function PayProvider({
   baseUrl,
   publishableKey,
+  mode = "credit_codes",
+  externalUserId,
+  externalApiBasePath,
+  storageKey,
   children,
 }: PayProviderProps) {
   const client = useMemo(
-    () => createPayClient({ baseUrl, publishableKey }),
-    [baseUrl, publishableKey],
+    () =>
+      createPayClient({
+        baseUrl,
+        publishableKey,
+        mode,
+        externalUserId,
+        externalApiBasePath,
+        storageKey,
+      }),
+    [
+      baseUrl,
+      publishableKey,
+      mode,
+      externalUserId,
+      externalApiBasePath,
+      storageKey,
+    ],
   );
 
   const [balances, setBalances] = useState<Balance[]>([]);
@@ -100,6 +138,8 @@ export function PayProvider({
       try {
         const result = await client.startCheckout(priceId, opts);
         await refresh();
+        const order = await client.getOrder(result.orderId).catch(() => null);
+        if (order?.status === "paid") notifyCheckoutPaid(order);
         return result;
       } finally {
         setConfirming(false);
@@ -124,11 +164,15 @@ export function PayProvider({
       if (!active) return;
       try {
         const order = await client.getOrder(pending!);
-        if (order.status === "paid" && order.code) {
-          client.setCode(order.code);
+        if (
+          order.status === "paid" &&
+          (client.mode === "external_auth" || order.code)
+        ) {
+          if (order.code) client.setCode(order.code);
           window.localStorage.removeItem(client.pendingOrderKey);
           if (!active) return;
           await refresh();
+          notifyCheckoutPaid(order);
           return;
         }
         if (order.status === "failed" || order.status === "refunded") {
@@ -159,6 +203,7 @@ export function PayProvider({
   const value = useMemo<PayContextValue>(
     () => ({
       client,
+      mode,
       balances,
       features,
       subscriptions,
@@ -170,6 +215,7 @@ export function PayProvider({
     }),
     [
       client,
+      mode,
       balances,
       features,
       subscriptions,
@@ -197,6 +243,11 @@ function usePayContext(): PayContextValue {
 /** Access the raw client (for advanced calls like getProducts/getPortalUrl). */
 export function usePay(): PayClient {
   return usePayContext().client;
+}
+
+/** Current wallet identity mode. */
+export function usePayMode(): PayContextValue["mode"] {
+  return usePayContext().mode;
 }
 
 /** Checkout helper that refreshes context after popup checkout completes. */

@@ -52,7 +52,9 @@ function ExamplePage() {
           <span className="text-xs font-medium tracking-wide text-muted-foreground">
             React SDK example
           </span>
-          <h1 className="text-2xl font-semibold tracking-tight">vantezzen/pay</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            vantezzen/pay
+          </h1>
         </div>
         <div className="flex items-center gap-3 rounded-xl border bg-background px-4 py-2.5">
           <div className="flex flex-col">
@@ -66,8 +68,8 @@ function ExamplePage() {
       </header>
 
       <p className="max-w-2xl text-sm text-muted-foreground">
-        These are the drop-in vantezzen/pay components - balance display, metered
-        spending, a purchase flow, feature gating, and wallet recovery.
+        These are the drop-in vantezzen/pay components - balance display,
+        metered spending, a purchase flow, feature gating, and wallet recovery.
         Everything updates live against your wallet. Checkout runs in Stripe
         test mode, so pay with{" "}
         <code className="rounded bg-muted px-1 py-0.5">
@@ -151,6 +153,17 @@ function ExamplePage() {
               ✨ Analytics unlocked - you have access to this feature.
             </p>
           </FeatureGate>
+        </Feature>
+
+        <Feature
+          icon={<Wallet className="size-4" />}
+          title="Discount codes"
+          code={`<PurchaseButton discountCode="LAUNCH10" />`}
+          description="Apply a discount code to the checkout."
+        >
+          <PurchaseButton discountCode="LAUNCH10">
+            Buy credits for 10% off
+          </PurchaseButton>
         </Feature>
       </div>
 

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { signupsOpen } from "@/lib/auth/signup";
+import { githubSignInEnabled } from "@/lib/auth/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { RegisterForm } from "./register-form";
 
@@ -25,7 +26,7 @@ async function Gate() {
       </Card>
     );
   }
-  return <RegisterForm />;
+  return <RegisterForm githubEnabled={githubSignInEnabled()} />;
 }
 
 export default function RegisterPage() {

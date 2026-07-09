@@ -1,10 +1,17 @@
 import "server-only";
 import { z } from "zod";
 
+const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
+const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
+
 const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  PAY_PROVIDER_SERVICE_URL: z.string().url().optional(),
-  PAY_PROVIDER_SERVICE_SECRET: z.string().min(16).optional(),
+  PAY_PROVIDER_SERVICE_URL: optionalUrl,
+  PAY_PROVIDER_SERVICE_SECRET: z.preprocess(
+    emptyToUndefined,
+    z.string().min(16).optional(),
+  ),
   // Signs better-auth sessions.
   BETTER_AUTH_SECRET: z
     .string()
@@ -16,7 +23,21 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // Transactional email for auth flows and wallet recovery.
+  RESEND_API_KEY: optionalString,
+  RESEND_FROM: optionalString,
+  // Optional GitHub OAuth for dashboard sign-in.
+  GITHUB_CLIENT_ID: optionalString,
+  GITHUB_CLIENT_SECRET: optionalString,
+  // Hosted vantezzen/pay billing is opt-in. Self-hosted installs stay unbilled
+  // unless an operator deliberately sets this to "hosted".
+  PAY_BILLING_MODE: z.enum(["self_hosted", "hosted"]).default("self_hosted"),
+  PAY_HOSTED_PAY_SECRET_KEY: optionalString,
+  PAY_ALL_ACCESS_EMAILS: optionalString,
+  PAY_ALL_ACCESS_USER_IDS: optionalString,
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_HOSTED_PAY_URL: optionalUrl,
+  NEXT_PUBLIC_HOSTED_PAY_KEY: optionalString,
 });
 
 let cached: z.infer<typeof schema> | null = null;

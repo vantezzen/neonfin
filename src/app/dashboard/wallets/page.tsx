@@ -51,7 +51,7 @@ export default async function WalletsPage({
     <>
       <PageHeader
         title="Wallets"
-        description="Search codes, inspect ledgers, and adjust balances."
+        description="Search wallets, inspect ledgers, and adjust balances."
         action={
           codeProjects.length > 0 ? (
             <FormDialog
@@ -84,7 +84,7 @@ export default async function WalletsPage({
           <Input
             name="search"
             defaultValue={query}
-            placeholder="Search by code…"
+            placeholder="Search code, email, order…"
             className="pl-8 font-mono placeholder:font-sans placeholder:normal-case"
             autoCapitalize="characters"
           />
@@ -100,7 +100,7 @@ export default async function WalletsPage({
           title={query ? `No wallets match “${query}”` : "No wallets yet"}
           description={
             query
-              ? "Check the code for typos - codes look like SKIP-8F3K-L9PQ-2MVT."
+              ? "Search by wallet code, external user id, customer email, order id, checkout id, or provider customer id."
               : "Wallets appear here automatically when the SDK creates them on a user's first visit."
           }
         />

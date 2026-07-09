@@ -40,6 +40,9 @@ Using Polar instead? The same checklist applies, but use the Polar events from
 
 - `PAY_ALLOW_SIGNUPS=false` after your admin account exists.
 - `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` match the public domain.
+- `RESEND_API_KEY` and `RESEND_FROM` are configured and can deliver email.
+- If enabled, GitHub OAuth callback is set to
+  `/api/auth/callback/github` on your production domain.
 - Database migrations have run against production Postgres.
 - The registry URL in install commands uses your production domain.
 

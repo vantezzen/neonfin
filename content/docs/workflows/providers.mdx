@@ -81,6 +81,11 @@ complete payment in Stripe test mode. The order should become **paid** and the
 wallet should receive credits. Then trigger a refund in Stripe and confirm the
 webhook log records it.
 
+Stripe supports customer-entered promotion codes through
+`allowPromotionCodes: true`. For app-owned offer buttons, pass
+`discountCode: "LAUNCH10"` and vantezzen/pay applies the matching active Stripe
+promotion code to Checkout.
+
 ## Polar
 
 ### 1. Choose sandbox or production
@@ -125,6 +130,11 @@ complete payment in Polar sandbox. The order should become **paid** and the
 wallet should receive credits. Then test a refund or subscription cancellation
 and confirm the webhook log records it.
 
+Polar supports customer-entered discount codes through
+`allowPromotionCodes: true`. For app-owned offer buttons, pass
+`discountCode: "LAUNCH10"` and vantezzen/pay pre-fills that code on the Polar
+checkout URL.
+
 ## Troubleshooting
 
 - **Checkout cannot start:** the product needs an active synced price attached
@@ -140,6 +150,9 @@ and confirm the webhook log records it.
   vantezzen/pay matches the provider token or key.
 - **Catalog changes disappear:** edit products and prices in vantezzen/pay, not
   in the provider dashboard. vantezzen/pay is the catalog source of truth.
+
+For a side-by-side feature list, see
+[Provider capability matrix](/docs/workflows/provider-capabilities).
 
 ## Provider references
 

@@ -16,6 +16,8 @@ npx shadcn@latest add https://pay.vantezzen.io/r/pay-provider.json
 
 ## Usage
 
+### Credit-code projects
+
 ```tsx title="app/layout.tsx"
 import { PayProvider } from "@/components/pay/provider";
 
@@ -35,12 +37,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
+### External-auth projects
+
+For logged-in apps, keep `PAY_SECRET_KEY` on your server and let the browser
+components call same-origin bridge routes that you own.
+
+```tsx
+<PayProvider
+  baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}
+  publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}
+  mode="external_auth"
+  externalUserId={user.id}
+  externalApiBasePath="/api/pay"
+>
+  {children}
+</PayProvider>
+```
+
+The bridge should expose `POST /api/pay/wallet`, `POST /api/pay/checkout`,
+`POST /api/pay/portal`, and optionally `POST /api/pay/deduct`, all backed by
+`createPayServerClient()`. Validate the current session in those routes before
+using `externalUserId`.
+
 ## Props
 
 | Prop | Type | Required | Description |
 |---|---|---:|---|
 | `baseUrl` | `string` | Yes | Public URL of your vantezzen/pay instance. |
 | `publishableKey` | `string` | Yes | Project publishable key, starting with `pay_pk_`. |
+| `mode` | `"credit_codes" \| "external_auth"` | No | Defaults to `credit_codes`. |
+| `externalUserId` | `string` | For external auth | Stable user id from your app. |
+| `externalApiBasePath` | `string` | No | Same-origin bridge path for external-auth server calls. Defaults to `/api/pay`. |
+| `storageKey` | `string` | No | Custom `localStorage` key for credit-code wallets. |
 | `children` | `React.ReactNode` | Yes | UI that can read or spend credits. |
 
 ## What it does
@@ -55,6 +83,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   `usePayCheckout()`.
 - Watches pending checkout orders in the background and refreshes when the order
   is paid.
+- Dispatches a `pay:checkout-paid` browser event after popup completion or
+  redirect resume. `WalletButton` uses this to show the post-purchase wallet
+  reminder.
 
 ## Related APIs
 

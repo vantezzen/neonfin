@@ -33,6 +33,25 @@ function header(headers: Headers, name: string): string {
   return value;
 }
 
+function withDiscountCode(checkoutUrl: string, discountCode: string): string {
+  try {
+    const url = new URL(checkoutUrl);
+    url.searchParams.set("discount_code", discountCode);
+    return url.toString();
+  } catch {
+    const separator = checkoutUrl.includes("?") ? "&" : "?";
+    return `${checkoutUrl}${separator}discount_code=${encodeURIComponent(
+      discountCode,
+    )}`;
+  }
+}
+
+function customerEmail(
+  customer: { email?: string | null } | null | undefined,
+): string | undefined {
+  return customer?.email ?? undefined;
+}
+
 export class PolarProvider implements PaymentProvider {
   catalogMode = "price_product" as const;
 
@@ -83,12 +102,18 @@ export class PolarProvider implements PaymentProvider {
       returnUrl: input.cancelUrl,
       customerEmail: input.customerEmail ?? null,
       metadata: input.metadata,
-      allowDiscountCodes: false,
+      allowDiscountCodes:
+        input.allowPromotionCodes === true || Boolean(input.discountCode),
       requireBillingAddress: false,
       allowTrial: true,
       isBusinessCustomer: false,
     });
-    return { url: checkout.url, checkoutId: checkout.id };
+    return {
+      url: input.discountCode
+        ? withDiscountCode(checkout.url, input.discountCode)
+        : checkout.url,
+      checkoutId: checkout.id,
+    };
   }
 
   async verifyAndNormalize(
@@ -152,6 +177,7 @@ export function normalizePolarEvent(
         providerCheckoutId: event.data.checkoutId ?? undefined,
         providerCustomerId: event.data.customerId,
         providerSubscriptionId: event.data.subscriptionId ?? undefined,
+        customerEmail: customerEmail(event.data.customer),
         currentPeriodEnd: event.data.subscription?.currentPeriodEnd ?? undefined,
         metadata: stringMetadata(event.data.metadata),
       };
@@ -162,6 +188,7 @@ export function normalizePolarEvent(
         providerCheckoutId: event.data.checkoutId ?? undefined,
         providerCustomerId: event.data.customerId,
         providerSubscriptionId: event.data.subscriptionId ?? undefined,
+        customerEmail: customerEmail(event.data.customer),
         metadata: stringMetadata(event.data.metadata),
       };
     case "subscription.canceled":
@@ -172,6 +199,7 @@ export function normalizePolarEvent(
         type: "subscription.ended",
         providerCustomerId: event.data.customerId,
         providerSubscriptionId: event.data.id,
+        customerEmail: customerEmail(event.data.customer),
         currentPeriodEnd: event.data.currentPeriodEnd ?? undefined,
         metadata: stringMetadata(event.data.metadata),
       };

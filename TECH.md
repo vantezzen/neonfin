@@ -28,7 +28,8 @@ run on a custom domain with only environment changes.
 
 - Runtime/app: Next.js `16.2.10`, React `19.2.4`, TypeScript.
 - Database: Postgres via `postgres` and Drizzle ORM.
-- Auth: `better-auth` with email/password and Drizzle adapter.
+- Auth: `better-auth` with email/password, email verification, password reset,
+  GitHub OAuth, and Drizzle adapter.
 - UI: Base UI, shadcn registry components, Tailwind CSS v4.
 - Docs: Fumadocs MDX from `content/docs`.
 - Payments: Stripe SDK and Polar SDK inside the provider service.
@@ -52,6 +53,7 @@ Before changing Next.js-specific behavior, read the relevant files under
    - `BETTER_AUTH_SECRET`
    - `BETTER_AUTH_URL`
    - `NEXT_PUBLIC_APP_URL`
+   - `RESEND_API_KEY` and `RESEND_FROM` for email flows
 6. Fill provider service secrets:
    - `DATABASE_URL`
    - `PAY_PROVIDER_SERVICE_SECRET`
@@ -89,7 +91,19 @@ Web-app server-only environment is validated lazily in `src/lib/env.ts`:
 - `BETTER_AUTH_SECRET`: better-auth session signing secret.
 - `BETTER_AUTH_URL`: auth base URL.
 - `PAY_ALLOW_SIGNUPS`: `"true"` or `"false"`. First user is always allowed.
+- `RESEND_API_KEY`, `RESEND_FROM`: transactional email for auth flows and
+  wallet recovery.
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`: optional dashboard GitHub OAuth.
 - `NEXT_PUBLIC_APP_URL`: public app URL used for checkout callbacks.
+- `PAY_BILLING_MODE`: `"self_hosted"` or `"hosted"`, default
+  `"self_hosted"`. Self-hosted installs must not require hosted billing.
+- `PAY_HOSTED_PAY_SECRET_KEY`: secret key for the official hosted instance's
+  own external-auth pay project. Required only when `PAY_BILLING_MODE=hosted`.
+- `PAY_ALL_ACCESS_EMAILS`, `PAY_ALL_ACCESS_USER_IDS`: comma-separated hosted
+  billing allowlists that resolve to the internal all-access plan.
+- `NEXT_PUBLIC_HOSTED_PAY_URL`, `NEXT_PUBLIC_HOSTED_PAY_KEY`: public dogfood
+  pay URL/key for hosted billing UI. The public key is not an enforcement
+  signal; server-side billing mode is.
 
 Example/demo docs use public variables:
 
@@ -383,6 +397,7 @@ Route map:
 | `GET /api/v1/wallets/{code}/portal` | Provider billing portal URL. |
 | `POST /api/v1/wallets/external` | Get/create external-auth wallet. |
 | `POST /api/v1/wallets/external/deduct` | Deduct from external-auth wallet. |
+| `POST /api/v1/wallets/external/portal` | Provider billing portal URL for external-auth wallets. |
 | `POST /api/v1/checkout` | Create provider checkout. |
 | `GET /api/v1/orders/{ref}` | Poll order by order id or provider checkout id. |
 | `POST /api/v1/credit` | Manual credit grant by code or external user. |

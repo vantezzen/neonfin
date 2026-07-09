@@ -27,7 +27,8 @@ The mental model is one call at the boundary of your app:
 2. On your **server**, call vantezzen/pay with your **secret key** (`pay_sk_…`) and the
    user's id. vantezzen/pay gets-or-creates that user's wallet (idempotent).
 3. Optionally grant credits (promos, migrations, support) server-side.
-4. Read balances / start checkout however you like.
+4. Read balances / start checkout on the server, or expose a small same-origin
+   bridge so the React components can do it for the signed-in user.
 
 The secret key must stay on the server. Never ship a `pay_sk_…` key to the
 browser - that's what the publishable key and the
@@ -60,6 +61,8 @@ It exposes these server-side methods:
   → add credits (promos, support, migrations).
 - `createCheckout(priceId, { externalUserId, successUrl? })` → a provider
   checkout URL that credits this user's wallet when paid.
+- `createPortalUrl(externalUserId, { returnUrl? })` → a provider portal URL for
+  billing management.
 
 Always pass a stable `idempotencyKey` (job id, request id) on deductions and
 grants so retries apply exactly once. For every server-client method and field,
@@ -172,10 +175,70 @@ export async function renderVideo(userId: string, jobId: string) {
 }
 ```
 
-The checkout webhook credits the same user's wallet - no code handling, no
-success-page plumbing. Render balances in your own UI from
-`getOrCreateWallet(userId).balances`.
+The checkout webhook credits the same user's wallet - no code handling.
+Render balances in your own UI from `getOrCreateWallet(userId).balances`.
 
-The publishable-key React components (`useCredits`, `PurchaseButton`, …) target
-anonymous credit-code projects; in external-auth mode your server is the source
-of truth and your UI reads from it.
+## React components with external auth
+
+The React components can run in external-auth mode, but they still must not see
+your `pay_sk_...` key. Put a tiny authenticated bridge in your app, backed by
+the server client:
+
+```tsx
+<PayProvider
+  baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}
+  publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}
+  mode="external_auth"
+  externalUserId={user.id}
+  externalApiBasePath="/api/pay"
+>
+  {children}
+</PayProvider>
+```
+
+Then expose same-origin routes such as:
+
+```ts title="app/api/pay/wallet/route.ts"
+import { payServer } from "@/lib/pay/server";
+import { requireUser } from "@/lib/auth";
+
+export async function POST() {
+  const user = await requireUser();
+  return Response.json(await payServer.getOrCreateWallet(user.id));
+}
+```
+
+```ts title="app/api/pay/checkout/route.ts"
+import { payServer } from "@/lib/pay/server";
+import { requireUser } from "@/lib/auth";
+
+export async function POST(req: Request) {
+  const user = await requireUser();
+  const body = await req.json();
+  return Response.json(
+    await payServer.createCheckout(body.priceId, {
+      externalUserId: user.id,
+      successUrl: body.successUrl,
+      cancelUrl: body.cancelUrl,
+      customerEmail: user.email,
+    }),
+  );
+}
+```
+
+```ts title="app/api/pay/portal/route.ts"
+import { payServer } from "@/lib/pay/server";
+import { requireUser } from "@/lib/auth";
+
+export async function POST(req: Request) {
+  const user = await requireUser();
+  const { returnUrl } = await req.json();
+  const url = await payServer.createPortalUrl(user.id, { returnUrl });
+  return Response.json({ url });
+}
+```
+
+The bridge should ignore or verify any `externalUserId` sent by the browser and
+use the authenticated session as the source of truth. Add a `/api/pay/deduct`
+route only when client-triggered deductions are appropriate; server-side paid
+work should deduct directly in the route or job that performs the work.

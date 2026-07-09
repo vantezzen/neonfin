@@ -65,6 +65,7 @@ function offerTitle(product: Product, price: Price): string {
 export type PurchaseOption = {
   product: Product;
   price: Price;
+  discountCode?: string;
 };
 
 export type PurchaseFilters = {
@@ -89,7 +90,7 @@ export type PurchaseOptionControls = {
 };
 
 export function PurchaseOptionButton({
-  option: { product, price },
+  option: { product, price, discountCode },
   controls,
 }: {
   option: PurchaseOption;
@@ -135,13 +136,26 @@ export function PurchaseOptionButton({
         ) : null}
         <span className="text-sm text-muted-foreground">{product.name}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-2 font-medium tabular-nums">
-        {controls.busy ? <Loader2 className="size-4 animate-spin" /> : null}
-        {formatMoney(price.amountCents, price.currency)}
-        <span className="text-muted-foreground">
-          {INTERVAL[price.interval]}
+      <div className="flex flex-col items-end gap-1">
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-2 font-medium tabular-nums",
+            discountCode ? "line-through text-muted-foreground" : "",
+          )}
+        >
+          {controls.busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          {formatMoney(price.amountCents, price.currency)}
+          <span className="text-muted-foreground">
+            {INTERVAL[price.interval]}
+          </span>
         </span>
-      </span>
+
+        {discountCode ? (
+          <span className="text-muted-foreground">
+            Discount applied at checkout
+          </span>
+        ) : null}
+      </div>
     </button>
   );
 }
@@ -179,6 +193,10 @@ export type PurchaseDialogProps = {
    * Use `redirect` when your app cannot support popups.
    */
   flow?: CheckoutFlow;
+  /** Let customers enter a provider promotion/discount code at checkout. */
+  allowPromotionCodes?: boolean;
+  /** Apply or prefill a provider promotion/discount code for this checkout. */
+  discountCode?: string;
   renderOption?: (
     option: PurchaseOption,
     controls: PurchaseOptionControls,
@@ -202,9 +220,11 @@ export function PurchaseDialog({
   open,
   onOpenChange,
   children,
-  title = "Get access",
+  title = "Buy credits or subscription",
   description = "Choose an option to continue.",
   emptyMessage = "No purchase options are available yet.",
+  allowPromotionCodes = true,
+  discountCode,
   renderOption,
 }: PurchaseDialogProps) {
   const client = usePay();
@@ -238,7 +258,11 @@ export function PurchaseDialog({
     setBusy(priceId);
     setError(null);
     try {
-      await startCheckout(priceId, { flow });
+      await startCheckout(priceId, {
+        flow,
+        allowPromotionCodes,
+        discountCode,
+      });
       setBusy(null);
       setOpen(false);
     } catch (err) {
@@ -247,17 +271,11 @@ export function PurchaseDialog({
         setError(
           "You already have a plan for this. Use “Manage subscription” to change it.",
         );
-      } else if (
-        err instanceof PayError &&
-        err.code === "popup_blocked"
-      ) {
+      } else if (err instanceof PayError && err.code === "popup_blocked") {
         setError(
           "The checkout popup was blocked. Allow popups or use redirect checkout.",
         );
-      } else if (
-        err instanceof PayError &&
-        err.code === "checkout_cancelled"
-      ) {
+      } else if (err instanceof PayError && err.code === "checkout_cancelled") {
         setError("Checkout was cancelled. No charge was made.");
       } else if (err instanceof PayError && err.code === "checkout_closed") {
         setError("Checkout was closed before payment completed.");
@@ -350,7 +368,7 @@ export function PurchaseDialog({
               ) : (
                 <PurchaseOptionButton
                   key={price.id}
-                  option={{ product, price }}
+                  option={{ product, price, discountCode }}
                   controls={controls}
                 />
               );
@@ -387,6 +405,8 @@ export type PurchaseButtonProps = {
   description?: string;
   emptyMessage?: string;
   flow?: CheckoutFlow;
+  allowPromotionCodes?: boolean;
+  discountCode?: string;
   renderOption?: PurchaseDialogProps["renderOption"];
   className?: string;
   children?: React.ReactNode;
@@ -400,6 +420,8 @@ export function PurchaseButton({
   description,
   emptyMessage,
   flow,
+  allowPromotionCodes = true,
+  discountCode,
   renderOption,
   children = filters?.features?.length === 1 ? (
     `Unlock ${humanizeFeature(filters.features[0]!)}`
@@ -418,6 +440,8 @@ export function PurchaseButton({
       description={description}
       emptyMessage={emptyMessage}
       flow={flow}
+      allowPromotionCodes={allowPromotionCodes}
+      discountCode={discountCode}
       renderOption={renderOption}
     >
       <Button {...props}>{children}</Button>

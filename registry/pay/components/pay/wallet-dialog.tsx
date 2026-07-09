@@ -17,7 +17,7 @@ import {
   createWalletTransferUrl,
   WALLET_QUERY_PARAM,
 } from "@/lib/pay/qr";
-import { useCredits, usePay } from "@/components/pay/provider";
+import { useCredits, usePay, usePayMode } from "@/components/pay/provider";
 import { WalletCodeField } from "@/components/pay/wallet-code-field";
 import { WalletQrCode } from "@/components/pay/wallet-qr-code";
 import { WalletQrScanner } from "@/components/pay/wallet-qr-scanner";
@@ -44,11 +44,13 @@ export function WalletDialog({
   onRestored,
   incomingCode,
   onIncomingCodeHandled,
-  title = "Wallet",
-  description = "Your wallet code keeps credits available across devices.",
+  title,
+  description,
   transferParam = WALLET_QUERY_PARAM,
 }: WalletDialogProps) {
   const client = usePay();
+  const mode = usePayMode();
+  const externalAuth = mode === "external_auth";
   const { refresh } = useCredits();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
@@ -65,12 +67,24 @@ export function WalletDialog({
     text: string;
   } | null>(null);
   const handledIncoming = useRef<string | null>(null);
+  const effectiveTitle = title ?? (externalAuth ? "Billing" : "Wallet");
+  const effectiveDescription =
+    description ??
+    (externalAuth
+      ? "Manage billing for your signed-in account."
+      : "Your wallet code keeps credits available across devices.");
 
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
 
     async function loadCode() {
+      if (externalAuth) {
+        setCurrentCode(null);
+        setValue("");
+        setBillingMessage(null);
+        return;
+      }
       try {
         const code = client.getCode() ?? (await client.getOrCreateCode());
         if (!active) return;
@@ -86,18 +100,23 @@ export function WalletDialog({
     return () => {
       active = false;
     };
-  }, [isOpen, client]);
+  }, [isOpen, client, externalAuth]);
 
   const restoreCode = useCallback(
     async (code: string, successMessage = "Wallet restored.") => {
       const trimmed = code.trim().toUpperCase();
-      if (!trimmed || status === "loading") return;
+      if (externalAuth || !trimmed || status === "loading") return;
       setStatus("loading");
       setError(null);
       setNotice(null);
       setBillingMessage(null);
       try {
         const wallet = await client.getWallet(trimmed);
+        if (!wallet.code) {
+          throw new PayError(500, "Wallet restore did not return a code", {
+            code: "wallet_not_found",
+          });
+        }
         client.setCode(wallet.code);
         setCurrentCode(wallet.code);
         setValue(wallet.code);
@@ -114,11 +133,12 @@ export function WalletDialog({
         setStatus("idle");
       }
     },
-    [client, onRestored, refresh, status],
+    [client, externalAuth, onRestored, refresh, status],
   );
 
   useEffect(() => {
     if (
+      externalAuth ||
       !isOpen ||
       !incomingCode ||
       handledIncoming.current === incomingCode ||
@@ -136,9 +156,11 @@ export function WalletDialog({
     onIncomingCodeHandled,
     restoreCode,
     status,
+    externalAuth,
   ]);
 
   async function copy() {
+    if (externalAuth) return;
     const code = currentCode ?? value.trim().toUpperCase();
     if (!code) return;
     try {
@@ -152,13 +174,15 @@ export function WalletDialog({
 
   async function openBillingPortal() {
     const code = currentCode ?? value.trim().toUpperCase();
-    if (!code || billingBusy) return;
+    if ((!externalAuth && !code) || billingBusy) return;
     setBillingBusy(true);
     setBillingMessage(null);
     try {
       const returnUrl =
         typeof window !== "undefined" ? window.location.href : undefined;
-      const url = await client.getPortalUrl({ code, returnUrl });
+      const url = await client.getPortalUrl(
+        externalAuth ? { returnUrl } : { code, returnUrl },
+      );
       if (typeof window !== "undefined") window.location.assign(url);
     } catch (err) {
       setBillingBusy(false);
@@ -167,10 +191,17 @@ export function WalletDialog({
       setBillingMessage({
         tone: noBillingHistory ? "info" : "error",
         text: noBillingHistory
-          ? "No billing history for this wallet yet. If you already purchased on another device, restore or scan that wallet code first."
+          ? externalAuth
+            ? "No billing history for this account yet."
+            : "No billing history for this wallet yet. If you already purchased on another device, restore or scan that wallet code first."
           : "Couldn't open billing management. Please try again.",
       });
     }
+  }
+
+  function openRecoveryPage() {
+    if (typeof window === "undefined") return;
+    window.location.assign(walletRecoveryUrl(client.baseUrl));
   }
 
   const transferUrl = useWalletTransferUrl(currentCode, transferParam);
@@ -190,8 +221,8 @@ export function WalletDialog({
       ) : null}
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle>{effectiveTitle}</DialogTitle>
+          <DialogDescription>{effectiveDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
@@ -201,30 +232,39 @@ export function WalletDialog({
             </p>
           ) : null}
 
-          <WalletQrCode value={transferUrl} />
+          {externalAuth ? (
+            <p className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              This wallet is attached to your signed-in account. There is no
+              recovery code to copy or scan.
+            </p>
+          ) : (
+            <>
+              <WalletQrCode value={transferUrl} />
 
-          <WalletQrScanner
-            param={transferParam}
-            onCode={(code) => {
-              setValue(code);
-              void restoreCode(code, "Wallet restored from QR code.");
-            }}
-          />
+              <WalletQrScanner
+                param={transferParam}
+                onCode={(code) => {
+                  setValue(code);
+                  void restoreCode(code, "Wallet restored from QR code.");
+                }}
+              />
 
-          <WalletCodeField
-            value={value}
-            currentCode={currentCode}
-            loading={status === "loading"}
-            copied={copied}
-            error={error}
-            onValueChange={(next) => {
-              setValue(next);
-              setError(null);
-              setNotice(null);
-            }}
-            onCopy={copy}
-            onApply={(code) => restoreCode(code)}
-          />
+              <WalletCodeField
+                value={value}
+                currentCode={currentCode}
+                loading={status === "loading"}
+                copied={copied}
+                error={error}
+                onValueChange={(next) => {
+                  setValue(next);
+                  setError(null);
+                  setNotice(null);
+                }}
+                onCopy={copy}
+                onApply={(code) => restoreCode(code)}
+              />
+            </>
+          )}
 
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-3">
@@ -239,7 +279,9 @@ export function WalletDialog({
                 variant="outline"
                 size="sm"
                 onClick={openBillingPortal}
-                disabled={!currentCode || billingBusy}
+                disabled={
+                  externalAuth ? billingBusy : !currentCode || billingBusy
+                }
               >
                 {billingBusy ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -261,10 +303,40 @@ export function WalletDialog({
               </p>
             ) : null}
           </div>
+
+          {!externalAuth ? (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Lost wallet?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Email yourself paid wallet codes and recovery QRs.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={openRecoveryPage}
+                >
+                  <ExternalLink className="size-4" />
+                  Recover
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
   );
+}
+
+function walletRecoveryUrl(baseUrl: string): string {
+  const url = new URL("/pay/recover", baseUrl);
+  if (typeof window !== "undefined") {
+    url.searchParams.set("returnUrl", window.location.href);
+  }
+  return url.toString();
 }
 
 function useWalletTransferUrl(code: string | null, param: string): string {

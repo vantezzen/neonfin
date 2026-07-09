@@ -52,6 +52,7 @@ export default async function OrdersPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Code</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="w-0" />
               </TableRow>
@@ -86,15 +87,18 @@ export default async function OrdersPage() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {o.customerEmail ?? "-"}
+                    </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatMoney(o.amountCents, o.currency)}
                     </TableCell>
                     <TableCell className="text-right">
                       <ProviderLink
                         href={providerUrl}
-                        title="View this order in Stripe"
+                        title={`View this order in ${o.provider}`}
                       >
-                        Stripe
+                        {o.provider}
                       </ProviderLink>
                     </TableCell>
                   </TableRow>

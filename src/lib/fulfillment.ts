@@ -269,6 +269,7 @@ async function fulfillLockedOrder(
       paidAt: new Date(),
       walletId: wallet.id,
       providerCustomerId: event.providerCustomerId ?? order.providerCustomerId,
+      customerEmail: event.customerEmail ?? order.customerEmail,
       issuedCode: wallet.code,
     })
     .where(eq(orders.id, order.id));

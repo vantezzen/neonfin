@@ -45,7 +45,8 @@ Use the server client when:
 - You need checkout to credit a user account instead of a browser code wallet.
 
 For anonymous browser wallets, use the [browser client](/docs/components/client)
-or React components instead.
+or React components directly. For external-auth React components, back their
+same-origin bridge routes with this server client.
 
 ## Wallets
 
@@ -125,6 +126,7 @@ const { url } = await payServer.createCheckout("price_...", {
   successUrl: "https://your-app.com/billing?status=success",
   cancelUrl: "https://your-app.com/billing?status=cancelled",
   customerEmail: user.email,
+  allowPromotionCodes: true,
 });
 
 return Response.redirect(url);
@@ -137,6 +139,27 @@ return Response.redirect(url);
 The wallet is created automatically if it does not exist yet. The payment
 webhook credits the wallet tied to `externalUserId`, so you do not need browser
 credit-code handling.
+
+Checkout input also accepts `discountCode` for a specific provider promotion or
+discount code. Use `allowPromotionCodes: true` when the customer should enter
+their own code in checkout.
+
+## Billing portal
+
+Create a provider portal URL for a logged-in user:
+
+```ts
+const url = await payServer.createPortalUrl(user.id, {
+  returnUrl: "https://your-app.com/settings/billing",
+});
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `createPortalUrl(externalUserId, input?)` | `Promise<string>` | Creates a provider portal URL for subscriptions, invoices, and payment methods. |
+
+The wallet must have completed at least one purchase, because that is when
+Stripe or Polar customer ids are attached.
 
 ## Features
 

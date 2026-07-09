@@ -64,7 +64,8 @@ If the user self-hosts vantezzen/pay, replace `https://pay.vantezzen.io` with
 their vantezzen/pay domain.
 
 For external-auth projects, also read `/docs/concepts/external-auth.mdx`. Those
-projects usually need the server SDK:
+projects need the server SDK and small same-origin bridge routes for the React
+components:
 
 ```bash
 npx shadcn@latest add https://pay.vantezzen.io/r/pay-server.json
@@ -141,8 +142,8 @@ import { WalletButton } from "@/components/pay/wallet-button";
 <WalletButton variant="outline" size="sm" />
 ```
 
-Skip `WalletButton` only when the project uses external auth and wallets are
-attached to logged-in users on the server.
+In external-auth mode, `WalletButton` does not show recovery codes or QR
+controls. It becomes a billing-management entry point for the signed-in account.
 
 ## Gate paid actions
 

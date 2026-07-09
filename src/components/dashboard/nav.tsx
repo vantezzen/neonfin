@@ -11,6 +11,7 @@ import {
   Menu,
   Plug,
   Receipt,
+  Settings,
   Wallet,
   Webhook,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const MAIN = [
   { href: "/dashboard/projects", label: "Projects", icon: Boxes },
   { href: "/dashboard/wallets", label: "Wallets", icon: Wallet },
   { href: "/dashboard/orders", label: "Orders", icon: Receipt },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const;
 
 const PAYMENTS = [

@@ -6,14 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { GitHubSignInButton } from "../github-sign-in-button";
 
 const initial: AuthState = {};
 
-export function RegisterForm() {
+export function RegisterForm({ githubEnabled }: { githubEnabled: boolean }) {
   const [state, action, pending] = useActionState(register, initial);
   return (
     <Card>
       <CardContent className="pt-6">
+        {githubEnabled ? (
+          <>
+            <GitHubSignInButton />
+            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              <span>or</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          </>
+        ) : null}
         <form action={action} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>

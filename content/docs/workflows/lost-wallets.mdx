@@ -1,0 +1,60 @@
+---
+title: Lost wallet recovery
+description: How to help anonymous buyers who lost their credit-code wallet.
+---
+
+Credit-code wallets let you sell without forcing accounts. The tradeoff is that
+the wallet code is the recovery key. vantezzen/pay can email paid wallet codes
+back to the checkout receipt email when the provider supplied one.
+
+## What vantezzen/pay does
+
+- Shows the recovery code in `WalletButton`.
+- Shows a short post-purchase reminder that opens the wallet dialog.
+- Links `WalletDialog` to `/pay/recover` on your vantezzen/pay instance.
+- Stores checkout `customerEmail` and provider-returned customer email on the
+  order when available.
+- Lets buyers enter a receipt email at `/pay/recover`. If paid code wallets
+  exist for that email, vantezzen/pay sends the wallet code and recovery QR to
+  that same address.
+- Lets you search the dashboard by wallet code, customer email, order id,
+  checkout id, provider customer id, issued code, or external user id.
+
+## Buyer recovery flow
+
+1. The buyer opens **Lost wallet?** in `WalletButton`.
+2. They enter the provider receipt email on `/pay/recover`.
+3. If matching paid code wallets exist, vantezzen/pay sends the codes and QR
+   recovery blocks to that address.
+4. The buyer opens the wallet dialog, pastes the code, scans the QR, or follows
+   the restore link when a return URL was available.
+
+The page always shows a generic success message. It does not reveal whether an
+email matched a wallet.
+
+## Manual support flow
+
+1. Ask the buyer for their provider receipt email and order id.
+2. Search **Dashboard -> Wallets** by email or order id.
+3. Open the matching wallet and compare recent ledger entries with the order.
+4. Verify the same purchase in Stripe or Polar before sharing a wallet code.
+5. Send the buyer the wallet code or a wallet transfer link.
+
+Use this flow when the buyer no longer controls the receipt email, the provider
+did not return an email, or they need help choosing between multiple purchases.
+
+## Requirements
+
+Configure `RESEND_API_KEY` and `RESEND_FROM` so vantezzen/pay can send recovery
+emails. Without email configured, local development logs the email content, but
+production recovery needs a real sender.
+
+## Tips for apps
+
+- Keep `WalletButton` visible in a stable billing, account, or header area.
+- Pass `customerEmail` during checkout when your app already knows the buyer's
+  email.
+- For no-auth apps, mention that the wallet code should be saved before
+  switching devices or clearing browser data.
+- For logged-in apps, prefer `external_auth` so wallet recovery follows your
+  own account recovery process.

@@ -114,12 +114,42 @@ Content-Type: application/json
 {
   "priceId": "price_...",
   "externalUserId": "user_123",
-  "successUrl": "https://your-app.com/billing?status=success"
+  "successUrl": "https://your-app.com/billing?status=success",
+  "customerEmail": "user@example.com",
+  "allowPromotionCodes": true
 }
 ```
 
 Redirect the user to the returned `url`. The wallet is created on the fly if it
 doesn't exist yet.
+
+Use `discountCode: "LAUNCH10"` when this server-side checkout should apply or
+prefill a specific provider promotion or discount code.
+
+## Open the billing portal
+
+Create a provider portal URL for an external user:
+
+```http
+POST /api/v1/wallets/external/portal
+Authorization: Bearer pay_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_123",
+  "returnUrl": "https://your-app.com/settings/billing"
+}
+```
+
+Returns:
+
+```json
+{
+  "url": "https://billing.stripe.com/..."
+}
+```
+
+The wallet must already have a provider customer from a completed purchase.
 
 ## Features and access
 

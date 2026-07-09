@@ -174,7 +174,8 @@ Content-Type: application/json
   "code": "SKIP-8F3K-L9PQ-2MVT",
   "successUrl": "https://your-app.com",
   "cancelUrl": "https://your-app.com/billing",
-  "customerEmail": "user@example.com"
+  "customerEmail": "user@example.com",
+  "allowPromotionCodes": true
 }
 ```
 
@@ -190,6 +191,15 @@ With a publishable key, `successUrl` and `cancelUrl` must be on one of the
 project's allowed origins (when an allowlist is configured) - a publishable
 key is public, so unrestricted redirects would let anyone send your buyers to
 their own page after payment. Secret-key calls may redirect anywhere.
+
+Use `allowPromotionCodes: true` when the customer should enter a provider
+promotion or discount code during checkout. Use `discountCode: "LAUNCH10"` when
+a specific app button should apply or prefill a code for that checkout.
+
+`customerEmail` pre-fills the provider checkout email. vantezzen/pay also stores
+the email returned by Stripe or Polar webhooks on the order when the provider
+sends one, which powers `/pay/recover` email recovery for paid anonymous
+wallets.
 
 Returns:
 
@@ -226,8 +236,21 @@ Returns:
 GET /api/v1/wallets/{code}/portal?returnUrl=https%3A%2F%2Fyour-app.com
 ```
 
-Returns a provider portal URL for wallets that have completed a purchase. Use
-it for customer-facing billing management: invoices, payment methods,
+For external-auth wallets, use the secret-key endpoint:
+
+```http
+POST /api/v1/wallets/external/portal
+Authorization: Bearer pay_sk_...
+Content-Type: application/json
+
+{
+  "externalUserId": "user_42",
+  "returnUrl": "https://your-app.com"
+}
+```
+
+Both return a provider portal URL for wallets that have completed a purchase.
+Use it for customer-facing billing management: invoices, payment methods,
 subscription changes, cancellation, and any refund flow the provider exposes.
 
 ```json

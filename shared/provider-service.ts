@@ -16,6 +16,7 @@ export interface NormalizedEvent {
   providerCheckoutId?: string;
   providerCustomerId?: string;
   providerSubscriptionId?: string;
+  customerEmail?: string;
   currentPeriodEnd?: Date;
   metadata?: Record<string, string>;
 }
@@ -63,6 +64,8 @@ export interface CreateCheckoutInput {
   cancelUrl: string;
   metadata: Record<string, string>;
   customerEmail?: string;
+  allowPromotionCodes?: boolean;
+  discountCode?: string;
 }
 
 export interface PaymentProvider {

@@ -295,6 +295,7 @@ export const orders = pgTable(
     provider: text("provider").$type<Provider>().notNull(),
     providerCheckoutId: text("provider_checkout_id"),
     providerCustomerId: text("provider_customer_id"),
+    customerEmail: text("customer_email"),
     status: text("status").$type<OrderStatus>().notNull().default("pending"),
     amountCents: integer("amount_cents").notNull(),
     currency: text("currency").notNull().default("USD"),

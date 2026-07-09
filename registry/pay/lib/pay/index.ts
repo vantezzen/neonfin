@@ -15,6 +15,16 @@ export type PayClientConfig = {
   baseUrl: string;
   /** Publishable API key (`pay_pk_…`). Browser-safe. */
   publishableKey: string;
+  /** Project identity mode. Defaults to anonymous credit-code wallets. */
+  mode?: "credit_codes" | "external_auth";
+  /** Your app's stable user id. Required when `mode` is `external_auth`. */
+  externalUserId?: string;
+  /**
+   * Same-origin bridge for external-auth server calls. It should expose:
+   * POST {base}/wallet, POST {base}/checkout, POST {base}/portal, and
+   * optionally POST {base}/deduct. Defaults to `/api/pay`.
+   */
+  externalApiBasePath?: string;
   /** localStorage key used to persist the credit code. */
   storageKey?: string;
 };
@@ -66,7 +76,9 @@ export type Subscription = {
 
 /** A wallet's full state: balances, unlocked features, active subscriptions. */
 export type WalletInfo = {
-  code: string;
+  code: string | null;
+  walletId?: string;
+  externalUserId?: string;
   balances: Balance[];
   features: string[];
   subscriptions: Subscription[];
@@ -87,6 +99,10 @@ export type StartCheckoutOptions = {
   successUrl?: string;
   cancelUrl?: string;
   customerEmail?: string;
+  /** Let customers enter a provider promotion/discount code at checkout. */
+  allowPromotionCodes?: boolean;
+  /** Apply or prefill a provider promotion/discount code for this checkout. */
+  discountCode?: string;
   /**
    * `auto` opens checkout in a popup on desktop and redirects on touch/mobile.
    * Use `redirect` when your app cannot support popups.
@@ -135,6 +151,7 @@ export class PayError extends Error {
 }
 
 const DEFAULT_STORAGE_KEY = "pay_code";
+const DEFAULT_EXTERNAL_API_BASE_PATH = "/api/pay";
 export const PENDING_ORDER_KEY = "pay_pending_order";
 const POPUP_POLL_MS = 1500;
 
@@ -213,6 +230,10 @@ export type PayClient = ReturnType<typeof createPayClient>;
 
 export function createPayClient(config: PayClientConfig) {
   const baseUrl = config.baseUrl.replace(/\/$/, "");
+  const mode = config.mode ?? "credit_codes";
+  const externalApiBasePath = (
+    config.externalApiBasePath ?? DEFAULT_EXTERNAL_API_BASE_PATH
+  ).replace(/\/$/, "");
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
   // Namespaced by storageKey so two projects on one origin don't clash.
   const pendingOrderKey =
@@ -252,21 +273,70 @@ export function createPayClient(config: PayClientConfig) {
     return data as T;
   }
 
+  async function externalRequest<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${externalApiBasePath}${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) {
+      const err = (data ?? {}) as {
+        error?: string;
+        code?: string;
+        balance?: number;
+        requested?: number;
+      };
+      throw new PayError(
+        res.status,
+        err.error ?? `Request failed (${res.status})`,
+        { code: err.code, balance: err.balance, requested: err.requested },
+      );
+    }
+    return data as T;
+  }
+
+  function requireExternalUserId(): string {
+    if (mode !== "external_auth") {
+      throw new PayError(400, "This client is not in external auth mode", {
+        code: "mode_mismatch",
+      });
+    }
+    if (!config.externalUserId) {
+      throw new PayError(400, "externalUserId is required", {
+        code: "invalid_body",
+      });
+    }
+    return config.externalUserId;
+  }
+
+  function requireCreditCodeMode() {
+    if (mode !== "credit_codes") {
+      throw new PayError(400, "This client is not in credit-code mode", {
+        code: "mode_mismatch",
+      });
+    }
+  }
+
   // --- credit-code storage -------------------------------------------------
 
   /** The credit code stored in this browser, or null. */
   function getCode(): string | null {
+    if (mode !== "credit_codes") return null;
     if (!hasStorage()) return null;
     return window.localStorage.getItem(storageKey);
   }
 
   /** Persist a credit code (e.g. after the user restores one). */
   function setCode(code: string): void {
+    if (mode !== "credit_codes") return;
     if (hasStorage()) window.localStorage.setItem(storageKey, code);
   }
 
   /** Forget the stored credit code. The next call mints a fresh wallet. */
   function clearCode(): void {
+    if (mode !== "credit_codes") return;
     if (hasStorage()) window.localStorage.removeItem(storageKey);
   }
 
@@ -290,6 +360,7 @@ export function createPayClient(config: PayClientConfig) {
    */
   let pendingCreate: Promise<string> | null = null;
   async function getOrCreateCode(): Promise<string> {
+    requireCreditCodeMode();
     const existing = getCode();
     if (existing) return existing;
     if (!pendingCreate) {
@@ -298,6 +369,11 @@ export function createPayClient(config: PayClientConfig) {
           method: "POST",
           body: {},
         });
+        if (!code) {
+          throw new PayError(500, "Wallet creation did not return a code", {
+            code: "wallet_not_found",
+          });
+        }
         setCode(code);
         return code;
       })().finally(() => {
@@ -321,6 +397,18 @@ export function createPayClient(config: PayClientConfig) {
    * stored code was expired or deleted server-side.
    */
   async function getWallet(code?: string): Promise<WalletInfo> {
+    if (mode === "external_auth") {
+      if (code !== undefined) {
+        throw new PayError(400, "code is not used in external auth mode", {
+          code: "mode_mismatch",
+        });
+      }
+      const wallet = await externalRequest<
+        Omit<WalletInfo, "code"> & { code?: string | null }
+      >("/wallet", { externalUserId: requireExternalUserId() });
+      return { ...wallet, code: wallet.code ?? null };
+    }
+
     const explicitCode = code !== undefined;
     const c = code ?? (await getOrCreateCode());
     try {
@@ -384,6 +472,16 @@ export function createPayClient(config: PayClientConfig) {
       meta?: Record<string, unknown>;
     } = {},
   ): Promise<DeductResult> {
+    if (mode === "external_auth") {
+      return externalRequest<DeductResult>("/deduct", {
+        externalUserId: requireExternalUserId(),
+        amount,
+        idempotencyKey: opts.idempotencyKey ?? randomKey(),
+        ...(opts.productId ? { productId: opts.productId } : {}),
+        ...(opts.meta ? { meta: opts.meta } : {}),
+      });
+    }
+
     const explicitCode = opts.code !== undefined;
     const code = opts.code ?? (await getOrCreateCode());
     try {
@@ -413,6 +511,8 @@ export function createPayClient(config: PayClientConfig) {
       successUrl?: string;
       cancelUrl?: string;
       customerEmail?: string;
+      allowPromotionCodes?: boolean;
+      discountCode?: string;
     },
   ): Promise<CheckoutResult> {
     return request<CheckoutResult>("/checkout", {
@@ -423,7 +523,34 @@ export function createPayClient(config: PayClientConfig) {
         ...(opts.successUrl ? { successUrl: opts.successUrl } : {}),
         ...(opts.cancelUrl ? { cancelUrl: opts.cancelUrl } : {}),
         ...(opts.customerEmail ? { customerEmail: opts.customerEmail } : {}),
+        ...(opts.allowPromotionCodes
+          ? { allowPromotionCodes: opts.allowPromotionCodes }
+          : {}),
+        ...(opts.discountCode ? { discountCode: opts.discountCode } : {}),
       },
+    });
+  }
+
+  async function checkoutWithExternalUser(
+    priceId: string,
+    opts: {
+      successUrl?: string;
+      cancelUrl?: string;
+      customerEmail?: string;
+      allowPromotionCodes?: boolean;
+      discountCode?: string;
+    },
+  ): Promise<CheckoutResult> {
+    return externalRequest<CheckoutResult>("/checkout", {
+      externalUserId: requireExternalUserId(),
+      priceId,
+      ...(opts.successUrl ? { successUrl: opts.successUrl } : {}),
+      ...(opts.cancelUrl ? { cancelUrl: opts.cancelUrl } : {}),
+      ...(opts.customerEmail ? { customerEmail: opts.customerEmail } : {}),
+      ...(opts.allowPromotionCodes
+        ? { allowPromotionCodes: opts.allowPromotionCodes }
+        : {}),
+      ...(opts.discountCode ? { discountCode: opts.discountCode } : {}),
     });
   }
 
@@ -472,7 +599,10 @@ export function createPayClient(config: PayClientConfig) {
         if (!active) return;
         try {
           const order = await getOrder(result.orderId);
-          if (order.status === "paid" && order.code) {
+          if (
+            order.status === "paid" &&
+            (mode === "external_auth" || order.code)
+          ) {
             finish(order);
             return;
           }
@@ -497,7 +627,10 @@ export function createPayClient(config: PayClientConfig) {
       async function handleClosedPopup() {
         try {
           const order = await getOrder(result.orderId);
-          if (order.status === "paid" && order.code) {
+          if (
+            order.status === "paid" &&
+            (mode === "external_auth" || order.code)
+          ) {
             finish(order);
             return;
           }
@@ -553,8 +686,19 @@ export function createPayClient(config: PayClientConfig) {
       successUrl?: string;
       cancelUrl?: string;
       customerEmail?: string;
+      allowPromotionCodes?: boolean;
+      discountCode?: string;
     } = {},
   ): Promise<CheckoutResult> {
+    if (mode === "external_auth") {
+      if (opts.code !== undefined) {
+        throw new PayError(400, "code is not used in external auth mode", {
+          code: "mode_mismatch",
+        });
+      }
+      return checkoutWithExternalUser(priceId, opts);
+    }
+
     const explicitCode = opts.code !== undefined;
     const code = opts.code ?? (await getOrCreateCode());
     try {
@@ -630,6 +774,14 @@ export function createPayClient(config: PayClientConfig) {
   async function getPortalUrl(
     opts: { code?: string; returnUrl?: string } = {},
   ): Promise<string> {
+    if (mode === "external_auth") {
+      const { url } = await externalRequest<{ url: string }>("/portal", {
+        externalUserId: requireExternalUserId(),
+        ...(opts.returnUrl ? { returnUrl: opts.returnUrl } : {}),
+      });
+      return url;
+    }
+
     const code = opts.code ?? getCode();
     if (!code) {
       throw new PayError(400, "No credit code for this browser", {
@@ -647,6 +799,7 @@ export function createPayClient(config: PayClientConfig) {
 
   return {
     baseUrl,
+    mode,
     /** localStorage key where a pending checkout's order id is stashed. */
     pendingOrderKey,
     getCode,

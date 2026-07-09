@@ -14,6 +14,17 @@ description: Required configuration for a self-hosted vantezzen/pay instance.
 | `BETTER_AUTH_URL` | `https://pay.example.com` | Public dashboard/auth URL. |
 | `NEXT_PUBLIC_APP_URL` | `https://pay.example.com` | Public URL used for webhooks, checkout returns, and registry links. |
 | `PAY_ALLOW_SIGNUPS` | `true` or `false` | Allow new dashboard accounts. |
+| `RESEND_API_KEY` | `re_...` | Resend API key for auth emails and wallet recovery. |
+| `RESEND_FROM` | `vantezzen/pay <noreply@example.com>` | Verified sender used for transactional emails. |
+| `GITHUB_CLIENT_ID` | `Iv1...` | Optional GitHub OAuth app client id for dashboard sign-in. |
+| `GITHUB_CLIENT_SECRET` | `...` | Optional GitHub OAuth app client secret. |
+| `PAY_BILLING_MODE` | `self_hosted` | Keep this as `self_hosted` for unbilled self-hosted deployments. |
+
+The hosted billing variables (`PAY_HOSTED_PAY_SECRET_KEY`,
+`NEXT_PUBLIC_HOSTED_PAY_URL`, `NEXT_PUBLIC_HOSTED_PAY_KEY`,
+`PAY_ALL_ACCESS_EMAILS`, and `PAY_ALL_ACCESS_USER_IDS`) are only for the
+official hosted `pay.vantezzen.io` deployment. Do not set them for normal
+self-hosting.
 
 ## Provider service variables
 
@@ -54,6 +65,9 @@ BETTER_AUTH_SECRET="..."
 BETTER_AUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 PAY_ALLOW_SIGNUPS="true"
+RESEND_API_KEY="re_..."
+RESEND_FROM="vantezzen/pay <noreply@example.com>"
+PAY_BILLING_MODE="self_hosted"
 ```
 
 ```bash title="services/provider/.env"
@@ -74,3 +88,8 @@ PAY_ENCRYPTION_KEY="..."
 - Do not rotate `PAY_ENCRYPTION_KEY` casually; it encrypts stored provider
   secrets.
 - Set `PAY_ALLOW_SIGNUPS=false` after your first admin user exists.
+- Set up Resend before enabling real users. Email verification, password reset,
+  email changes, account deletion confirmation, and wallet recovery all depend
+  on transactional email.
+- For GitHub login, set the OAuth app callback URL to
+  `https://pay.example.com/api/auth/callback/github`.
