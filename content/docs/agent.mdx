@@ -6,7 +6,7 @@ description: Instructions for coding agents that integrate vantezzen/pay into an
 This page is written for coding agents. Use it when a user asks you to add
 vantezzen/pay to an existing project.
 
-If you are a human developer, read the [getting started guide](/docs/getting-started/index.mdx) instead.
+If you are a human developer, read the [getting started guide](/docs/getting-started) instead.
 
 Raw Markdown: [`/docs/agent.mdx`](/docs/agent.mdx)
 
@@ -165,6 +165,8 @@ import { Button } from "@/components/ui/button";
 const COST = 10;
 
 export function PaidAction() {
+  const { loading } = useCredits();
+
   return (
     <CreditGate
       cost={COST}
@@ -206,7 +208,7 @@ price that unlocks the feature.
 Next, deduct credits in the paid work path. This is usually a click handler, form action, or job-start path. Deduct only after the user has confirmed the paid
 action.
 
-When deducing credits, its best to pass a stable `idempotencyKey` for retryable work, such as a job id or request id. If you omit it, the client generates one, which is fine for a single button click but not for server retries.
+When deducting credits, it&apos;s best to pass a stable `idempotencyKey` for retryable work, such as a job id or request id. If you omit it, the client generates one, which is fine for a single button click but not for server retries.
 
 ### Deduct in a client click handler
 
@@ -250,15 +252,17 @@ export function PaidAction() {
 ### Deduct in a server action or API route
 
 ```ts title="app/api/run-paid-work/route.ts"
-import { createPayServerClient } from "@/lib/pay/server";
+import { PayError, createPayServerClient } from "@/lib/pay/server";
 
 export const payServer = createPayServerClient({
   baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
   secretKey: process.env.PAY_SECRET_KEY!, // pay_sk_… - server only
 });
 
-export async function GET() {
-  const session = await getAuth(); // your auth session
+export async function POST() {
+  // Read this from your application's authenticated session.
+  const userId = "your-stable-user-id";
+  const jobId = crypto.randomUUID();
   
   try {
     // 1. Charge for the work (creates the wallet lazily via getOrCreateWallet
@@ -275,20 +279,36 @@ export async function GET() {
         externalUserId: userId,
         successUrl: "https://your-app.com/billing?status=success",
       });
-      return { needsPayment: url };
+      return Response.json({ needsPayment: url }, { status: 402 });
     }
     throw err;
   }
-  // 3. Run the paid work.
-  return startRenderJob(jobId);
+  // 3. Run the paid work here.
+  return Response.json({ ok: true, jobId });
 }
 ```
 
 Or for feature-gated work, check access with `hasFeature()` instead of deducting credits:
 
 ```ts title="app/api/run-paid-work/route.ts"
-if (await payServer.hasFeature(user.id, "analytics")) {
-  return runAnalyticsExport();
+import { createPayServerClient } from "@/lib/pay/server";
+
+const payServer = createPayServerClient({
+  baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
+  secretKey: process.env.PAY_SECRET_KEY!,
+});
+
+async function runAnalyticsExport() {
+  // Run the protected work here.
+  return { ok: true };
+}
+
+export async function POST() {
+  const userId = "your-stable-user-id";
+  if (!(await payServer.hasFeature(userId, "analytics"))) {
+    return Response.json({ error: "Analytics requires a paid plan" }, { status: 403 });
+  }
+  return Response.json(await runAnalyticsExport());
 }
 ```
 
@@ -300,21 +320,21 @@ After code integration, direct the user to:
 
 Tell them to complete these dashboard steps:
 
-0. If not already, create a vantezzen/pay account and log in.
-1. Follow the **Get started** steps at the top to connect to Stripe or Polar
-2. Follow the **Get started** steps at the top to create a new project or open **Projects** and press **New project**.
-5. In the new project, follow the **First steps** guide at the top to create a new product. 
+1. If not already, create a vantezzen/pay account and log in.
+2. Follow the **Get started** steps at the top to connect to Stripe or Polar.
+3. Follow the **Get started** steps at the top to create a new project or open **Projects** and press **New project**.
+4. In the new project, follow the **First steps** guide at the top to create a new product.
   - Here the type should be that same as what we implemented (Credit pack, Subscription or One-time unlock).
   - The name should be the top-level product name (e.g. "Processing time" or "Membership").
   - If its credits, the "Credit unit" should be the matching unit (e.g. "minutes" or "images").
-6. Add a price, pack, or subscription tier matching the code:
+5. Add a price, pack, or subscription tier matching the code:
    - For `CreditGate`/Credit features, configure credits granted by the purchased price, e.g. 100 credits for 9.99 USD.
    - For `FeatureGate`/Subscription or one-time purchases, configure the feature slug used in code (e.g. "analytics").
-7. Open the project **Developers** tab.
-8. Copy `NEXT_PUBLIC_PAY_URL` and `NEXT_PUBLIC_PAY_KEY` into the app env file,
+6. Open the project **Developers** tab.
+7. Copy `NEXT_PUBLIC_PAY_URL` and `NEXT_PUBLIC_PAY_KEY` into the app env file,
    replacing the placeholders added earlier.
   - If the app uses external auth, the user also has to click on "Secret key" and copy `PAY_SECRET_KEY` into the app env file.
-9. Restart the app process if its framework requires env variables to be loaded
+8. Restart the app process if its framework requires env variables to be loaded
    at startup.
 
 If the user self-hosts vantezzen/pay, tell them to use their own dashboard URL

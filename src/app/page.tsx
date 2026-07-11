@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  Check,
   KeyRound,
   Plug,
   RefreshCw,
@@ -15,8 +14,6 @@ import {
 import appLogo from "@/app/icon.png";
 import { cn } from "@/lib/utils";
 import { getSession } from "@/lib/auth/dal";
-import { hostedPayConfig } from "@/lib/billing/config";
-import { BILLING_PLANS, type BillingPlanKey } from "@/lib/billing/plans";
 import { jsonLd, siteDescription, siteName, siteUrl } from "@/lib/seo";
 import { buttonVariants } from "@/components/ui/button";
 import { CodeSnippet } from "@/components/app/copy";
@@ -93,30 +90,6 @@ const FEATURES = [
     body: "One small self-hosted app powers payments for every project you'll ever ship.",
   },
 ] as const;
-
-const PRICING_PLAN_KEYS = ["free", "indie", "studio"] as const satisfies
-  BillingPlanKey[];
-
-const PLAN_LIMITS: Record<(typeof PRICING_PLAN_KEYS)[number], string[]> = {
-  free: [
-    "10 projects",
-    "Unlimited provider accounts",
-    "100 paid orders / month",
-    "30-day webhook logs",
-  ],
-  indie: [
-    "Unlimited projects",
-    "1,000 paid orders / month",
-    "10 products per project",
-    "90-day webhook logs",
-  ],
-  studio: [
-    "Unlimited products and prices",
-    "10,000 paid orders / month",
-    "365-day webhook logs",
-    "Priority support",
-  ],
-};
 
 /* ---------------------------------------------------------------- nav */
 
@@ -236,6 +209,15 @@ function Hero() {
             )}
           >
             Read the docs
+          </Link>
+          <Link
+            href="/example"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "lg" }),
+              "px-3 text-muted-foreground",
+            )}
+          >
+            Try the example
           </Link>
         </div>
         <p className="mt-6 font-mono text-xs text-muted-foreground/70 duration-700 fill-mode-backwards delay-400 motion-safe:animate-in motion-safe:fade-in">
@@ -373,84 +355,6 @@ function Features() {
   );
 }
 
-/* ------------------------------------------------------------- pricing */
-
-function formatMonthlyPrice(cents: number | null): string {
-  if (cents === 0) return "$0";
-  if (cents === null) return "Custom";
-  return `$${cents / 100}`;
-}
-
-function Pricing() {
-  return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-20 sm:py-28">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <span className="font-mono text-[11px] tracking-widest text-muted-foreground">
-            Hosted pricing
-          </span>
-          <h2 className="mt-2 max-w-md text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-            Start free, pay when hosted usage grows
-          </h2>
-        </div>
-        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Self-hosting stays free. Hosted plans pay for the managed portal,
-          webhook retention, and support around it.
-        </p>
-      </div>
-
-      <div className="mt-10 grid gap-3 md:grid-cols-3">
-        {PRICING_PLAN_KEYS.map((key) => {
-          const plan = BILLING_PLANS[key];
-          const highlighted = key === "indie";
-
-          return (
-            <div
-              key={plan.key}
-              className={cn(
-                "flex flex-col rounded-xl border bg-background p-5",
-                highlighted && "border-primary/40 shadow-sm",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold">{plan.name}</h3>
-                  <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-                    {plan.summary}
-                  </p>
-                </div>
-                {highlighted ? (
-                  <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-                    Popular
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-6">
-                <span className="text-3xl font-semibold tracking-tight">
-                  {formatMonthlyPrice(plan.monthlyPriceCents)}
-                </span>
-                {plan.monthlyPriceCents !== null ? (
-                  <span className="text-sm text-muted-foreground"> / mo</span>
-                ) : null}
-              </div>
-
-              <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
-                {PLAN_LIMITS[key].map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 /* ------------------------------------------------------------ cta+footer */
 
 async function CtaButton() {
@@ -544,7 +448,6 @@ function Footer() {
 }
 
 export default function Home() {
-  const showPricing = hostedPayConfig().enabled;
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -585,7 +488,6 @@ export default function Home() {
         <AiPrompt />
         <Steps />
         <Features />
-        {showPricing ? <Pricing /> : null}
         <FinalCta />
       </main>
       <Footer />

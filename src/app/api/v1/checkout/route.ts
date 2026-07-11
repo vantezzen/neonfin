@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders, prices } from "@/db/schema";
@@ -7,9 +7,12 @@ import {
   authenticate,
   corsHeaders,
   apiError,
+  invalidBodyError,
   invalidCodeAttempt,
   preflight,
+  rateLimitHeaders,
 } from "@/lib/api/http";
+import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
 import {
   computeWalletAccess,
   findActiveCodeWallet,
@@ -31,12 +34,13 @@ const bodySchema = z
   .object({
     priceId: z.string().min(1),
     code: z.string().optional(),
-    externalUserId: z.string().optional(),
+    externalUserId: z.string().min(1).optional(),
     successUrl: z.string().url().optional(),
     cancelUrl: z.string().url().optional(),
     customerEmail: z.string().email().optional(),
     allowPromotionCodes: z.boolean().optional(),
     discountCode: z.string().trim().min(1).max(120).optional(),
+    idempotencyKey: z.string().trim().min(1).max(200).optional(),
   })
   .refine((b) => !(b.code && b.externalUserId), {
     message: "Pass either code or externalUserId, not both",
@@ -55,6 +59,18 @@ function redirectAllowed(
   }
 }
 
+function hostedReturnUrl(
+  base: string,
+  path: string,
+  orderId: string,
+  returnOrigin: string | null,
+): string {
+  const url = new URL(path, base);
+  url.searchParams.set("orderId", orderId);
+  if (returnOrigin) url.searchParams.set("returnOrigin", returnOrigin);
+  return url.toString();
+}
+
 export async function POST(req: Request): Promise<Response> {
   const auth = await authenticate(req);
   if ("error" in auth) return auth.error;
@@ -64,7 +80,7 @@ export async function POST(req: Request): Promise<Response> {
   const raw = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) {
-    return apiError(400, "invalid_body", parsed.error.issues[0]?.message ?? "Invalid body", cors);
+    return invalidBodyError(parsed.error, cors);
   }
   const input = parsed.data;
 
@@ -153,10 +169,12 @@ export async function POST(req: Request): Promise<Response> {
       if (!wallet) {
         const limit = await invalidCodeAttempt(project.id, req);
         if (!limit.ok) {
-          return apiError(429, "rate_limited", "Too many invalid recovery codes", {
-            ...cors,
-            "Retry-After": String(limit.retryAfterSec),
-          });
+          return apiError(
+            429,
+            "rate_limited",
+            "Too many invalid recovery codes",
+            rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
+          );
         }
         return apiError(404, "wallet_not_found", "Wallet not found", cors);
       }
@@ -189,7 +207,34 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
-  const [order] = await db
+  if (input.idempotencyKey) {
+    const existing = await db.query.orders.findFirst({
+      where: and(
+        eq(orders.projectId, project.id),
+        eq(orders.idempotencyKey, input.idempotencyKey),
+      ),
+    });
+    if (existing?.providerCheckoutId && existing.checkoutUrl) {
+      return Response.json(
+        {
+          url: existing.checkoutUrl,
+          checkoutId: existing.providerCheckoutId,
+          orderId: existing.id,
+        },
+        { headers: cors },
+      );
+    }
+    if (existing) {
+      return apiError(
+        409,
+        "checkout_in_progress",
+        "A checkout with this idempotency key is still being created.",
+        cors,
+      );
+    }
+  }
+
+  const inserted = await db
     .insert(orders)
     .values({
       projectId: project.id,
@@ -207,8 +252,21 @@ export async function POST(req: Request): Promise<Response> {
       renewalModeSnapshot: price.product.renewalMode,
       priceLabelSnapshot: price.label,
       status: "pending",
+      idempotencyKey: input.idempotencyKey ?? null,
+    })
+    .onConflictDoNothing({
+      target: [orders.projectId, orders.idempotencyKey],
     })
     .returning();
+  const order = inserted[0];
+  if (!order) {
+    return apiError(
+      409,
+      "checkout_in_progress",
+      "A checkout with this idempotency key is still being created.",
+      cors,
+    );
+  }
 
   const base = env().NEXT_PUBLIC_APP_URL;
   const mode = price.product.type === "subscription" ? "subscription" : "payment";
@@ -216,8 +274,12 @@ export async function POST(req: Request): Promise<Response> {
     const { url, checkoutId } = await createProviderCheckout(account.id, {
       providerPriceId: price.providerPriceId,
       mode,
-      successUrl: input.successUrl ?? `${base}/pay/success/${order.id}`,
-      cancelUrl: input.cancelUrl ?? `${base}/pay/cancelled`,
+      successUrl:
+        input.successUrl ??
+        hostedReturnUrl(base, `/pay/success/${order.id}`, order.id, origin),
+      cancelUrl:
+        input.cancelUrl ??
+        hostedReturnUrl(base, "/pay/cancelled", order.id, origin),
       customerEmail: input.customerEmail,
       allowPromotionCodes: input.allowPromotionCodes,
       discountCode: input.discountCode,
@@ -229,7 +291,7 @@ export async function POST(req: Request): Promise<Response> {
     });
     await db
       .update(orders)
-      .set({ providerCheckoutId: checkoutId })
+      .set({ providerCheckoutId: checkoutId, checkoutUrl: url })
       .where(eq(orders.id, order.id));
     return Response.json({ url, checkoutId, orderId: order.id }, { headers: cors });
   } catch {

@@ -165,3 +165,10 @@
 .pay-field-highlight {
     animation: pay-field-highlight 650ms ease-in-out;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .pay-field-highlight {
+        animation: none;
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring), transparent 82%);
+    }
+}

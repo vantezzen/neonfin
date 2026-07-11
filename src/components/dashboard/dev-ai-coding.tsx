@@ -1,6 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 import { CodeSnippet } from "@/components/app/copy";
 import { SectionHeader } from "@/components/dashboard/page-header";
 

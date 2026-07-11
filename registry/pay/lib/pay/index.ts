@@ -27,7 +27,12 @@ export type PayClientConfig = {
   externalApiBasePath?: string;
   /** localStorage key used to persist the credit code. */
   storageKey?: string;
+  /** Maximum time to wait for an API request. Defaults to 15 seconds. */
+  requestTimeoutMs?: number;
 };
+
+export { PayError, type PayErrorOptions } from "./error";
+import { PayError } from "./error";
 
 export type FreeGrant = { credits: number; period: "monthly" | "once" } | null;
 
@@ -103,6 +108,8 @@ export type StartCheckoutOptions = {
   allowPromotionCodes?: boolean;
   /** Apply or prefill a provider promotion/discount code for this checkout. */
   discountCode?: string;
+  /** Stable key for safely retrying checkout creation after network failures. */
+  idempotencyKey?: string;
   /**
    * `auto` opens checkout in a popup on desktop and redirects on touch/mobile.
    * Use `redirect` when your app cannot support popups.
@@ -112,43 +119,28 @@ export type StartCheckoutOptions = {
 
 export type OrderStatus = {
   id: string;
-  status: "pending" | "paid" | "failed" | "refunded";
+  status: "pending" | "paid" | "failed" | "expired" | "refunded";
   code: string | null;
   balance: number | null;
+  amountCents: number;
+  currency: string;
+  productId: string | null;
+  priceId: string | null;
+  createdAt: string;
+  paidAt: string | null;
 };
 
-/**
- * Error thrown for any non-2xx API response. Carries the HTTP status and the
- * API's stable machine-readable `code` (e.g. `"insufficient_credits"`,
- * `"wallet_expired"`) - branch on those, not on the message text.
- */
-export class PayError extends Error {
-  readonly status: number;
-  /** Stable error code from the API, e.g. `"wallet_not_found"`. */
-  readonly code?: string;
-  /** Present on 402 (insufficient credits): the current wallet balance. */
-  readonly balance?: number;
-  /** Present on 402: the amount that was requested. */
-  readonly requested?: number;
+export type PayIdentity = {
+  projectId: string;
+  project: string;
+  mode: "credit_codes" | "external_auth";
+  keyKind: "publishable" | "secret";
+};
 
-  constructor(
-    status: number,
-    message: string,
-    opts: { code?: string; balance?: number; requested?: number } = {},
-  ) {
-    super(message);
-    this.name = "PayError";
-    this.status = status;
-    this.code = opts.code;
-    this.balance = opts.balance;
-    this.requested = opts.requested;
-  }
-
-  /** True when the wallet doesn't have enough credits - show purchase UI. */
-  get isInsufficientCredits(): boolean {
-    return this.status === 402;
-  }
-}
+export type OrderPage = {
+  orders: Array<Omit<OrderStatus, "code" | "balance">>;
+  nextCursor: string | null;
+};
 
 const DEFAULT_STORAGE_KEY = "pay_code";
 const DEFAULT_EXTERNAL_API_BASE_PATH = "/api/pay";
@@ -156,7 +148,12 @@ export const PENDING_ORDER_KEY = "pay_pending_order";
 const POPUP_POLL_MS = 1500;
 
 function hasStorage(): boolean {
-  return typeof window !== "undefined" && !!window.localStorage;
+  if (typeof window === "undefined") return false;
+  try {
+    return !!window.localStorage;
+  } catch {
+    return false;
+  }
 }
 
 function randomKey(): string {
@@ -176,10 +173,7 @@ function shouldUseRedirect(flow: CheckoutFlow): boolean {
   if (typeof window === "undefined") return true;
   const ua = window.navigator.userAgent;
   const mobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-  const coarsePointer = window.matchMedia?.(
-    "(hover: none), (pointer: coarse)",
-  )?.matches;
-  return mobileUA || coarsePointer || window.innerWidth < 768;
+  return mobileUA || window.innerWidth < 768;
 }
 
 function popupFeatures(): string {
@@ -204,7 +198,7 @@ function popupFeatures(): string {
 
 function openCheckoutPopup(): Window | null {
   if (typeof window === "undefined") return null;
-  const popup = window.open("", "pay_checkout", popupFeatures());
+  const popup = window.open("", `pay_checkout_${randomKey()}`, popupFeatures());
   if (!popup) return null;
 
   try {
@@ -229,12 +223,38 @@ type CheckoutPopupMessage = {
 export type PayClient = ReturnType<typeof createPayClient>;
 
 export function createPayClient(config: PayClientConfig) {
-  const baseUrl = config.baseUrl.replace(/\/$/, "");
+  const configuredBaseUrl = config.baseUrl?.trim();
+  if (!configuredBaseUrl) {
+    throw new Error(
+      "[pay] baseUrl is missing. Did you set NEXT_PUBLIC_PAY_URL?",
+    );
+  }
+  let baseUrl: string;
+  try {
+    const url = new URL(configuredBaseUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("unsupported protocol");
+    }
+    baseUrl = url.toString().replace(/\/$/, "");
+  } catch {
+    throw new Error(
+      "[pay] baseUrl must be an absolute http(s) URL, for example https://pay.example.com.",
+    );
+  }
+  if (config.publishableKey.startsWith("pay_sk_")) {
+    console.warn(
+      "[pay] publishableKey looks like a secret key. Use a pay_pk_… key in the browser.",
+    );
+  }
   const mode = config.mode ?? "credit_codes";
   const externalApiBasePath = (
     config.externalApiBasePath ?? DEFAULT_EXTERNAL_API_BASE_PATH
   ).replace(/\/$/, "");
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
+  const requestTimeoutMs =
+    Number.isFinite(config.requestTimeoutMs) && config.requestTimeoutMs! >= 1_000
+      ? config.requestTimeoutMs!
+      : 15_000;
   // Namespaced by storageKey so two projects on one origin don't clash.
   const pendingOrderKey =
     storageKey === DEFAULT_STORAGE_KEY
@@ -242,20 +262,45 @@ export function createPayClient(config: PayClientConfig) {
       : `${storageKey}_pending_order`;
   const baseOrigin = new URL(baseUrl).origin;
 
+  async function fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const signal = init.signal;
+    const abort = () => controller.abort();
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+    const timeout = setTimeout(abort, requestTimeoutMs);
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener("abort", abort);
+    }
+  }
+
   async function request<T>(
     path: string,
     init?: Omit<RequestInit, "body"> & { body?: unknown },
   ): Promise<T> {
     const { body, ...rest } = init ?? {};
-    const res = await fetch(`${baseUrl}/api/v1${path}`, {
-      ...rest,
-      headers: {
-        Authorization: `Bearer ${config.publishableKey}`,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...rest.headers,
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(`${baseUrl}/api/v1${path}`, {
+        ...rest,
+        headers: {
+          Authorization: `Bearer ${config.publishableKey}`,
+          ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+          ...rest.headers,
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch {
+      throw new PayError(0, "Could not reach vantezzen/pay. Check your connection and try again.", {
+        code: "network_error",
+      });
+    }
     const data = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
       const err = (data ?? {}) as {
@@ -263,23 +308,36 @@ export function createPayClient(config: PayClientConfig) {
         code?: string;
         balance?: number;
         requested?: number;
+        requestId?: string;
       };
       throw new PayError(
         res.status,
         err.error ?? `Request failed (${res.status})`,
-        { code: err.code, balance: err.balance, requested: err.requested },
+        {
+          code: err.code,
+          balance: err.balance,
+          requested: err.requested,
+          requestId: err.requestId,
+        },
       );
     }
     return data as T;
   }
 
   async function externalRequest<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${externalApiBasePath}${path}`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(`${externalApiBasePath}${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new PayError(0, "Could not reach your billing endpoint. Check your connection and try again.", {
+        code: "network_error",
+      });
+    }
     const data = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
       const err = (data ?? {}) as {
@@ -287,11 +345,17 @@ export function createPayClient(config: PayClientConfig) {
         code?: string;
         balance?: number;
         requested?: number;
+        requestId?: string;
       };
       throw new PayError(
         res.status,
         err.error ?? `Request failed (${res.status})`,
-        { code: err.code, balance: err.balance, requested: err.requested },
+        {
+          code: err.code,
+          balance: err.balance,
+          requested: err.requested,
+          requestId: err.requestId,
+        },
       );
     }
     return data as T;
@@ -361,6 +425,11 @@ export function createPayClient(config: PayClientConfig) {
   let pendingCreate: Promise<string> | null = null;
   async function getOrCreateCode(): Promise<string> {
     requireCreditCodeMode();
+    if (typeof window === "undefined") {
+      throw new Error(
+        "[pay] getOrCreateCode() is browser-only. Use createPayServerClient for server-side wallet operations.",
+      );
+    }
     const existing = getCode();
     if (existing) return existing;
     if (!pendingCreate) {
@@ -513,6 +582,7 @@ export function createPayClient(config: PayClientConfig) {
       customerEmail?: string;
       allowPromotionCodes?: boolean;
       discountCode?: string;
+      idempotencyKey?: string;
     },
   ): Promise<CheckoutResult> {
     return request<CheckoutResult>("/checkout", {
@@ -523,10 +593,11 @@ export function createPayClient(config: PayClientConfig) {
         ...(opts.successUrl ? { successUrl: opts.successUrl } : {}),
         ...(opts.cancelUrl ? { cancelUrl: opts.cancelUrl } : {}),
         ...(opts.customerEmail ? { customerEmail: opts.customerEmail } : {}),
-        ...(opts.allowPromotionCodes
+        ...(opts.allowPromotionCodes !== undefined
           ? { allowPromotionCodes: opts.allowPromotionCodes }
           : {}),
         ...(opts.discountCode ? { discountCode: opts.discountCode } : {}),
+        ...(opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}),
       },
     });
   }
@@ -539,6 +610,7 @@ export function createPayClient(config: PayClientConfig) {
       customerEmail?: string;
       allowPromotionCodes?: boolean;
       discountCode?: string;
+      idempotencyKey?: string;
     },
   ): Promise<CheckoutResult> {
     return externalRequest<CheckoutResult>("/checkout", {
@@ -547,10 +619,11 @@ export function createPayClient(config: PayClientConfig) {
       ...(opts.successUrl ? { successUrl: opts.successUrl } : {}),
       ...(opts.cancelUrl ? { cancelUrl: opts.cancelUrl } : {}),
       ...(opts.customerEmail ? { customerEmail: opts.customerEmail } : {}),
-      ...(opts.allowPromotionCodes
+      ...(opts.allowPromotionCodes !== undefined
         ? { allowPromotionCodes: opts.allowPromotionCodes }
         : {}),
       ...(opts.discountCode ? { discountCode: opts.discountCode } : {}),
+      ...(opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}),
     });
   }
 
@@ -571,6 +644,7 @@ export function createPayClient(config: PayClientConfig) {
   ): Promise<OrderStatus> {
     return new Promise((resolve, reject) => {
       let active = true;
+      let popupClosed = false;
       let pollTimer: ReturnType<typeof setTimeout> | null = null;
       let closeTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -606,7 +680,11 @@ export function createPayClient(config: PayClientConfig) {
             finish(order);
             return;
           }
-          if (order.status === "failed" || order.status === "refunded") {
+          if (
+            order.status === "failed" ||
+            order.status === "expired" ||
+            order.status === "refunded"
+          ) {
             forgetPendingOrder(result.orderId);
             fail(
               checkoutError(
@@ -621,29 +699,55 @@ export function createPayClient(config: PayClientConfig) {
           // Transient network/API errors should not strand an in-progress
           // checkout. Keep polling while the popup remains open.
         }
-        pollTimer = setTimeout(poll, POPUP_POLL_MS);
+        if (!popupClosed) pollTimer = setTimeout(poll, POPUP_POLL_MS);
       }
 
       async function handleClosedPopup() {
-        try {
-          const order = await getOrder(result.orderId);
-          if (
-            order.status === "paid" &&
-            (mode === "external_auth" || order.code)
-          ) {
-            finish(order);
+        if (popupClosed) return;
+        popupClosed = true;
+        if (closeTimer) clearInterval(closeTimer);
+
+        const deadline = Date.now() + 10_000;
+        async function confirmPayment() {
+          if (!active) return;
+          try {
+            const order = await getOrder(result.orderId);
+            if (
+              order.status === "paid" &&
+              (mode === "external_auth" || order.code)
+            ) {
+              finish(order);
+              return;
+            }
+        if (
+          order.status === "failed" ||
+          order.status === "expired" ||
+          order.status === "refunded"
+        ) {
+              forgetPendingOrder(result.orderId);
+              fail(
+                checkoutError(
+                  `checkout_${order.status}`,
+                  `Checkout ${order.status}.`,
+                ),
+              );
+              return;
+            }
+          } catch {
+            // The pending-order resume poller will retry transient failures.
+          }
+          if (Date.now() < deadline) {
+            pollTimer = setTimeout(confirmPayment, POPUP_POLL_MS);
             return;
           }
-        } catch {
-          // If the last status check fails after the user closes the popup,
-          // report the close. A later redirect-resume can still recover.
+          fail(
+            checkoutError(
+              "checkout_closed",
+              "Checkout closed before payment could be confirmed. We'll keep checking in the background.",
+            ),
+          );
         }
-        fail(
-          checkoutError(
-            "checkout_closed",
-            "Checkout window closed before payment completed.",
-          ),
-        );
+        void confirmPayment();
       }
 
       function onMessage(event: MessageEvent<CheckoutPopupMessage>) {
@@ -655,10 +759,7 @@ export function createPayClient(config: PayClientConfig) {
         if (data.type === "checkout_paid" && matchesOrder) {
           void poll();
         }
-        if (
-          data.type === "checkout_cancelled" &&
-          (data.orderId === undefined || matchesOrder)
-        ) {
+        if (data.type === "checkout_cancelled" && matchesOrder) {
           forgetPendingOrder(result.orderId);
           fail(checkoutError("checkout_cancelled", "Checkout was cancelled."));
         }
@@ -688,6 +789,7 @@ export function createPayClient(config: PayClientConfig) {
       customerEmail?: string;
       allowPromotionCodes?: boolean;
       discountCode?: string;
+      idempotencyKey?: string;
     } = {},
   ): Promise<CheckoutResult> {
     if (mode === "external_auth") {
@@ -751,10 +853,13 @@ export function createPayClient(config: PayClientConfig) {
       }
     }
 
-    const successUrl =
-      checkoutOpts.successUrl ??
-      (typeof window !== "undefined" ? window.location.href : undefined);
-    const result = await createCheckout(priceId, { ...checkoutOpts, successUrl });
+    const returnUrl =
+      typeof window !== "undefined" ? window.location.href : undefined;
+    const result = await createCheckout(priceId, {
+      ...checkoutOpts,
+      successUrl: checkoutOpts.successUrl ?? returnUrl,
+      cancelUrl: checkoutOpts.cancelUrl ?? returnUrl,
+    });
     rememberPendingOrder(result.orderId);
     if (typeof window !== "undefined") {
       window.location.assign(result.url);
@@ -765,6 +870,20 @@ export function createPayClient(config: PayClientConfig) {
   /** Poll an order by its id or provider checkout id. */
   async function getOrder(ref: string): Promise<OrderStatus> {
     return request<OrderStatus>(`/orders/${encodeURIComponent(ref)}`);
+  }
+
+  /** List project orders with an opaque cursor for pagination. */
+  async function listOrders(opts: { cursor?: string; limit?: number } = {}) {
+    const params = new URLSearchParams();
+    if (opts.cursor) params.set("cursor", opts.cursor);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    const query = params.size ? `?${params}` : "";
+    return request<OrderPage>(`/orders${query}`);
+  }
+
+  /** Inspect the project and key mode currently configured for this client. */
+  async function getMe(): Promise<PayIdentity> {
+    return request<PayIdentity>("/me");
   }
 
   /**
@@ -800,6 +919,8 @@ export function createPayClient(config: PayClientConfig) {
   return {
     baseUrl,
     mode,
+    /** localStorage key where this browser's credit wallet code is stored. */
+    storageKey,
     /** localStorage key where a pending checkout's order id is stashed. */
     pendingOrderKey,
     getCode,
@@ -817,6 +938,8 @@ export function createPayClient(config: PayClientConfig) {
     createCheckout,
     startCheckout,
     getOrder,
+    listOrders,
+    getMe,
     getPortalUrl,
   };
 }

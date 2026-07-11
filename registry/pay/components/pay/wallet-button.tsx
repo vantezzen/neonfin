@@ -47,11 +47,16 @@ export function WalletButton({
     if (mode === "external_auth") return;
     if (handledUrl.current || typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    const code = url.searchParams.get(WALLET_QUERY_PARAM);
+    const fragment = new URLSearchParams(url.hash.slice(1));
+    const code =
+      fragment.get(WALLET_QUERY_PARAM) ??
+      url.searchParams.get(WALLET_QUERY_PARAM);
     if (!code) return;
 
     handledUrl.current = true;
     url.searchParams.delete(WALLET_QUERY_PARAM);
+    fragment.delete(WALLET_QUERY_PARAM);
+    url.hash = fragment.toString();
     window.history.replaceState(null, "", url.toString());
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- URL restore intentionally opens the wallet dialog on return.

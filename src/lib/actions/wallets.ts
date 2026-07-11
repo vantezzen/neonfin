@@ -131,19 +131,27 @@ export async function grantWalletFeature(
 }
 
 /** Remove a MANUAL feature grant (subscription/purchase access is untouched). */
-export async function revokeWalletFeature(formData: FormData): Promise<void> {
-  const walletId = String(formData.get("walletId") ?? "");
-  const feature = normalizeFeatureKey(String(formData.get("feature") ?? ""));
-  const wallet = await requireOwnedWallet(walletId);
-  if (wallet && feature) {
-    await db
-      .delete(featureGrants)
-      .where(
-        and(
-          eq(featureGrants.walletId, wallet.id),
-          eq(featureGrants.feature, feature),
-        ),
-      );
+export async function revokeWalletFeature(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const walletId = String(formData.get("walletId") ?? "");
+    const feature = normalizeFeatureKey(String(formData.get("feature") ?? ""));
+    const wallet = await requireOwnedWallet(walletId);
+    if (wallet && feature) {
+      await db
+        .delete(featureGrants)
+        .where(
+          and(
+            eq(featureGrants.walletId, wallet.id),
+            eq(featureGrants.feature, feature),
+          ),
+        );
+    }
+    revalidatePath(`/dashboard/wallets/${walletId}`);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
   }
-  revalidatePath(`/dashboard/wallets/${walletId}`);
 }

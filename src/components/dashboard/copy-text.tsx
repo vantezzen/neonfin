@@ -19,6 +19,8 @@ export function CopyText({ value }: { value: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         }}
+        aria-label={copied ? "Copied" : "Copy"}
+        title={copied ? "Copied" : "Copy"}
       >
         {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
       </Button>

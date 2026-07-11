@@ -41,14 +41,18 @@ export function FeatureGate({
   fallback,
   purchaseButtonProps,
 }: FeatureGateProps) {
-  const { enabled, loading, confirming } = useFeature(feature);
+  const { enabled, loading, error } = useFeature(feature);
 
-  if (loading || confirming) {
+  if (loading) {
     return (
       <span className="inline-flex items-center text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
       </span>
     );
+  }
+
+  if (error) {
+    return <span role="alert" className="text-sm text-muted-foreground">Unable to check access.</span>;
   }
 
   if (enabled) return <>{children}</>;

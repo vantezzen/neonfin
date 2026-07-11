@@ -4,7 +4,9 @@ import {
   apiError,
   invalidCodeAttempt,
   preflight,
+  rateLimitHeaders,
 } from "@/lib/api/http";
+import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
 import {
   readWalletByCode,
   WalletExpiredError,
@@ -35,16 +37,18 @@ export async function GET(
     );
     return Response.json(
       { code, balances, features, subscriptions },
-      { headers: cors },
+      { headers: { ...cors, "Cache-Control": "no-store" } },
     );
   } catch (e) {
     if (e instanceof WalletNotFoundError) {
       const limit = await invalidCodeAttempt(project.id, req);
       if (!limit.ok) {
-        return apiError(429, "rate_limited", "Too many invalid recovery codes", {
-          ...cors,
-          "Retry-After": String(limit.retryAfterSec),
-        });
+        return apiError(
+          429,
+          "rate_limited",
+          "Too many invalid recovery codes",
+          rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
+        );
       }
       return apiError(404, "wallet_not_found", "Wallet not found", cors);
     }

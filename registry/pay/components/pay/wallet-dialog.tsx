@@ -125,9 +125,11 @@ export function WalletDialog({
         onRestored?.(wallet.code);
       } catch (err) {
         setError(
-          err instanceof PayError && err.status === 404
-            ? "That code doesn't match a wallet."
-            : "Couldn't restore that wallet. Check the code and try again.",
+          err instanceof PayError && err.code === "wallet_expired"
+            ? "That wallet code expired after inactivity. Start with a new wallet or restore another code."
+            : err instanceof PayError && err.status === 404
+              ? "That code doesn't match a wallet."
+              : "Couldn't restore that wallet. Check the code and try again.",
         );
       } finally {
         setStatus("idle");

@@ -13,6 +13,7 @@ import {
 import { SectionHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -157,14 +158,12 @@ export function SettingsForms({ user }: { user: SettingsUser }) {
               />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              name="revokeOtherSessions"
-              className="size-4 rounded border-input"
-            />
-            Sign out other sessions after changing password
-          </label>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox id="revoke-other-sessions" name="revokeOtherSessions" />
+            <Label htmlFor="revoke-other-sessions" className="font-normal">
+              Sign out other sessions after changing password
+            </Label>
+          </div>
           <div>
             <Button type="submit" disabled={passwordPending}>
               {passwordPending ? "Changing…" : "Change password"}

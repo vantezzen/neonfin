@@ -29,6 +29,33 @@ export class StripeProvider implements PaymentProvider {
     this.stripe = new Stripe(secretKey);
   }
 
+  async validateCredentials() {
+    try {
+      // Product access is the minimum capability required for catalog sync.
+      await this.stripe.products.list({ limit: 1 });
+    } catch {
+      throw new Error(
+        "Stripe rejected this key or it cannot read products. Check the key and its catalog permissions.",
+      );
+    }
+  }
+
+  async createWebhook({ url }: { url: string }) {
+    const endpoint = await this.stripe.webhookEndpoints.create({
+      url,
+      enabled_events: [
+        "checkout.session.completed",
+        "checkout.session.async_payment_succeeded",
+        "invoice.paid",
+        "charge.refunded",
+        "customer.subscription.deleted",
+      ],
+      description: "vantezzen/pay fulfillment",
+    });
+    if (!endpoint.secret) throw new Error("Stripe did not return a webhook secret");
+    return { webhookSecret: endpoint.secret };
+  }
+
   async createProduct(input: CreateProductInput) {
     const product = await this.stripe.products.create({
       name: input.name,

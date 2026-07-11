@@ -9,7 +9,8 @@ stable machine-readable `code`:
 ```json
 {
   "error": "Insufficient credits",
-  "code": "insufficient_credits"
+  "code": "insufficient_credits",
+  "requestId": "018f..."
 }
 ```
 
@@ -17,6 +18,13 @@ Branch on `code` (or the HTTP status) - never on the message text, which may
 change. The typed clients throw `PayError` carrying `status`, `code`, and
 the message. For the common out-of-credits case you don't need to remember
 either - check `err.isInsufficientCredits`.
+
+`PayError.requestId` is available when the API returned a request identifier.
+Include it when reporting an unexpected provider or server error.
+
+Every API error also has a `requestId` in its JSON body and `X-Request-Id`
+response header. Include it when reporting an unexpected provider or server
+error.
 
 ## Common statuses
 

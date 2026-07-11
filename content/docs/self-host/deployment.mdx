@@ -24,6 +24,26 @@ With Vercel Services, the included `vercel.json` defines a `web` service and a
 `provider-service` service. The provider service URL is injected into the web app
 as `PAY_PROVIDER_SERVICE_URL` over Vercel's internal service binding.
 
+## Docker Compose
+
+The repository includes a production web image (`Dockerfile`), encrypted-key
+provider service, and Postgres in `docker-compose.yml`. Create a root `.env`
+from the values in [Environment variables](/docs/self-host/environment), then:
+
+```bash
+docker compose --profile secure build
+docker compose --profile secure run --rm migrate
+docker compose --profile secure up -d web provider-service
+```
+
+The web image is built with `NEXT_PUBLIC_APP_URL`, because Next.js embeds public
+environment variables in browser code at build time. Set the final HTTPS URL
+before `build`, then rebuild the image if that URL changes.
+
+The Compose file exposes web on port `3000` and the provider service on `3001`.
+Put a TLS-terminating reverse proxy in front of the web service, and do not
+publish port `3001` beyond the private network in production.
+
 ## Other hosts
 
 Your host must support:

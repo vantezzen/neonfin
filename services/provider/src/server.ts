@@ -6,6 +6,7 @@ import type {
 import { isAuthorized } from "./http/auth";
 import { notFound, providerJson, unauthorized } from "./http/responses";
 import { handleProviderRequest } from "./operations/handler";
+import { ProviderInputError } from "./operations/errors";
 
 declare const Bun: {
   serve(options: {
@@ -37,7 +38,10 @@ Bun.serve({
       console.error(err);
       return providerJson(400, {
         ok: false,
-        error: "Provider operation failed",
+        error:
+          err instanceof ProviderInputError
+            ? err.message
+            : "Provider operation failed",
       });
     }
   },

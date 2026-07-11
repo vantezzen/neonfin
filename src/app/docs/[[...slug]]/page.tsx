@@ -11,12 +11,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/components/docs/mdx";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-
-const movedDocs = new Map([
-  ["/docs/installation", "/docs/getting-started"],
-  ["/docs/client", "/docs/api/client-reference"],
-  ["/docs/deploy", "/docs/self-host"],
-]);
+import { movedDocs } from "@/lib/docs/moved";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;

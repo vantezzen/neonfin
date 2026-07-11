@@ -1,7 +1,7 @@
 import "server-only";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { providerAccounts } from "@/db/schema";
+import { providerAccounts, webhookEvents } from "@/db/schema";
 
 /**
  * Provider accounts for one owner. Secrets never leave the server - the UI
@@ -21,8 +21,19 @@ export async function listProviderAccounts(ownerId: string) {
     },
     orderBy: desc(providerAccounts.createdAt),
   });
-  return rows.map(({ webhookSecretEnc, ...rest }) => ({
-    ...rest,
-    hasWebhookSecret: webhookSecretEnc != null,
-  }));
+  return Promise.all(
+    rows.map(async ({ webhookSecretEnc, id, ...rest }) => {
+      const latestEvent = await db.query.webhookEvents.findFirst({
+        where: eq(webhookEvents.providerAccountId, id),
+        columns: { createdAt: true },
+        orderBy: desc(webhookEvents.createdAt),
+      });
+      return {
+        id,
+        ...rest,
+        hasWebhookSecret: webhookSecretEnc != null,
+        lastWebhookAt: latestEvent?.createdAt ?? null,
+      };
+    }),
+  );
 }

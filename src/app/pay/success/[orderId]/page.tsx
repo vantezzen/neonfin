@@ -8,15 +8,24 @@ export const metadata: Metadata = { title: "Payment · vantezzen/pay" };
 
 // Awaiting `params` is dynamic - isolate it in a Suspense boundary so the
 // static shell prerenders (Cache Components).
-async function Resolver({ params }: { params: Promise<{ orderId: string }> }) {
+async function Resolver({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ returnOrigin?: string }>;
+}) {
   const { orderId } = await params;
-  return <SuccessPoller orderId={orderId} />;
+  const { returnOrigin } = await searchParams;
+  return <SuccessPoller orderId={orderId} returnOrigin={returnOrigin} />;
 }
 
 export default function SuccessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ returnOrigin?: string }>;
 }) {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
@@ -33,7 +42,7 @@ export default function SuccessPage({
                 </div>
               }
             >
-              <Resolver params={params} />
+              <Resolver params={params} searchParams={searchParams} />
             </Suspense>
           </CardContent>
         </Card>

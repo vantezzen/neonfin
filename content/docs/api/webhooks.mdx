@@ -1,0 +1,92 @@
+---
+title: Consumer webhooks
+description: Receive normalized payment events in your own backend.
+---
+
+If your server needs to react to payment changes without polling orders, add a
+**Consumer webhook URL** and **Signing secret** in the project's Settings tab.
+The URL must be HTTPS. vantezzen/pay turns Stripe and Polar provider events into
+one small event format and sends it to your endpoint after fulfillment succeeds.
+
+## Event format
+
+Every request is a JSON `POST` with these headers:
+
+```http
+Content-Type: application/json
+Pay-Event: order.paid
+Pay-Signature: t=1720612800,v1=hex-hmac-sha256
+```
+
+```json
+{
+  "id": "evt_...",
+  "type": "order.paid",
+  "createdAt": "2026-07-10T12:00:00.000Z",
+  "data": {
+    "order": {
+      "id": "ord_...",
+      "status": "paid",
+      "priceId": "price_...",
+      "productId": "prod_...",
+      "walletId": "wal_...",
+      "checkoutId": "cs_...",
+      "amountCents": 500,
+      "currency": "USD",
+      "paidAt": "2026-07-10T12:00:00.000Z"
+    },
+    "subscriptionId": null
+  }
+}
+```
+
+`type` is one of `order.paid`, `order.refunded`, `subscription.renewed`, or
+`subscription.ended`. Subscription-ending events may have `order: null` and a
+provider subscription id instead.
+
+## Verify signatures
+
+Signatures cover the exact JSON request body as `timestamp + "." + body`.
+Reject old timestamps before doing work, then compare the HMAC in constant time.
+
+```ts title="app/api/pay-events/route.ts"
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function safeEqual(a: string, b: string) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+export async function POST(request: Request) {
+  const body = await request.text();
+  const signature = request.headers.get("pay-signature") ?? "";
+  const match = /^t=(\d+),v1=([a-f0-9]+)$/.exec(signature);
+  if (!match) return new Response("Invalid signature", { status: 400 });
+
+  const timestamp = Number(match[1]);
+  if (Math.abs(Date.now() / 1000 - timestamp) > 300) {
+    return new Response("Stale event", { status: 400 });
+  }
+
+  const expected = createHmac("sha256", process.env.PAY_WEBHOOK_SECRET!)
+    .update(`${timestamp}.${body}`)
+    .digest("hex");
+  if (!safeEqual(match[2], expected)) {
+    return new Response("Invalid signature", { status: 400 });
+  }
+
+  const event = JSON.parse(body) as { id: string; type: string };
+  // Store event.id with a unique constraint before any side effect.
+  // Returning 2xx acknowledges the delivery.
+  return Response.json({ received: event.id });
+}
+```
+
+## Delivery and retries
+
+Your endpoint has 10 seconds to return a successful `2xx` response. Failed or
+timed-out deliveries cause the provider webhook request to remain retryable;
+the next provider delivery, or the dashboard's **Replay** action, attempts the
+same normalized event again. Make handlers idempotent by storing `event.id`
+before sending email, granting app access, or starting work.

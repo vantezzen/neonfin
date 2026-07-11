@@ -22,6 +22,20 @@
       "when": 1783602341702,
       "tag": "0002_workable_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783602341703,
+      "tag": "0003_checkout_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783602341704,
+      "tag": "0004_outbound_webhooks",
+      "breakpoints": true
     }
   ]
 }

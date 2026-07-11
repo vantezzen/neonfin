@@ -51,5 +51,8 @@ export async function GET(req: Request): Promise<Response> {
       })),
   }));
 
-  return Response.json({ products: catalog }, { headers: cors });
+  return Response.json(
+    { products: catalog },
+    { headers: { ...cors, "Cache-Control": "public, max-age=60" } },
+  );
 }

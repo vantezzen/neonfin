@@ -80,7 +80,6 @@ export async function recoverWalletByEmail(
       await sendRecoveryEmail(email, wallets, returnUrl);
     } catch (error) {
       console.error("[vantezzen/pay] Failed to send wallet recovery email", error);
-      return { error: "Could not send recovery email right now." };
     }
   }
 

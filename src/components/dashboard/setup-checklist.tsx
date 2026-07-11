@@ -23,22 +23,6 @@ export function SetupChecklist({
 
   const steps: FirstStep[] = [
     {
-      done: state.hasProvider,
-      title: "Connect a payment provider",
-      description: "Add your Stripe or Polar keys so purchases can be charged.",
-      action: (
-        <div className="flex flex-wrap items-center gap-2">
-          <ProviderConnectWizard appUrl={appUrl} size="sm" />
-          <Link
-            href="/docs/workflows/providers"
-            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-          >
-            Setup guide
-          </Link>
-        </div>
-      ),
-    },
-    {
       done: state.hasProject,
       title: "Create your first project",
       description:
@@ -64,6 +48,22 @@ export function SetupChecklist({
         >
           Read the guide
         </Link>
+      ),
+    },
+    {
+      done: state.hasProvider,
+      title: "Connect a payment provider",
+      description: "Go paid by adding Stripe or Polar after your catalog is ready.",
+      action: (
+        <div className="flex flex-wrap items-center gap-2">
+          <ProviderConnectWizard appUrl={appUrl} size="sm" />
+          <Link
+            href="/docs/workflows/providers"
+            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+          >
+            Setup guide
+          </Link>
+        </div>
       ),
     },
   ];

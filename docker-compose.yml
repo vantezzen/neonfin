@@ -38,5 +38,46 @@ services:
     ports:
       - "3001:3001"
 
+  web:
+    profiles: ["secure"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://pay:pay@postgres:5432/pay}
+      PAY_PROVIDER_SERVICE_URL: http://provider-service:3001
+      PAY_PROVIDER_SERVICE_SECRET: ${PAY_PROVIDER_SERVICE_SECRET}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      PAY_ALLOW_SIGNUPS: ${PAY_ALLOW_SIGNUPS:-true}
+      PAY_BILLING_MODE: self_hosted
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      provider-service:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+  migrate:
+    profiles: ["secure"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://pay:pay@postgres:5432/pay}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pay-pgdata:

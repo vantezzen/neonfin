@@ -96,7 +96,6 @@ export function ProjectFirstSteps({
         <div className="flex items-center gap-2">
           <Link
             href={`/dashboard/projects/${projectId}?tab=developers`}
-            onClick={markIntegrationDone}
             className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
           >
             Developers
@@ -123,6 +122,8 @@ export function ProjectFirstSteps({
       ),
     },
   ];
+
+  if (steps.every((step) => step.done)) return null;
 
   return (
     <FirstSteps

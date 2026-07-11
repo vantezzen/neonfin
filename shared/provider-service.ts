@@ -70,6 +70,9 @@ export interface CreateCheckoutInput {
 
 export interface PaymentProvider {
   catalogMode: CatalogMode;
+  /** Verify credentials and the catalog permissions needed by vantezzen/pay. */
+  validateCredentials(): Promise<void>;
+  createWebhook(input: { url: string }): Promise<{ webhookSecret: string }>;
   createProduct?(
     input: CreateProductInput,
   ): Promise<{ providerProductId: string }>;
@@ -93,11 +96,13 @@ export interface PaymentProvider {
 export type ProviderServiceRequest =
   | {
       op: "create-provider-account";
+      accountId: string;
       ownerId: string;
       provider: ProviderName;
       label: string;
       environment: string;
       secretKey: string;
+      webhookUrl: string;
     }
   | { op: "save-webhook-secret"; accountId: string; webhookSecret: string }
   | {
@@ -142,7 +147,7 @@ export type ProviderServiceRequest =
 
 export type ProviderServiceData<T extends ProviderServiceRequest["op"]> =
   T extends "create-provider-account"
-    ? { id: string }
+    ? { id: string; webhookConfigured: boolean }
     : T extends "create-product"
       ? { providerProductId: string }
       : T extends "create-price"

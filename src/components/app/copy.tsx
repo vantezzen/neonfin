@@ -35,7 +35,8 @@ export function CopyInline({
         "group inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-0.5 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground",
         className,
       )}
-      title="Copy"
+      title={copied ? "Copied" : "Copy"}
+      aria-label={copied ? "Copied" : `Copy ${label ?? value}`}
     >
       {label ?? value}
       {copied ? (
@@ -58,6 +59,8 @@ export function CodeSnippet({ code }: { code: string }) {
         size="icon-sm"
         className="absolute right-2 top-2 z-10 bg-muted/40"
         onClick={() => copy(code)}
+        aria-label={copied ? "Copied code" : "Copy code"}
+        title={copied ? "Copied" : "Copy code"}
       >
         {copied ? (
           <Check className="size-3.5" />

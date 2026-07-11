@@ -37,6 +37,29 @@ Returns:
 This endpoint is idempotent by `externalUserId`. You can call it whenever a
 user opens billing or starts a paid workflow.
 
+## Read a wallet without creating it
+
+Use this when a missing wallet should remain missing (for example, an account
+status check):
+
+```http
+GET /api/v1/wallets/external?externalUserId=user_123
+Authorization: Bearer pay_sk_...
+```
+
+It returns the same wallet shape as the create-or-read endpoint, or `404` with
+`code: "wallet_not_found"`. It never creates a wallet.
+
+For credit history without creating a wallet, use:
+
+```http
+GET /api/v1/wallets/external/ledger?externalUserId=user_123&limit=25
+Authorization: Bearer pay_sk_...
+```
+
+The response has `entries` and an opaque `nextCursor`. Each entry includes the
+signed `delta`, `reason`, product identity, optional order id, and timestamp.
+
 ## Grant credits
 
 Grant credits to a code wallet or external user:

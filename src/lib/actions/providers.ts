@@ -1,10 +1,11 @@
 "use server";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { products } from "@/db/schema";
+import { createId } from "@/lib/id";
+import { env } from "@/lib/env";
 import { requireUser, requireOwnedProviderAccount } from "@/lib/auth/dal";
 import {
   createProviderAccount,
@@ -19,17 +20,48 @@ const input = z.object({
   label: z.string().min(1),
   secretKey: z.string().min(1),
   webhookSecret: z.string().optional(),
-  environment: z.enum(["production", "sandbox"]).default("production"),
+  environment: z.enum(["production", "sandbox"]).default("sandbox"),
 });
+
+const updateInput = z.object({
+  label: z.string().trim().min(1),
+  environment: z.enum(["production", "sandbox"]),
+  secretKey: z.string().min(1).optional(),
+  webhookSecret: z.string().min(1).optional(),
+});
+
+type ProviderEnvironment = "production" | "sandbox";
+
+function environmentFromStripeKey(
+  secretKey: string,
+): ProviderEnvironment | undefined {
+  if (secretKey.startsWith("rk_test_") || secretKey.startsWith("sk_test_")) {
+    return "sandbox";
+  }
+  if (secretKey.startsWith("rk_live_") || secretKey.startsWith("sk_live_")) {
+    return "production";
+  }
+}
+
+function providerEnvironment(
+  provider: "stripe" | "polar",
+  secretKey: string | undefined,
+  selectedEnvironment: ProviderEnvironment,
+): ProviderEnvironment {
+  return provider === "stripe" && secretKey
+    ? environmentFromStripeKey(secretKey) ?? selectedEnvironment
+    : selectedEnvironment;
+}
 
 export type ConnectState = {
   error?: string;
   accountId?: string;
   provider?: "stripe" | "polar";
+  environment?: ProviderEnvironment;
+  webhookConfigured?: boolean;
 };
 
-/** Wizard step 1: create the account (no webhook yet) and return its id so the
- * next step can show the account-specific webhook URL. */
+/** Create and validate a provider account, provisioning a webhook when allowed. */
 export async function connectProviderStart(
   _prev: ConnectState,
   formData: FormData,
@@ -40,21 +72,36 @@ export async function connectProviderStart(
       provider: formData.get("provider"),
       label: formData.get("label"),
       secretKey: formData.get("secretKey"),
-      environment: formData.get("environment") || "production",
+      environment: formData.get("environment") || "sandbox",
     });
+    const environment = providerEnvironment(
+      parsed.provider,
+      parsed.secretKey,
+      parsed.environment,
+    );
+    const accountId = createId("prov");
     const row = await createProviderAccount({
+      accountId,
       ownerId: user.id,
       provider: parsed.provider,
       label: parsed.label,
-      environment: parsed.environment,
+      environment,
       secretKey: parsed.secretKey,
+      webhookUrl: new URL(
+        `/api/webhooks/${parsed.provider}/${accountId}`,
+        env().NEXT_PUBLIC_APP_URL,
+      ).toString(),
     });
-    // Intentionally NOT revalidating here: this runs mid-wizard (step 0 → 1).
-    // Revalidating /dashboard/providers would re-render the accounts section and
-    // remount the open ProviderConnectWizard (empty-state → list branch swap),
-    // closing the dialog before the webhook instructions ever show. The account
-    // is incomplete until saveWebhookSecret, which revalidates.
-    return { accountId: row.id, provider: parsed.provider };
+    if (row.webhookConfigured) {
+      revalidatePath("/dashboard/providers");
+      revalidatePath("/dashboard");
+    }
+    return {
+      accountId: row.id,
+      provider: parsed.provider,
+      environment,
+      webhookConfigured: row.webhookConfigured,
+    };
   } catch (e) {
     const s = actionError(e);
     return { error: s.error };
@@ -85,20 +132,28 @@ export async function updateProviderAccount(
   formData: FormData,
 ): Promise<FormState> {
   const id = String(formData.get("id") ?? "");
-  await requireOwnedProviderAccount(id);
+  const account = await requireOwnedProviderAccount(id);
   try {
-    const label = String(formData.get("label") ?? "").trim();
-    const environment = String(formData.get("environment") ?? "production");
-    const secretKey = String(formData.get("secretKey") ?? "");
-    const webhookSecret = String(formData.get("webhookSecret") ?? "");
-
+    const rawSecret = String(formData.get("secretKey") ?? "").trim();
+    const rawWebhook = String(formData.get("webhookSecret") ?? "").trim();
     // Only overwrite secrets when a new value is supplied - blank means "keep".
+    const parsed = updateInput.parse({
+      label: formData.get("label"),
+      environment: formData.get("environment") ?? "production",
+      secretKey: rawSecret || undefined,
+      webhookSecret: rawWebhook || undefined,
+    });
+    const environment = providerEnvironment(
+      account.provider,
+      parsed.secretKey,
+      parsed.environment,
+    );
     await updateProviderAccountSecret({
       accountId: id,
-      label,
+      label: parsed.label,
       environment,
-      ...(secretKey ? { secretKey } : {}),
-      ...(webhookSecret ? { webhookSecret } : {}),
+      ...(parsed.secretKey ? { secretKey: parsed.secretKey } : {}),
+      ...(parsed.webhookSecret ? { webhookSecret: parsed.webhookSecret } : {}),
     });
     revalidatePath("/dashboard/providers");
     revalidatePath("/dashboard");
@@ -108,17 +163,30 @@ export async function updateProviderAccount(
   }
 }
 
-export async function deleteProviderAccount(formData: FormData): Promise<void> {
-  const id = String(formData.get("id"));
-  await requireOwnedProviderAccount(id);
-  // products.providerAccountId is ON DELETE RESTRICT - surface a friendly
-  // notice instead of letting the FK violation crash the action.
-  const attached = await db.query.products.findFirst({
-    where: eq(products.providerAccountId, id),
-    columns: { id: true },
-  });
-  if (attached) redirect("/dashboard/providers?error=account-in-use");
-  await deleteProviderAccountSecret(id);
-  revalidatePath("/dashboard/providers");
-  revalidatePath("/dashboard");
+export async function deleteProviderAccount(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const id = String(formData.get("id"));
+    await requireOwnedProviderAccount(id);
+    // products.providerAccountId is ON DELETE RESTRICT - surface a friendly
+    // notice instead of letting the FK violation crash the action.
+    const attached = await db.query.products.findFirst({
+      where: eq(products.providerAccountId, id),
+      columns: { id: true },
+    });
+    if (attached) {
+      return {
+        error:
+          "Detach this provider from its products before removing the account.",
+      };
+    }
+    await deleteProviderAccountSecret(id);
+    revalidatePath("/dashboard/providers");
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
+  }
 }

@@ -23,6 +23,7 @@ const ORDER_STATUS: Record<string, { label: string; tone: StatusTone }> = {
   paid: { label: "Paid", tone: "success" },
   pending: { label: "Pending", tone: "neutral" },
   failed: { label: "Failed", tone: "danger" },
+  expired: { label: "Expired", tone: "warning" },
   refunded: { label: "Refunded", tone: "warning" },
 };
 
@@ -38,7 +39,9 @@ export default async function DashboardPage() {
   const stats = [
     {
       label: "Revenue",
-      value: formatMoney(overview.revenueCents, overview.revenueCurrency),
+      value: overview.mixedCurrencies
+        ? "Multiple currencies"
+        : formatMoney(overview.revenueCents, overview.revenueCurrency),
       note: overview.mixedCurrencies
         ? "Multiple currencies included"
         : `${overview.paidOrders} paid order${overview.paidOrders === 1 ? "" : "s"}`,
@@ -80,10 +83,13 @@ export default async function DashboardPage() {
 
         <DashboardCharts
           data={overview.series}
-          revenueTotal={formatMoney(
-            overview.revenueCents,
-            overview.revenueCurrency,
-          )}
+          revenueTotal={
+            overview.mixedCurrencies
+              ? "Multiple currencies"
+              : formatMoney(overview.revenueCents, overview.revenueCurrency)
+          }
+          revenueCurrency={overview.revenueCurrency}
+          revenueAvailable={!overview.mixedCurrencies}
           creditsTotal={formatLargeNumber(overview.creditsConsumed)}
         />
 
@@ -203,7 +209,9 @@ function ProjectActivity({
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-sm font-medium tabular-nums">
-                  {formatMoney(project.revenueCents, project.revenueCurrency)}
+                  {project.mixedCurrencies
+                    ? "Multiple currencies"
+                    : formatMoney(project.revenueCents, project.revenueCurrency)}
                 </span>
                 <ArrowRight className="size-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
               </div>

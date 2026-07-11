@@ -28,13 +28,22 @@ import { Stepper } from "@/components/app/wizard/stepper";
 
 const STEPS = ["Keys", "Webhook", "Secret"] as const;
 type Provider = "stripe" | "polar";
+type ProviderEnvironment = "sandbox" | "production";
+
+type ResumeAccount = {
+  id: string;
+  provider: Provider;
+  environment: ProviderEnvironment;
+};
 
 export function ProviderConnectWizard({
   appUrl,
   size = "default",
+  resumeAccount,
 }: {
   appUrl: string;
   size?: React.ComponentProps<typeof Button>["size"];
+  resumeAccount?: ResumeAccount;
 }) {
   const [open, setOpen] = useState(false);
   const [nonce, setNonce] = useState(0);
@@ -48,20 +57,39 @@ export function ProviderConnectWizard({
           setOpen(true);
         }}
       >
-        <Plus className="size-4" /> Connect provider
+        {resumeAccount ? null : <Plus className="size-4" />}
+        {resumeAccount ? "Finish setup" : "Connect provider"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
-          <Body key={nonce} appUrl={appUrl} onDone={() => setOpen(false)} />
+          <Body
+            key={nonce}
+            appUrl={appUrl}
+            onDone={() => setOpen(false)}
+            resumeAccount={resumeAccount}
+          />
         </DialogContent>
       </Dialog>
     </>
   );
 }
 
-function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
-  const [step, setStep] = useState(0);
-  const [selectedProvider, setSelectedProvider] = useState<Provider>("stripe");
+function Body({
+  appUrl,
+  onDone,
+  resumeAccount,
+}: {
+  appUrl: string;
+  onDone: () => void;
+  resumeAccount?: ResumeAccount;
+}) {
+  const [step, setStep] = useState(resumeAccount ? 1 : 0);
+  const [selectedProvider, setSelectedProvider] = useState<Provider>(
+    resumeAccount?.provider ?? "stripe",
+  );
+  const [environment, setEnvironment] = useState<ProviderEnvironment>(
+    resumeAccount?.environment ?? "sandbox",
+  );
   const [start, startAction, startPending] = useActionState<
     ConnectState,
     FormData
@@ -75,10 +103,16 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
     if (secret.ok) onDone();
   }, [secret.ok, onDone]);
 
+  useEffect(() => {
+    if (start.webhookConfigured) onDone();
+  }, [start.webhookConfigured, onDone]);
+
   const account =
     start.accountId && start.provider
       ? { id: start.accountId, provider: start.provider }
-      : null;
+      : resumeAccount
+        ? { id: resumeAccount.id, provider: resumeAccount.provider }
+        : null;
   const currentStep = account && step === 0 ? 1 : step;
   const webhookUrl = account
     ? `${appUrl}/api/webhooks/${account.provider}/${account.id}`
@@ -86,13 +120,14 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
   const provider =
     (account?.provider as Provider | undefined) ?? selectedProvider;
   const providerName = provider === "polar" ? "Polar" : "Stripe";
+  const accountEnvironment = start.environment ?? environment;
 
   return (
     <>
       <DialogHeader>
         <DialogTitle>Connect provider</DialogTitle>
         <DialogDescription>
-          {step === 0
+          {currentStep === 0
             ? "Paste a restricted provider key - vantezzen/pay manages the rest."
             : currentStep === 1
               ? "Register the webhook endpoint so payments get recorded."
@@ -133,7 +168,12 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
               <NativeSelect
                 name="environment"
                 className="w-full"
-                defaultValue="production"
+                value={environment}
+                onChange={(event) =>
+                  setEnvironment(
+                    event.currentTarget.value as "sandbox" | "production",
+                  )
+                }
               >
                 <NativeSelectOption value="production">
                   production
@@ -167,6 +207,27 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
               autoFocus
             />
           </Field>
+          <details className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">
+              Required {providerName} permissions
+            </summary>
+            {provider === "stripe" ? (
+              <ul className="mt-2 list-disc space-y-1 pl-4">
+                <li>Products: read and write</li>
+                <li>Prices and Checkout Sessions: write</li>
+                <li>Billing Portal Sessions: write</li>
+                <li>Promotion Codes: read (only when using app-owned discount codes)</li>
+                <li>Webhook Endpoints: write (optional - enables automatic setup)</li>
+              </ul>
+            ) : (
+              <ul className="mt-2 list-disc space-y-1 pl-4">
+                <li><code>products:read</code> and <code>products:write</code></li>
+                <li><code>checkouts:write</code></li>
+                <li><code>customer_sessions:write</code></li>
+                <li><code>webhooks:write</code> (optional - enables automatic setup)</li>
+              </ul>
+            )}
+          </details>
           {start.error ? (
             <p className="text-sm text-destructive">{start.error}</p>
           ) : null}
@@ -183,7 +244,11 @@ function Body({ appUrl, onDone }: { appUrl: string; onDone: () => void }) {
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">
-              Production - add this endpoint in {providerName}
+              {accountEnvironment === "sandbox"
+                ? "Sandbox / test"
+                : "Production"}
+              {" - add this endpoint in "}
+              {providerName}
             </Label>
             <CopyText value={webhookUrl} />
             <p className="text-xs text-muted-foreground">

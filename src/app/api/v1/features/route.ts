@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { featureGrants, wallets } from "@/db/schema";
-import { authenticate, corsHeaders, apiError, preflight } from "@/lib/api/http";
+import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
 import { computeWalletAccess, getOrCreateExternalWallet } from "@/lib/credits";
 import { FEATURE_KEY_RE, normalizeFeatureKey } from "@/lib/features";
 import { normalizeCreditCode } from "@/lib/id";
@@ -43,7 +43,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return apiError(400, "invalid_body", parsed.error.issues[0]?.message ?? "Invalid body", cors);
+    return invalidBodyError(parsed.error, cors);
   }
   const input = parsed.data;
   if (input.externalUserId && project.mode !== "external_auth") {

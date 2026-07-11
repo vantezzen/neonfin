@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun scripts/dev.ts",
     "dev:web": "next dev",
+    "setup": "bun scripts/setup.ts",
     "build": "shadcn build && next build",
     "start": "next start",
     "provider-service": "bun run --cwd services/provider start",

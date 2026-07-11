@@ -14,6 +14,7 @@ import { CopyText } from "@/components/dashboard/copy-text";
 import { SectionHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { Button } from "@/components/ui/button";
+import { ConfirmAction } from "@/components/app/confirm-action";
 import {
   Dialog,
   DialogContent,
@@ -137,30 +138,29 @@ function KeyRow({
         {k.kind === "publishable" && k.publicValue ? (
           <CopyButton value={k.publicValue} />
         ) : null}
-        <form
+        <ConfirmAction
           action={removeApiKey}
-          onSubmit={(e) => {
-            if (
-              !confirm(
-                "Revoke this key? Apps using it will stop working immediately.",
-              )
-            ) {
-              e.preventDefault();
-            }
-          }}
+          trigger={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-destructive"
+              aria-label="Revoke API key"
+              title="Revoke"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          }
+          title="Revoke this API key?"
+          description="Apps using this key will stop working immediately."
+          confirmLabel="Revoke key"
+          pendingLabel="Revoking…"
+          successMessage="API key revoked"
         >
           <input type="hidden" name="id" value={k.id} />
           <input type="hidden" name="projectId" value={projectId} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:text-destructive"
-            title="Revoke"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </form>
+        </ConfirmAction>
       </div>
     </div>
   );
@@ -217,6 +217,11 @@ function IssueKeyButton({
           {label}
         </Button>
       </form>
+      {state.error ? (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {state.error}
+        </p>
+      ) : null}
       <Dialog
         open={revealOpen}
         onOpenChange={(next) => {

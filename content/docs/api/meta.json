@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "server-side-users",
+    "webhooks",
     "errors"
   ]
 }

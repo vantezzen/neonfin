@@ -7,6 +7,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { account } from "@/db/auth-schema";
 import { appUrl } from "@/lib/email";
+import { consumeToken } from "@/lib/api/rate-limit";
+import { sha256 } from "@/lib/crypto";
 import { auth } from "./server";
 import { requireUser } from "./dal";
 
@@ -241,6 +243,33 @@ export async function resendVerificationEmail(
   }
 
   return { message: "Verification email sent." };
+}
+
+/** Resend from the signed-out verification screen without revealing account state. */
+export async function resendVerificationForEmail(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) return { error: "Email is required" };
+
+  const generic = "If that address needs verification, we sent a new link.";
+  const limit = await consumeToken(`verify-email:${sha256(email)}`, {
+    capacity: 3,
+    refillPerSec: 1 / 300,
+  });
+  if (!limit.ok) return { message: generic };
+
+  try {
+    await auth.api.sendVerificationEmail({
+      body: { email, callbackURL: appUrl("/dashboard") },
+      headers: await headers(),
+    });
+  } catch {
+    // Keep this response indistinguishable for unknown, already-verified, and
+    // temporarily undeliverable accounts.
+  }
+  return { message: generic };
 }
 
 export async function requestAccountDeletion(

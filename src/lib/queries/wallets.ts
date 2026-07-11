@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   featureGrants,
@@ -21,11 +21,21 @@ async function ownedProjectIds(ownerId: string): Promise<string[]> {
 /** Wallets across the owner's projects, newest-seen first. */
 export async function listWallets(
   ownerId: string,
-  opts: { search?: string; limit?: number } = {},
+  opts: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    projectId?: string;
+    sort?: "lastSeenAt" | "kind";
+    direction?: "asc" | "desc";
+  } = {},
 ) {
   const ids = await ownedProjectIds(ownerId);
-  if (ids.length === 0) return [];
-  const scoped = inArray(wallets.projectId, ids);
+  const projectIds = opts.projectId
+    ? ids.filter((id) => id === opts.projectId)
+    : ids;
+  if (projectIds.length === 0) return [];
+  const scoped = inArray(wallets.projectId, projectIds);
   const search = opts.search?.trim();
   // Escape LIKE wildcards so a search for "50%" matches literally.
   const escaped = search?.replace(/[\\%_]/g, (m) => `\\${m}`);
@@ -36,7 +46,7 @@ export async function listWallets(
         .from(orders)
         .where(
           and(
-            inArray(orders.projectId, ids),
+            inArray(orders.projectId, projectIds),
             isNotNull(orders.walletId),
             or(
               ilike(orders.id, pattern),
@@ -62,13 +72,19 @@ export async function listWallets(
         ...(orderWalletIds.length ? [inArray(wallets.id, orderWalletIds)] : []),
       )
     : undefined;
+  const order = opts.direction === "asc" ? asc : desc;
+  const column = opts.sort === "kind" ? wallets.kind : wallets.lastSeenAt;
   return db.query.wallets.findMany({
     where: searchWhere ? and(scoped, searchWhere) : scoped,
-    orderBy: desc(wallets.lastSeenAt),
+    orderBy: [order(column), order(wallets.id)],
     limit: opts.limit ?? 100,
+    offset: opts.offset,
     with: {
       project: { columns: { name: true } },
-      balances: { columns: { balance: true } },
+      balances: {
+        columns: { balance: true },
+        with: { product: { columns: { creditUnit: true } } },
+      },
     },
   });
 }

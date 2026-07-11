@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import appLogo from "@/app/icon.png";
@@ -21,7 +22,7 @@ export default function AuthLayout({
           <Image src={appLogo} alt="vantezzen/pay" width={44} height={44} />
           <span className="text-lg font-semibold tracking-tight">vantezzen/pay</span>
         </div>
-        {children}
+        <Suspense>{children}</Suspense>
       </div>
     </div>
   );

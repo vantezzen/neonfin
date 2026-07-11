@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ChevronDown, Webhook } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
 import { replayWebhookEvent } from "@/lib/actions/webhooks";
@@ -7,6 +8,13 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { Status, type StatusTone } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
+import { MutationForm } from "@/components/app/mutation-form";
+import { WebhookPayload } from "@/components/dashboard/webhook-payload";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 
 export const metadata = { title: "Webhooks" };
 
@@ -16,9 +24,49 @@ const STATUS: Record<string, { label: string; tone: StatusTone }> = {
   error: { label: "Error", tone: "danger" },
 };
 
-export default async function WebhooksPage() {
+function queryProvider(value: string | undefined): "stripe" | "polar" | undefined {
+  return value === "stripe" || value === "polar" ? value : undefined;
+}
+
+function queryStatus(
+  value: string | undefined,
+): "pending" | "processed" | "skipped" | "error" | undefined {
+  return ["pending", "processed", "skipped", "error"].includes(value ?? "")
+    ? (value as "pending" | "processed" | "skipped" | "error")
+    : undefined;
+}
+
+export default async function WebhooksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; provider?: string; status?: string }>;
+}) {
+  const {
+    page: pageValue,
+    provider: providerValue,
+    status: statusValue,
+  } = await searchParams;
+  const page = Math.max(1, Math.floor(Number(pageValue) || 1));
+  const provider = queryProvider(providerValue);
+  const filterStatus = queryStatus(statusValue);
+  const pageSize = 25;
   const user = await requireUser();
-  const events = await listWebhookEvents(user.id);
+  const eventRows = await listWebhookEvents(user.id, {
+    limit: pageSize + 1,
+    offset: (page - 1) * pageSize,
+    provider,
+    status: filterStatus,
+  });
+  const hasMore = eventRows.length > pageSize;
+  const events = eventRows.slice(0, pageSize);
+  const pageHref = (nextPage: number) => {
+    const params = new URLSearchParams();
+    if (provider) params.set("provider", provider);
+    if (filterStatus) params.set("status", filterStatus);
+    if (nextPage > 1) params.set("page", String(nextPage));
+    const query = params.toString();
+    return `/dashboard/webhooks${query ? `?${query}` : ""}`;
+  };
 
   return (
     <>
@@ -26,11 +74,30 @@ export default async function WebhooksPage() {
         title="Webhooks"
         description="Provider events received, verified, and processed."
       />
+      <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
+        <NativeSelect name="provider" defaultValue={provider ?? ""}>
+          <NativeSelectOption value="">All providers</NativeSelectOption>
+          <NativeSelectOption value="stripe">Stripe</NativeSelectOption>
+          <NativeSelectOption value="polar">Polar</NativeSelectOption>
+        </NativeSelect>
+        <NativeSelect name="status" defaultValue={filterStatus ?? ""}>
+          <NativeSelectOption value="">All statuses</NativeSelectOption>
+          <NativeSelectOption value="processed">Processed</NativeSelectOption>
+          <NativeSelectOption value="error">Error</NativeSelectOption>
+          <NativeSelectOption value="skipped">Skipped</NativeSelectOption>
+          <NativeSelectOption value="pending">Pending</NativeSelectOption>
+        </NativeSelect>
+        <Button type="submit" variant="outline">Filter</Button>
+      </form>
       {events.length === 0 ? (
         <EmptyState
           icon={<Webhook />}
           title="No webhook events yet"
-          description="Add the endpoint shown on the Providers page, then complete a test checkout."
+          description={
+            provider || filterStatus
+              ? "Try clearing a filter or complete another test checkout."
+              : "Add the endpoint shown on the Providers page, then complete a test checkout."
+          }
         />
       ) : (
         <div className="divide-y overflow-hidden rounded-xl border">
@@ -69,21 +136,47 @@ export default async function WebhooksPage() {
                   <p className="text-xs text-muted-foreground">
                     Replay re-runs fulfillment from the stored verified payload.
                   </p>
-                  <form action={replayWebhookEvent}>
-                    <input type="hidden" name="id" value={e.id} />
-                    <Button type="submit" variant="outline" size="sm">
-                      Replay
-                    </Button>
-                  </form>
+                  <MutationForm
+                    action={replayWebhookEvent}
+                    successMessage="Webhook replayed"
+                  >
+                    {(pending) => (
+                      <>
+                        <input type="hidden" name="id" value={e.id} />
+                        <Button type="submit" variant="outline" size="sm" disabled={pending}>
+                          {pending ? "Replaying…" : "Replay"}
+                        </Button>
+                      </>
+                    )}
+                  </MutationForm>
                 </div>
-                <pre className="max-h-96 overflow-auto border-t bg-muted/30 p-4 font-mono text-xs leading-relaxed">
-                  {JSON.stringify(e.payload, null, 2)}
-                </pre>
+                <WebhookPayload eventId={e.id} />
               </details>
             );
           })}
         </div>
       )}
+      {events.length > 0 && (page > 1 || hasMore) ? (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          {page > 1 ? (
+            <Link
+              href={pageHref(page - 1)}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Previous
+            </Link>
+          ) : <span />}
+          <span className="text-sm text-muted-foreground">Page {page}</span>
+          {hasMore ? (
+            <Link
+              href={pageHref(page + 1)}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Next
+            </Link>
+          ) : <span />}
+        </div>
+      ) : null}
     </>
   );
 }

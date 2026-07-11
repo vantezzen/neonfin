@@ -60,64 +60,78 @@ const axisTick = { fontSize: 11 } as const;
 export function DashboardCharts({
   data,
   revenueTotal,
+  revenueCurrency,
+  revenueAvailable,
   creditsTotal,
 }: {
   data: DashboardDay[];
   revenueTotal: string;
+  revenueCurrency: string;
+  revenueAvailable: boolean;
   creditsTotal: string;
 }) {
+  const formatRevenue = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: revenueCurrency,
+  });
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <ChartCard title="Revenue" total={revenueTotal}>
-        <ChartContainer config={revenueConfig} className="h-52 w-full">
-          <AreaChart data={data} margin={{ left: 0, right: 4, top: 4 }}>
-            <defs>
-              <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor="var(--color-revenue)"
-                  stopOpacity={0.18}
-                />
-                <stop
-                  offset="100%"
-                  stopColor="var(--color-revenue)"
-                  stopOpacity={0.02}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={shortDate}
-              tickLine={false}
-              axisLine={false}
-              minTickGap={32}
-              tick={axisTick}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `$${value}`}
-              width={40}
-              tick={axisTick}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => shortDate(String(value))}
-                  formatter={(value) => `$${Number(value).toFixed(2)}`}
-                />
-              }
-            />
-            <Area
-              dataKey="revenue"
-              type="monotone"
-              fill="url(#fillRevenue)"
-              stroke="var(--color-revenue)"
-              strokeWidth={1.75}
-            />
-          </AreaChart>
-        </ChartContainer>
+        {revenueAvailable ? (
+          <ChartContainer config={revenueConfig} className="h-52 w-full">
+            <AreaChart data={data} margin={{ left: 0, right: 4, top: 4 }}>
+              <defs>
+                <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-revenue)"
+                    stopOpacity={0.18}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-revenue)"
+                    stopOpacity={0.02}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={shortDate}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={32}
+                tick={axisTick}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => formatRevenue.format(Number(value))}
+                width={64}
+                tick={axisTick}
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => shortDate(String(value))}
+                    formatter={(value) => formatRevenue.format(Number(value))}
+                  />
+                }
+              />
+              <Area
+                dataKey="revenue"
+                type="monotone"
+                fill="url(#fillRevenue)"
+                stroke="var(--color-revenue)"
+                strokeWidth={1.75}
+              />
+            </AreaChart>
+          </ChartContainer>
+        ) : (
+          <p className="flex h-52 items-center text-sm text-muted-foreground">
+            Revenue is shown per currency in Orders. A combined chart would be misleading.
+          </p>
+        )}
       </ChartCard>
 
       <ChartCard title="Credits consumed" total={creditsTotal}>

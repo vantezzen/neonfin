@@ -15,7 +15,12 @@ export type PayServerClientConfig = {
   baseUrl: string;
   /** Secret API key (`pay_sk_…`). Server-only - never send it to the browser. */
   secretKey: string;
+  /** Maximum time to wait for an API request. Defaults to 15 seconds. */
+  requestTimeoutMs?: number;
 };
+
+export { PayError, type PayErrorOptions } from "./error";
+import { PayError } from "./error";
 
 export type Balance = {
   productId: string;
@@ -53,6 +58,51 @@ export type CheckoutResult = {
   orderId: string;
 };
 
+export type ProductPrice = {
+  id: string;
+  label: string | null;
+  amountCents: number;
+  currency: string;
+  creditsGranted: number;
+  features: string[];
+  interval: "one_time" | "month" | "year";
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: "credits" | "subscription" | "one_time";
+  creditUnit: string;
+  freeGrant: { credits: number; period: "monthly" | "once" } | null;
+  prices: ProductPrice[];
+};
+
+export type OrderStatus = {
+  id: string;
+  status: "pending" | "paid" | "failed" | "expired" | "refunded";
+  code: string | null;
+  balance: number | null;
+  amountCents: number;
+  currency: string;
+  productId: string | null;
+  priceId: string | null;
+  createdAt: string;
+  paidAt: string | null;
+};
+
+export type OrderPage = {
+  orders: Array<Omit<OrderStatus, "code" | "balance">>;
+  nextCursor: string | null;
+};
+
+export type PayIdentity = {
+  projectId: string;
+  project: string;
+  mode: "credit_codes" | "external_auth";
+  keyKind: "publishable" | "secret";
+};
+
 export type DeductInput = {
   /** The wallet's owner, keyed by your own user id. */
   externalUserId: string;
@@ -81,6 +131,8 @@ export type CheckoutInput = {
   allowPromotionCodes?: boolean;
   /** Apply or prefill a provider promotion/discount code for this checkout. */
   discountCode?: string;
+  /** Stable key for safely retrying checkout creation after a network failure. */
+  idempotencyKey?: string;
 };
 
 export type PortalInput = {
@@ -103,52 +155,63 @@ export type GrantInput = {
   meta?: Record<string, unknown>;
 };
 
-/**
- * Error thrown for any non-2xx API response. Carries the HTTP status and the
- * API's stable machine-readable `code` - branch on those, not the message.
- */
-export class PayError extends Error {
-  readonly status: number;
-  /** Stable error code from the API, e.g. `"wallet_not_found"`. */
-  readonly code?: string;
-  /** Present on 402 (insufficient credits): the current wallet balance. */
-  readonly balance?: number;
-  /** Present on 402: the amount that was requested. */
-  readonly requested?: number;
-
-  constructor(
-    status: number,
-    message: string,
-    opts: { code?: string; balance?: number; requested?: number } = {},
-  ) {
-    super(message);
-    this.name = "PayError";
-    this.status = status;
-    this.code = opts.code;
-    this.balance = opts.balance;
-    this.requested = opts.requested;
-  }
-
-  /** True when the wallet doesn't have enough credits. */
-  get isInsufficientCredits(): boolean {
-    return this.status === 402;
-  }
-}
-
 export type PayServerClient = ReturnType<typeof createPayServerClient>;
 
 export function createPayServerClient(config: PayServerClientConfig) {
-  const baseUrl = config.baseUrl.replace(/\/$/, "");
+  const configuredBaseUrl = config.baseUrl?.trim();
+  if (!configuredBaseUrl) {
+    throw new Error("[pay] baseUrl is missing. Set your vantezzen/pay URL.");
+  }
+  let baseUrl: string;
+  try {
+    const url = new URL(configuredBaseUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("unsupported protocol");
+    }
+    baseUrl = url.toString().replace(/\/$/, "");
+  } catch {
+    throw new Error(
+      "[pay] baseUrl must be an absolute http(s) URL, for example https://pay.example.com.",
+    );
+  }
+  const requestTimeoutMs =
+    Number.isFinite(config.requestTimeoutMs) && config.requestTimeoutMs! >= 1_000
+      ? config.requestTimeoutMs!
+      : 15_000;
 
-  async function request<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${baseUrl}/api/v1${path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.secretKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+  async function fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function request<T>(
+    path: string,
+    body?: unknown,
+    method: "GET" | "POST" = "POST",
+  ): Promise<T> {
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(`${baseUrl}/api/v1${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${config.secretKey}`,
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch {
+      throw new PayError(0, "Could not reach vantezzen/pay. Check your connection and try again.", {
+        code: "network_error",
+      });
+    }
     const data = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
       const err = (data ?? {}) as {
@@ -156,11 +219,17 @@ export function createPayServerClient(config: PayServerClientConfig) {
         code?: string;
         balance?: number;
         requested?: number;
+        requestId?: string;
       };
       throw new PayError(
         res.status,
         err.error ?? `Request failed (${res.status})`,
-        { code: err.code, balance: err.balance, requested: err.requested },
+        {
+          code: err.code,
+          balance: err.balance,
+          requested: err.requested,
+          requestId: err.requestId,
+        },
       );
     }
     return data as T;
@@ -174,6 +243,59 @@ export function createPayServerClient(config: PayServerClientConfig) {
     externalUserId: string,
   ): Promise<ExternalWallet> {
     return request<ExternalWallet>("/wallets/external", { externalUserId });
+  }
+
+  /** Read an existing wallet without creating one. Returns null when absent. */
+  async function getWallet(
+    externalUserId: string,
+  ): Promise<ExternalWallet | null> {
+    try {
+      return await request<ExternalWallet>(
+        `/wallets/external?externalUserId=${encodeURIComponent(externalUserId)}`,
+        undefined,
+        "GET",
+      );
+    } catch (error) {
+      if (error instanceof PayError && error.code === "wallet_not_found") {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /** List the project's active product catalog and purchasable prices. */
+  async function getProducts(): Promise<Product[]> {
+    const { products } = await request<{ products: Product[] }>(
+      "/products",
+      undefined,
+      "GET",
+    );
+    return products;
+  }
+
+  /** Read one order by its vantezzen/pay or provider checkout id. */
+  async function getOrder(ref: string): Promise<OrderStatus> {
+    return request<OrderStatus>(
+      `/orders/${encodeURIComponent(ref)}`,
+      undefined,
+      "GET",
+    );
+  }
+
+  /** List recent project orders using the API's opaque cursor. */
+  async function listOrders(
+    opts: { cursor?: string; limit?: number } = {},
+  ): Promise<OrderPage> {
+    const params = new URLSearchParams();
+    if (opts.cursor) params.set("cursor", opts.cursor);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    const query = params.size ? `?${params}` : "";
+    return request<OrderPage>(`/orders${query}`, undefined, "GET");
+  }
+
+  /** Inspect the project and key mode configured for this server client. */
+  async function getMe(): Promise<PayIdentity> {
+    return request<PayIdentity>("/me", undefined, "GET");
   }
 
   /**
@@ -262,6 +384,11 @@ export function createPayServerClient(config: PayServerClientConfig) {
   return {
     baseUrl,
     getOrCreateWallet,
+    getWallet,
+    getProducts,
+    getOrder,
+    listOrders,
+    getMe,
     grantCredits,
     deduct,
     createCheckout,

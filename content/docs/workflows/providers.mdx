@@ -34,14 +34,29 @@ In vantezzen/pay, choose **Providers → Connect provider**, select **Stripe**, 
 paste a Stripe restricted API key.
 
 Use a restricted key (`rk_test_...` or `rk_live_...`) instead of an unrestricted
-secret key when possible. The key needs permissions for the catalog objects,
-checkout sessions, billing portal sessions, and customer/session reads that
-vantezzen/pay manages. If your host has stable egress, restrict the key to that
-IP range or network policy in Stripe.
+secret key when possible. In Stripe's restricted-key editor, grant:
 
-### 2. Create the Stripe event destination
+- **Products:** Read and Write.
+- **Prices:** Write.
+- **Checkout Sessions:** Write.
+- **Billing Portal Sessions:** Write.
+- **Promotion Codes:** Read, only when your app passes `discountCode`.
+- **Webhook Endpoints:** Write, optional but recommended for automatic webhook
+  provisioning.
 
-After saving the key, vantezzen/pay shows a webhook URL. Copy it.
+An unrestricted `sk_test_...` or `sk_live_...` key also works when a restricted
+key is impractical. Keep it only in vantezzen/pay; never put it in a consuming
+app. If your host has stable egress, restrict the key to that IP range or
+network policy in Stripe.
+
+### 2. Confirm the Stripe event destination
+
+When the key has **Webhook Endpoints: Write**, vantezzen/pay creates the event
+destination and saves its signing secret automatically. Continue to the test
+step below.
+
+If your restricted key deliberately omits that permission, vantezzen/pay shows
+a webhook URL. Create the destination manually:
 
 In the Stripe Dashboard, open the **Stripe Developer Workbench** from the bottom
 of the screen. In Workbench, open **Webhooks**, then create a new event
@@ -60,7 +75,7 @@ Use these settings:
 
 Save the destination, then copy its signing secret.
 
-### 3. Save the Stripe signing secret
+### 3. Save the Stripe signing secret (manual fallback)
 
 Paste the signing secret back into vantezzen/pay. Stripe signing secrets usually
 start with `whsec_`.
@@ -99,15 +114,23 @@ Production credentials come from your production Polar organization.
 
 ### 2. Save a scoped Polar access token
 
-In Polar, create an organization access token. Give it access to the catalog,
-checkout, customer sessions, and webhooks that vantezzen/pay manages.
+In Polar, create an organization access token with these scopes:
+
+- `products:read` and `products:write`
+- `checkouts:write`
+- `customer_sessions:write`
+- `webhooks:write` (optional but recommended for automatic webhook provisioning)
 
 In vantezzen/pay, choose **Providers → Connect provider**, select **Polar**, pick
 the matching environment, and paste the organization access token.
 
-### 3. Create the Polar webhook endpoint
+### 3. Confirm the Polar webhook endpoint
 
-After saving the token, vantezzen/pay shows a webhook URL. Copy it.
+When the token includes `webhooks:write`, vantezzen/pay creates the endpoint
+and saves its secret automatically. Continue to the test step below.
+
+Without that optional scope, vantezzen/pay shows a webhook URL. Create the
+endpoint manually:
 
 In Polar, open the organization settings and add a webhook endpoint with that
 URL. Subscribe to:

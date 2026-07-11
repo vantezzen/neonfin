@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { orders, wallets } from "@/db/schema";
 import { env } from "@/lib/env";
-import { authenticate, corsHeaders, apiError, preflight } from "@/lib/api/http";
+import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
 import { providerErrorMessage } from "@/lib/api/provider-errors";
 import {
   getProviderAccountMeta,
@@ -39,12 +39,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return apiError(
-      400,
-      "invalid_body",
-      parsed.error.issues[0]?.message ?? "Invalid body",
-      cors,
-    );
+    return invalidBodyError(parsed.error, cors);
   }
 
   const wallet = await db.query.wallets.findFirst({

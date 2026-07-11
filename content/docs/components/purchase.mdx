@@ -112,8 +112,10 @@ Controlled usage:
 | `description` | `string` | `Choose an option to continue.` | Dialog description. |
 | `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
-| `allowPromotionCodes` | `boolean` | `false` | Lets customers enter a provider promotion or discount code at checkout. |
+| `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
+| `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
+| `collectCustomerEmail` | `boolean` | `true` | Shows the optional receipt and wallet-recovery email field. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 | `className` | `string` | - | Extra classes. |
 | Button props | `React.ComponentProps<typeof Button>` | - | Forwarded to the local shadcn button. |
@@ -131,8 +133,10 @@ Controlled usage:
 | `description` | `string` | `Choose an option to continue.` | Dialog description. |
 | `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
-| `allowPromotionCodes` | `boolean` | `false` | Lets customers enter a provider promotion or discount code at checkout. |
+| `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
+| `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
+| `collectCustomerEmail` | `boolean` | `true` | Shows the optional receipt and wallet-recovery email field. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 
 ### PurchaseFilters
@@ -152,7 +156,10 @@ true }}`. The default `FeatureGate` fallback uses `filters={{ features:
 ## Checkout return behavior
 
 The dialog calls `client.startCheckout(priceId, { flow, allowPromotionCodes,
-discountCode })`, which stores the order id in `localStorage`.
+discountCode, customerEmail })`, which stores the order id in `localStorage`.
+The optional email is used only for provider checkout and wallet-recovery email;
+disable the field with `collectCustomerEmail={false}` when your app already
+collects receipts elsewhere.
 
 In popup checkout, the original page keeps polling the order and refreshes as
 soon as the webhook marks it paid. If the customer closes or cancels the popup,

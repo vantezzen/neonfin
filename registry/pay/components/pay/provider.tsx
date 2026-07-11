@@ -103,6 +103,7 @@ export function PayProvider({
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resumeNonce, setResumeNonce] = useState(0);
 
   const hasLoaded = useRef(false);
   const refresh = useCallback(async () => {
@@ -132,6 +133,54 @@ export function PayProvider({
     void refresh();
   }, [refresh]);
 
+  // A purchase or wallet restore in another tab changes the shared local
+  // wallet identity. Refresh when that happens and when this tab regains focus
+  // so the UI does not keep showing an old balance.
+  useEffect(() => {
+    function refreshOnFocus() {
+      void refresh();
+    }
+    function refreshOnStorage(event: StorageEvent) {
+      if (
+        event.storageArea === window.localStorage &&
+        (event.key === client.storageKey || event.key === client.pendingOrderKey)
+      ) {
+        void refresh();
+      }
+    }
+
+    window.addEventListener("focus", refreshOnFocus);
+    window.addEventListener("storage", refreshOnStorage);
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      window.removeEventListener("storage", refreshOnStorage);
+    };
+  }, [client, refresh]);
+
+  // A purchase or wallet restore in another tab changes the shared local
+  // wallet identity. Refresh when that happens and when this tab regains focus
+  // so the UI does not keep showing an old balance.
+  useEffect(() => {
+    function refreshOnFocus() {
+      void refresh();
+    }
+    function refreshOnStorage(event: StorageEvent) {
+      if (
+        event.storageArea === window.localStorage &&
+        (event.key === client.storageKey || event.key === client.pendingOrderKey)
+      ) {
+        void refresh();
+      }
+    }
+
+    window.addEventListener("focus", refreshOnFocus);
+    window.addEventListener("storage", refreshOnStorage);
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      window.removeEventListener("storage", refreshOnStorage);
+    };
+  }, [client, refresh]);
+
   const startCheckout = useCallback(
     async (priceId: string, opts: StartCheckoutOptions = {}) => {
       setConfirming(true);
@@ -141,6 +190,11 @@ export function PayProvider({
         const order = await client.getOrder(result.orderId).catch(() => null);
         if (order?.status === "paid") notifyCheckoutPaid(order);
         return result;
+      } catch (error) {
+        if (error instanceof PayError && error.code === "checkout_closed") {
+          setResumeNonce((nonce) => nonce + 1);
+        }
+        throw error;
       } finally {
         setConfirming(false);
       }
@@ -150,10 +204,8 @@ export function PayProvider({
 
   // Resume a checkout the user was redirected away for. This must be
   // non-blocking: stale abandoned orders should never freeze gates or buttons.
-  const resumed = useRef(false);
   useEffect(() => {
-    if (resumed.current || typeof window === "undefined") return;
-    resumed.current = true;
+    if (typeof window === "undefined") return;
     const pending = window.localStorage.getItem(client.pendingOrderKey);
     if (!pending) return;
 
@@ -175,7 +227,11 @@ export function PayProvider({
           notifyCheckoutPaid(order);
           return;
         }
-        if (order.status === "failed" || order.status === "refunded") {
+        if (
+          order.status === "failed" ||
+          order.status === "expired" ||
+          order.status === "refunded"
+        ) {
           window.localStorage.removeItem(client.pendingOrderKey);
           return;
         }
@@ -186,19 +242,20 @@ export function PayProvider({
         }
         // transient - keep polling in the background
       }
-      // Stop tracking stale abandoned checkouts. The UI never blocks while this
-      // runs, but clearing the key avoids retrying the same old order forever.
-      if (++attempts > 20) {
+      // Keep checking for five minutes, with a capped backoff. A provider
+      // webhook may arrive well after the customer closes their checkout tab.
+      if (++attempts > 14) {
         window.localStorage.removeItem(client.pendingOrderKey);
         return;
       }
-      setTimeout(poll, 1500);
+      const delay = Math.min(30_000, 1_500 * 2 ** Math.min(attempts, 4));
+      setTimeout(poll, delay);
     }
     void poll();
     return () => {
       active = false;
     };
-  }, [client, refresh]);
+  }, [client, refresh, resumeNonce]);
 
   const value = useMemo<PayContextValue>(
     () => ({
@@ -325,6 +382,7 @@ export type UseFeature = {
   /** Whether the wallet has unlocked this feature. */
   enabled: boolean;
   loading: boolean;
+  error: string | null;
   confirming: boolean;
   refresh: () => Promise<void>;
 };
@@ -335,10 +393,11 @@ export type UseFeature = {
  * "show this only to paying users" check.
  */
 export function useFeature(feature: string): UseFeature {
-  const { features, loading, confirming, refresh } = usePayContext();
+  const { features, loading, error, confirming, refresh } = usePayContext();
   return {
     enabled: features.includes(feature),
     loading,
+    error,
     confirming,
     refresh,
   };
@@ -350,6 +409,7 @@ export type UseSubscription = {
   /** Convenience: whether an active subscription exists. */
   subscribed: boolean;
   loading: boolean;
+  error: string | null;
   confirming: boolean;
   refresh: () => Promise<void>;
 };
@@ -359,7 +419,7 @@ export type UseSubscription = {
  * `productId` is omitted). Use it to show the current tier / "Manage plan".
  */
 export function useSubscription(productId?: string): UseSubscription {
-  const { subscriptions, loading, confirming, refresh } = usePayContext();
+  const { subscriptions, loading, error, confirming, refresh } = usePayContext();
   const subscription =
     (productId
       ? subscriptions.find((s) => s.productId === productId)
@@ -368,6 +428,7 @@ export function useSubscription(productId?: string): UseSubscription {
     subscription,
     subscribed: subscription !== null,
     loading,
+    error,
     confirming,
     refresh,
   };

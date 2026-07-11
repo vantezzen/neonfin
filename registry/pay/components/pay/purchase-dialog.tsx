@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Check, Loader2, Settings, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -197,6 +199,10 @@ export type PurchaseDialogProps = {
   allowPromotionCodes?: boolean;
   /** Apply or prefill a provider promotion/discount code for this checkout. */
   discountCode?: string;
+  /** Pre-fill the receipt and wallet-recovery email. */
+  customerEmail?: string;
+  /** Show the optional receipt and wallet-recovery email field. */
+  collectCustomerEmail?: boolean;
   renderOption?: (
     option: PurchaseOption,
     controls: PurchaseOptionControls,
@@ -225,6 +231,8 @@ export function PurchaseDialog({
   emptyMessage = "No purchase options are available yet.",
   allowPromotionCodes = true,
   discountCode,
+  customerEmail,
+  collectCustomerEmail = true,
   renderOption,
 }: PurchaseDialogProps) {
   const client = usePay();
@@ -234,6 +242,8 @@ export function PurchaseDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enteredEmail, setEnteredEmail] = useState("");
+  const receiptEmailId = React.useId();
 
   // controlled/uncontrolled open state
   const [internalOpen, setInternalOpen] = useState(false);
@@ -241,8 +251,10 @@ export function PurchaseDialog({
   const setOpen = onOpenChange ?? setInternalOpen;
 
   useEffect(() => {
-    if (!isOpen || products) return;
+    if (!isOpen) return;
     let active = true;
+    setError(null);
+    setProducts(null);
     client
       .getProducts()
       .then((p) => active && setProducts(p))
@@ -250,11 +262,16 @@ export function PurchaseDialog({
     return () => {
       active = false;
     };
-  }, [isOpen, products, client]);
+  }, [isOpen, client]);
 
   const subscribedProductIds = new Set(subscriptions.map((s) => s.productId));
 
   async function buy(priceId: string) {
+    const email = (customerEmail ?? enteredEmail).trim();
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      setError("Enter a valid email address or leave it blank.");
+      return;
+    }
     setBusy(priceId);
     setError(null);
     try {
@@ -262,6 +279,7 @@ export function PurchaseDialog({
         flow,
         allowPromotionCodes,
         discountCode,
+        ...(email ? { customerEmail: email } : {}),
       });
       setBusy(null);
       setOpen(false);
@@ -278,7 +296,9 @@ export function PurchaseDialog({
       } else if (err instanceof PayError && err.code === "checkout_cancelled") {
         setError("Checkout was cancelled. No charge was made.");
       } else if (err instanceof PayError && err.code === "checkout_closed") {
-        setError("Checkout was closed before payment completed.");
+        setError(
+          "Confirming your payment. This page will update automatically when it is recorded.",
+        );
       } else {
         setError("Couldn't start checkout. Please try again.");
       }
@@ -325,12 +345,33 @@ export function PurchaseDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         {busy ? (
           <p className="text-sm text-muted-foreground">
-            Finish payment in the checkout window. Your balance updates here
-            automatically.
+            {flow === "redirect"
+              ? "Redirecting you to checkout…"
+              : "Finish payment in the checkout window. Your balance updates here automatically."}
           </p>
+        ) : null}
+
+        {collectCustomerEmail && customerEmail === undefined ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={receiptEmailId} className="text-xs">
+              Receipt and recovery email <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id={receiptEmailId}
+              type="email"
+              autoComplete="email"
+              value={enteredEmail}
+              onChange={(event) => setEnteredEmail(event.currentTarget.value)}
+              placeholder="you@example.com"
+            />
+          </div>
         ) : null}
 
         {products === null && !error ? (
@@ -407,6 +448,8 @@ export type PurchaseButtonProps = {
   flow?: CheckoutFlow;
   allowPromotionCodes?: boolean;
   discountCode?: string;
+  customerEmail?: string;
+  collectCustomerEmail?: boolean;
   renderOption?: PurchaseDialogProps["renderOption"];
   className?: string;
   children?: React.ReactNode;
@@ -422,6 +465,8 @@ export function PurchaseButton({
   flow,
   allowPromotionCodes = true,
   discountCode,
+  customerEmail,
+  collectCustomerEmail,
   renderOption,
   children = filters?.features?.length === 1 ? (
     `Unlock ${humanizeFeature(filters.features[0]!)}`
@@ -432,6 +477,10 @@ export function PurchaseButton({
   ),
   ...props
 }: PurchaseButtonProps) {
+  const ariaLabel =
+    props["aria-label"] ??
+    (typeof children === "string" ? undefined : "Open purchase options");
+
   return (
     <PurchaseDialog
       productId={productId}
@@ -442,9 +491,13 @@ export function PurchaseButton({
       flow={flow}
       allowPromotionCodes={allowPromotionCodes}
       discountCode={discountCode}
+      customerEmail={customerEmail}
+      collectCustomerEmail={collectCustomerEmail}
       renderOption={renderOption}
     >
-      <Button {...props}>{children}</Button>
+      <Button {...props} aria-label={ariaLabel}>
+        {children}
+      </Button>
     </PurchaseDialog>
   );
 }

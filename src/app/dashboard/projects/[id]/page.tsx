@@ -43,6 +43,8 @@ export default async function ProjectDetailPage({
     allowedOrigins: project.allowedOrigins,
     codeExpiresInDays: project.codeExpiresInDays,
     anonymousWalletsPerHour: project.anonymousWalletsPerHour,
+    outboundWebhookUrl: project.outboundWebhookUrl,
+    hasOutboundWebhookSecret: Boolean(project.outboundWebhookSecret),
   };
 
   return (
@@ -101,7 +103,10 @@ export default async function ProjectDetailPage({
                     cannot be undone.
                   </p>
                 </div>
-                <DeleteProjectButton projectId={project.id} />
+                <DeleteProjectButton
+                  projectId={project.id}
+                  projectName={project.name}
+                />
               </div>
             </section>
           </div>

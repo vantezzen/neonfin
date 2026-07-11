@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { products, wallets } from "@/db/schema";
 import { positiveCreditAmountSchema } from "@/lib/amounts";
-import { authenticate, corsHeaders, apiError, preflight } from "@/lib/api/http";
+import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
 import {
   creditWallet,
   getOrCreateExternalWallet,
@@ -45,7 +45,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return apiError(400, "invalid_body", parsed.error.issues[0]?.message ?? "Invalid body", cors);
+    return invalidBodyError(parsed.error, cors);
   }
   const input = parsed.data;
   if (input.externalUserId && project.mode !== "external_auth") {

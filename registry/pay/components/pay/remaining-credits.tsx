@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { useCredits } from "@/components/pay/provider";
 
 function formatCredits(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(6)));
+  const value = Number.isInteger(n) ? n : Number(n.toFixed(6));
+  return new Intl.NumberFormat().format(value);
 }
 
 export type RemainingCreditsProps = {
@@ -24,7 +25,7 @@ export function RemainingCredits({
   showUnit = true,
   className,
 }: RemainingCreditsProps) {
-  const { balance, creditUnit, loading } = useCredits(productId);
+  const { balance, creditUnit, loading, error } = useCredits(productId);
 
   if (loading) {
     return (
@@ -36,6 +37,10 @@ export function RemainingCredits({
         aria-hidden
       />
     );
+  }
+
+  if (error) {
+    return <span className={cn("text-muted-foreground", className)}>—</span>;
   }
 
   return (
@@ -51,6 +56,11 @@ export function RemainingCredits({
       </span>
       {showUnit && creditUnit ? (
         <span className="text-muted-foreground"> {creditUnit}</span>
+      ) : null}
+      {balance < 0 ? (
+        <span className="ml-1 text-xs text-muted-foreground">
+          (includes a refund or adjustment)
+        </span>
       ) : null}
     </span>
   );

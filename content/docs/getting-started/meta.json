@@ -1,4 +1,4 @@
 {
   "title": "Getting started",
-  "pages": ["index", "dashboard", "install", "first-feature", "go-live"]
+  "pages": ["index", "choose-setup", "quickstart", "install", "frameworks", "dashboard", "first-feature", "go-live"]
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays, addMonths } from "date-fns";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   creditBalances,
@@ -309,12 +309,14 @@ async function syncBalance(
 async function activeProducts(projectId: string): Promise<Product[]> {
   return db.query.products.findMany({
     where: and(eq(products.projectId, projectId), eq(products.active, true)),
+    orderBy: [asc(products.createdAt), asc(products.id)],
   });
 }
 
 async function activeProductsTx(tx: Tx, projectId: string): Promise<Product[]> {
   return tx.query.products.findMany({
     where: and(eq(products.projectId, projectId), eq(products.active, true)),
+    orderBy: [asc(products.createdAt), asc(products.id)],
   });
 }
 
@@ -469,6 +471,20 @@ export async function getOrCreateExternalWallet(
     });
     return { wallet, balances, ...EMPTY_ACCESS };
   });
+}
+
+/** Read an existing external-auth wallet without creating one. */
+export async function readExternalWallet(
+  projectId: string,
+  externalUserId: string,
+): Promise<WalletWithBalances | null> {
+  const wallet = await db.query.wallets.findFirst({
+    where: and(
+      eq(wallets.projectId, projectId),
+      eq(wallets.externalUserId, externalUserId),
+    ),
+  });
+  return wallet ? readWalletById(wallet.id) : null;
 }
 
 /**

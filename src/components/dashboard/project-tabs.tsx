@@ -1,5 +1,5 @@
 "use client";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TAB_VALUES = ["products", "developers", "settings"] as const;
@@ -21,10 +21,24 @@ export function ProjectTabs({
   settings: React.ReactNode;
 }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const requestedTab = readTab(searchParams.get("tab"));
 
+  function changeTab(tab: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "products") params.delete("tab");
+    else params.set("tab", tab);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   return (
-    <Tabs key={requestedTab} defaultValue={requestedTab} className="w-full">
+    <Tabs
+      value={requestedTab}
+      onValueChange={changeTab}
+      className="w-full"
+    >
       <TabsList>
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="developers">Developers</TabsTrigger>

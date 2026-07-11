@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { MailCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ResendVerificationForm } from "./resend-verification-form";
 
 export const metadata: Metadata = {
   title: "Verify email · vantezzen/pay",
@@ -27,6 +28,7 @@ export default async function VerifyRequestPage({
             to finish signing in.
           </p>
         </div>
+        <ResendVerificationForm email={email} />
         <Link
           href="/login"
           className="text-sm text-foreground underline-offset-4 hover:underline"

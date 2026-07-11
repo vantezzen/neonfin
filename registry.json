@@ -10,6 +10,11 @@
       "description": "Zero-dependency typed client for the vantezzen/pay API (credits, checkout, credit-code storage).",
       "files": [
         {
+          "path": "registry/pay/lib/pay/error.ts",
+          "type": "registry:lib",
+          "target": "lib/pay/error.ts"
+        },
+        {
           "path": "registry/pay/lib/pay/index.ts",
           "type": "registry:lib",
           "target": "lib/pay/index.ts"
@@ -22,6 +27,11 @@
       "title": "vantezzen/pay server client",
       "description": "Zero-dependency server-only client for external-auth apps: get-or-create wallets by your user id and grant credits with a secret key.",
       "files": [
+        {
+          "path": "registry/pay/lib/pay/error.ts",
+          "type": "registry:lib",
+          "target": "lib/pay/error.ts"
+        },
         {
           "path": "registry/pay/lib/pay/server.ts",
           "type": "registry:lib",

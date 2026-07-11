@@ -67,6 +67,32 @@ export class PolarProvider implements PaymentProvider {
     });
   }
 
+  async validateCredentials() {
+    try {
+      // Product access is the minimum capability required for catalog sync.
+      await this.polar.products.list({ limit: 1 });
+    } catch {
+      throw new Error(
+        "Polar rejected this token or it cannot read products. Check the token, organization, and catalog permissions.",
+      );
+    }
+  }
+
+  async createWebhook({ url }: { url: string }) {
+    const endpoint = await this.polar.webhooks.createWebhookEndpoint({
+      url,
+      name: "vantezzen/pay fulfillment",
+      format: "raw",
+      events: [
+        "order.paid",
+        "order.refunded",
+        "subscription.canceled",
+        "subscription.revoked",
+      ],
+    });
+    return { webhookSecret: endpoint.secret };
+  }
+
   async createPrice(input: CreatePriceInput) {
     const fixedPrice = {
       amountType: "fixed" as const,

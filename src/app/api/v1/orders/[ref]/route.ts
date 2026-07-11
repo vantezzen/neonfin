@@ -26,6 +26,18 @@ export async function GET(
   });
   if (!order) return apiError(404, "order_not_found", "Order not found", cors);
 
+  // Provider checkout sessions are short lived. Resolve an abandoned attempt
+  // when it is observed so API clients never poll forever.
+  const expired =
+    order.status === "pending" &&
+    order.createdAt < new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (expired) {
+    await db
+      .update(orders)
+      .set({ status: "expired" })
+      .where(and(eq(orders.id, order.id), eq(orders.status, "pending")));
+  }
+
   // Surface the issued code + resulting product balance once fulfilled, so the
   // SDK can poll and continue.
   let balance: number | null = null;
@@ -55,10 +67,16 @@ export async function GET(
   return Response.json(
     {
       id: order.id,
-      status: order.status,
+      status: expired ? "expired" : order.status,
       code: order.issuedCode,
       balance,
+      amountCents: order.amountCents,
+      currency: order.currency,
+      productId: order.productIdSnapshot,
+      priceId: order.priceId,
+      createdAt: order.createdAt.toISOString(),
+      paidAt: order.paidAt?.toISOString() ?? null,
     },
-    { headers: cors },
+    { headers: { ...cors, "Cache-Control": "no-store" } },
   );
 }

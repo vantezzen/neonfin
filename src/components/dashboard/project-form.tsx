@@ -37,9 +37,14 @@ type ProjectSettings = Pick<
   | "allowedOrigins"
   | "codeExpiresInDays"
   | "anonymousWalletsPerHour"
+  | "outboundWebhookUrl"
 >;
 
-export function ProjectForm({ project }: { project?: ProjectSettings }) {
+type ProjectSettingsWithWebhook = ProjectSettings & {
+  hasOutboundWebhookSecret: boolean;
+};
+
+export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook }) {
   const editing = Boolean(project);
   const searchParams = useSearchParams();
   const allowedOriginsRef = useRef<HTMLTextAreaElement | null>(null);
@@ -162,6 +167,39 @@ export function ProjectForm({ project }: { project?: ProjectSettings }) {
             min="1"
             max="1000"
             defaultValue={project?.anonymousWalletsPerHour ?? 20}
+          />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Consumer webhook URL"
+          hint="Optional HTTPS endpoint for normalized payment events."
+        >
+          <Input
+            name="outboundWebhookUrl"
+            type="url"
+            defaultValue={project?.outboundWebhookUrl ?? ""}
+            placeholder="https://app.example.com/api/pay-events"
+          />
+        </Field>
+        <Field
+          label="Signing secret"
+          hint={
+            editing && project?.hasOutboundWebhookSecret
+              ? "Blank keeps the current secret. Enter a new value to rotate it."
+              : "At least 16 characters. Used to sign each delivery."
+          }
+        >
+          <Input
+            name="outboundWebhookSecret"
+            type="password"
+            minLength={16}
+            autoComplete="new-password"
+            placeholder={
+              editing && project?.hasOutboundWebhookSecret
+                ? "Keep current secret"
+                : "A long random secret"
+            }
           />
         </Field>
       </div>

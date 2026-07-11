@@ -1,0 +1,46 @@
+---
+title: Hosted or self-hosted?
+description: Choose the right vantezzen/pay deployment before integrating your app.
+---
+
+Use the hosted instance when you want the fastest path to accepting payments.
+Self-host when you need to own the infrastructure, database, and provider-secret
+boundary.
+
+| Choose hosted | Choose self-hosted |
+| --- | --- |
+| You want to start today with no operations work. | You need your own domain, database, or deployment controls. |
+| A shared managed instance is acceptable. | Your policy requires provider credentials and wallet data in your infrastructure. |
+| You are integrating one or a few side projects. | You operate a private team or want to customize deployment and operations. |
+
+The consumer integration is the same either way: set `NEXT_PUBLIC_PAY_URL` to
+your instance and use the project publishable key from its dashboard.
+
+## Hosted
+
+Create an account, make a project, connect a sandbox Stripe or Polar account,
+and follow the [5-minute quickstart](/docs/getting-started/quickstart). The
+hosted instance runs the dashboard, API, provider service, database, and
+registry for you.
+
+## Self-hosted
+
+Self-hosting runs three services you own: the web app, the isolated provider
+service, and Postgres. Start from the repository:
+
+```bash
+bun install
+bun install --cwd services/provider
+bun run setup
+docker compose up -d postgres
+bun run db:migrate
+```
+
+`bun run setup` copies both environment templates, generates the shared
+provider-service secret plus auth/encryption secrets, and never overwrites an
+existing `.env` file. Review the generated URLs and email configuration before
+starting the app.
+
+For production, continue with [self-hosting](/docs/self-host), especially the
+[environment](/docs/self-host/environment) and
+[deployment](/docs/self-host/deployment) guides.

@@ -4,6 +4,7 @@ import {
   corsHeaders,
   apiError,
   preflight,
+  rateLimitHeaders,
 } from "@/lib/api/http";
 import { consumeToken } from "@/lib/api/rate-limit";
 import { createCodeWallet } from "@/lib/credits";
@@ -29,10 +30,12 @@ export async function POST(req: Request): Promise<Response> {
     { capacity: hourlyLimit, refillPerSec: hourlyLimit / 3600 },
   );
   if (!limit.ok) {
-    return apiError(429, "rate_limited", "Too many wallets created. Try again later.", {
-      ...cors,
-      "Retry-After": String(limit.retryAfterSec),
-    });
+    return apiError(
+      429,
+      "rate_limited",
+      "Too many wallets created. Try again later.",
+      rateLimitHeaders(cors, { capacity: hourlyLimit, refillPerSec: hourlyLimit / 3600 }, limit),
+    );
   }
 
   const { wallet, balances, features, subscriptions } = await createCodeWallet(

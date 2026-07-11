@@ -1,0 +1,87 @@
+---
+title: Other frameworks
+description: Use vantezzen/pay with Vite, the Next.js Pages Router, or Remix.
+---
+
+The browser client has no framework dependency. The React components are normal
+client components, so the main difference across frameworks is where you expose
+public environment variables and where server-only external-auth calls live.
+
+## Vite or a plain SPA
+
+Install `pay-client` from the registry, then create one browser client. Vite
+only exposes variables prefixed with `VITE_`:
+
+```bash
+npx shadcn@latest add https://pay.vantezzen.io/r/pay-client.json
+```
+
+```bash title=".env"
+VITE_PAY_URL=https://pay.vantezzen.io
+VITE_PAY_KEY=pay_pk_your_key
+```
+
+```ts title="src/pay.ts"
+import { createPayClient } from "@/lib/pay";
+
+export const pay = createPayClient({
+  baseUrl: import.meta.env.VITE_PAY_URL,
+  publishableKey: import.meta.env.VITE_PAY_KEY,
+});
+```
+
+Use `await pay.getBalances()`, `await pay.deduct(amount)`, and
+`await pay.startCheckout(priceId)` from your UI. See the full
+[browser-client reference](/docs/components/client).
+
+For React UI components, install the provider/gate/purchase registry items and
+wrap your Vite root in `<PayProvider>` exactly as in the
+[quickstart](/docs/getting-started/quickstart). The components do not require
+Next.js.
+
+## Next.js Pages Router
+
+Use the same registry items and public variables as the App Router. Put the
+provider in `pages/_app.tsx` instead of `app/layout.tsx`:
+
+```tsx title="pages/_app.tsx"
+import type { AppProps } from "next/app";
+import { PayProvider } from "@/components/pay/provider";
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <PayProvider
+      baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}
+      publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}
+    >
+      <Component {...pageProps} />
+    </PayProvider>
+  );
+}
+```
+
+Keep all `pay_sk_` access in API routes or other server-only code. Never pass a
+secret key through `pageProps`.
+
+## Remix and server-rendered apps
+
+For anonymous credit-code projects, use the browser client exactly as above and
+inject public values through your app's normal environment mechanism.
+
+For external auth, create the server client in a `.server.ts` module and call
+it from loaders, actions, or your own API routes:
+
+```ts title="app/pay.server.ts"
+import { createPayServerClient } from "@/lib/pay/server";
+
+export const payServer = createPayServerClient({
+  baseUrl: process.env.PAY_URL!,
+  secretKey: process.env.PAY_SECRET_KEY!,
+});
+```
+
+Use the authenticated application's user id as `externalUserId`. Call
+`payServer.deduct()` before starting paid work, and redirect to the URL from
+`payServer.createCheckout()` when a user needs to buy more. The
+[external-auth guide](/docs/concepts/external-auth) covers the identity model
+and server-side operations.

@@ -1,10 +1,12 @@
 "use client";
 import type * as React from "react";
-import { useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   Coins,
   Eye,
   EyeOff,
+  FlaskConical,
   HelpCircle,
   MoreHorizontal,
   Package,
@@ -21,6 +23,7 @@ import {
   attachProvider,
   createPrice,
   createProduct,
+  createTestCheckout,
   deletePrice,
   deleteProduct,
   syncProduct,
@@ -31,6 +34,8 @@ import {
 import { CURRENCIES } from "@/lib/currencies";
 import { formatLargeNumber, formatInterval, formatMoney } from "@/lib/format";
 import { FormDialog } from "@/components/app/form-dialog";
+import { ConfirmAction } from "@/components/app/confirm-action";
+import { MutationForm } from "@/components/app/mutation-form";
 import { CopyInline } from "@/components/app/copy";
 import { ProviderLink } from "@/components/app/provider-link";
 import { providerProductUrl } from "@/lib/providers/links";
@@ -306,7 +311,7 @@ function ProductCard({
                   Not synced
                 </Status>
               ) : null}
-              <div className="ml-auto flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+              <div className="ml-auto flex shrink-0 items-center gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
                 <CopyInline value={price.id} label="Copy ID" />
                 {price.providerPriceId && productUrl ? (
                   <ProviderLink
@@ -316,35 +321,40 @@ function ProductCard({
                     className="p-1"
                   />
                 ) : null}
+                {price.providerPriceId ? (
+                  <TestCheckoutButton
+                    priceId={price.id}
+                    sandbox={attached?.environment === "sandbox"}
+                  />
+                ) : null}
                 <EditPriceButton
                   price={price}
                   product={product}
                   knownFeatures={knownFeatures}
                 />
-                <form
+                <ConfirmAction
                   action={deletePrice}
-                  onSubmit={(e) => {
-                    if (
-                      !confirm(
-                        "Delete this price? Existing orders keep their history.",
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Delete price"
+                      title="Delete price"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  }
+                  title="Delete this price?"
+                  description="Existing orders keep their history. This price can no longer be used for new checkouts."
+                  confirmLabel="Delete price"
+                  pendingLabel="Deleting…"
+                  successMessage="Price deleted"
                 >
                   <input type="hidden" name="id" value={price.id} />
                   <input type="hidden" name="projectId" value={projectId} />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground hover:text-destructive"
-                    title="Delete price"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </form>
+                </ConfirmAction>
               </div>
             </div>
           ))}
@@ -376,13 +386,21 @@ function ProductCard({
               </ProviderLink>
             ) : null}
             {attached && hasUnsynced ? (
-              <form action={syncProduct}>
-                <input type="hidden" name="id" value={product.id} />
-                <input type="hidden" name="projectId" value={projectId} />
-                <Button type="submit" variant="ghost" size="xs">
-                  <RefreshCw className="size-3" /> Sync now
-                </Button>
-              </form>
+              <MutationForm
+                action={syncProduct}
+                successMessage="Product prices synced"
+              >
+                {(pending) => (
+                  <>
+                    <input type="hidden" name="id" value={product.id} />
+                    <input type="hidden" name="projectId" value={projectId} />
+                    <Button type="submit" variant="ghost" size="xs" disabled={pending}>
+                      <RefreshCw className={pending ? "size-3 animate-spin" : "size-3"} />
+                      {pending ? "Syncing…" : "Sync now"}
+                    </Button>
+                  </>
+                )}
+              </MutationForm>
             ) : null}
             <AttachProviderButton
               productId={product.id}
@@ -397,6 +415,42 @@ function ProductCard({
   );
 }
 
+function TestCheckoutButton({
+  priceId,
+  sandbox,
+}: {
+  priceId: string;
+  sandbox: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const title = sandbox
+    ? "Open a sandbox checkout and verify the webhook"
+    : "Connect this product to a sandbox provider to test checkout";
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      disabled={!sandbox || pending}
+      aria-label="Test checkout"
+      title={title}
+      onClick={() => {
+        startTransition(async () => {
+          const result = await createTestCheckout(priceId);
+          if (result.error) {
+            toast.error(result.error);
+            return;
+          }
+          if (result.url) window.location.assign(result.url);
+        });
+      }}
+    >
+      <FlaskConical className="size-3.5" />
+    </Button>
+  );
+}
+
 /** Rarely-used product actions, tucked behind an overflow menu. */
 function ProductMenu({
   product,
@@ -408,19 +462,25 @@ function ProductMenu({
   creditsInUse: boolean;
 }) {
   const toggleRef = useRef<HTMLFormElement>(null);
-  const deleteRef = useRef<HTMLFormElement>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [toggleState, toggleAction, togglePending] = useActionState(
+    toggleProduct,
+    {},
+  );
+
+  useEffect(() => {
+    if (toggleState.error) toast.error(toggleState.error);
+    if (toggleState.ok) {
+      toast.success(product.active ? "Product deactivated" : "Product activated");
+    }
+  }, [product.active, toggleState]);
 
   return (
     <>
-      <form ref={toggleRef} action={toggleProduct} className="hidden">
+      <form ref={toggleRef} action={toggleAction} className="hidden">
         <input type="hidden" name="id" value={product.id} />
         <input type="hidden" name="projectId" value={projectId} />
         <input type="hidden" name="active" value={String(product.active)} />
-      </form>
-      <form ref={deleteRef} action={deleteProduct} className="hidden">
-        <input type="hidden" name="id" value={product.id} />
-        <input type="hidden" name="projectId" value={projectId} />
       </form>
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -434,7 +494,10 @@ function ProductMenu({
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
             <Pencil /> Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toggleRef.current?.requestSubmit()}>
+          <DropdownMenuItem
+            disabled={togglePending}
+            onClick={() => toggleRef.current?.requestSubmit()}
+          >
             {product.active ? (
               <>
                 <EyeOff /> Deactivate
@@ -446,20 +509,22 @@ function ProductMenu({
             )}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => {
-              if (
-                confirm(
-                  `Delete "${product.name}" and its prices? Wallet balances for it are removed. This cannot be undone.`,
-                )
-              ) {
-                deleteRef.current?.requestSubmit();
-              }
-            }}
+          <ConfirmAction
+            action={deleteProduct}
+            trigger={
+              <DropdownMenuItem variant="destructive">
+                <Trash2 /> Delete product
+              </DropdownMenuItem>
+            }
+            title={`Delete “${product.name}”?`}
+            description="Its prices and wallet balances will be removed. This cannot be undone."
+            confirmLabel="Delete product"
+            pendingLabel="Deleting…"
+            successMessage="Product deleted"
           >
-            <Trash2 /> Delete product
-          </DropdownMenuItem>
+            <input type="hidden" name="id" value={product.id} />
+            <input type="hidden" name="projectId" value={projectId} />
+          </ConfirmAction>
         </DropdownMenuContent>
       </DropdownMenu>
 

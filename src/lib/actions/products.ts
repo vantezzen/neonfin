@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { prices, products, type FreeGrant } from "@/db/schema";
+import { orders, prices, products, type FreeGrant } from "@/db/schema";
 import {
   coerceNonNegativeCreditAmountSchema,
   coercePositiveCreditAmountSchema,
@@ -17,10 +17,12 @@ import {
 } from "@/lib/auth/dal";
 import { parseFeatureKeys } from "@/lib/features";
 import {
+  createProviderCheckout,
   createProviderPrice,
   createProviderProduct,
   getProviderAccountMeta,
 } from "@/lib/provider-service/client";
+import { env } from "@/lib/env";
 import { actionError, type FormState } from "./state";
 
 function refresh(projectId: string) {
@@ -146,19 +148,38 @@ export async function updateProduct(
   }
 }
 
-export async function toggleProduct(formData: FormData): Promise<void> {
-  const id = String(formData.get("id"));
-  const product = await requireOwnedProduct(id);
-  const active = formData.get("active") === "true";
-  await db.update(products).set({ active: !active }).where(eq(products.id, id));
-  refresh(product.projectId);
+export async function toggleProduct(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const id = String(formData.get("id"));
+    const product = await requireOwnedProduct(id);
+    const active = formData.get("active") === "true";
+    await db
+      .update(products)
+      .set({ active: !active })
+      .where(eq(products.id, id));
+    refresh(product.projectId);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
+  }
 }
 
-export async function deleteProduct(formData: FormData): Promise<void> {
-  const id = String(formData.get("id"));
-  const product = await requireOwnedProduct(id);
-  await db.delete(products).where(eq(products.id, id));
-  refresh(product.projectId);
+export async function deleteProduct(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const id = String(formData.get("id"));
+    const product = await requireOwnedProduct(id);
+    await db.delete(products).where(eq(products.id, id));
+    refresh(product.projectId);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
+  }
 }
 
 const priceInput = z.object({
@@ -295,18 +316,107 @@ export async function attachProvider(
 }
 
 /** Retry provisioning any unsynced prices (e.g. after fixing provider keys). */
-export async function syncProduct(formData: FormData): Promise<void> {
-  const productId = String(formData.get("id"));
-  const product = await requireOwnedProduct(productId);
-  await syncProductPrices(productId);
-  refresh(product.projectId);
+export async function syncProduct(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const productId = String(formData.get("id"));
+    const product = await requireOwnedProduct(productId);
+    await syncProductPrices(productId);
+    refresh(product.projectId);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
+  }
 }
 
-export async function deletePrice(formData: FormData): Promise<void> {
-  const id = String(formData.get("id"));
-  const price = await requireOwnedPrice(id);
-  await db.delete(prices).where(eq(prices.id, id));
-  refresh(price.product.projectId);
+export async function deletePrice(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const id = String(formData.get("id"));
+    const price = await requireOwnedPrice(id);
+    await db.delete(prices).where(eq(prices.id, id));
+    refresh(price.product.projectId);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e);
+  }
+}
+
+export type TestCheckoutState = { url?: string; error?: string };
+
+/** Create a real sandbox checkout so a developer can verify their full flow. */
+export async function createTestCheckout(
+  priceId: string,
+): Promise<TestCheckoutState> {
+  try {
+    const price = await requireOwnedPrice(priceId);
+    if (!price.active || !price.product.active) {
+      return { error: "Activate this price and product before testing checkout." };
+    }
+    if (!price.providerPriceId || !price.product.providerAccountId) {
+      return { error: "Sync this price to a provider before testing checkout." };
+    }
+
+    const account = await getProviderAccountMeta(price.product.providerAccountId);
+    if (!account) return { error: "The connected provider account was not found." };
+    if (account.environment !== "sandbox") {
+      return {
+        error:
+          "Test checkout is available only for sandbox providers. Connect a sandbox account to avoid a live charge.",
+      };
+    }
+
+    const [order] = await db
+      .insert(orders)
+      .values({
+        projectId: price.product.projectId,
+        priceId: price.id,
+        provider: account.provider,
+        amountCents: price.amountCents,
+        currency: price.currency,
+        productIdSnapshot: price.productId,
+        creditUnitSnapshot: price.product.creditUnit,
+        creditsGrantedSnapshot: price.creditsGranted,
+        featuresSnapshot: price.features,
+        intervalSnapshot: price.interval,
+        renewalModeSnapshot: price.product.renewalMode,
+        priceLabelSnapshot: price.label,
+      })
+      .returning();
+    const dashboardUrl = new URL(
+      `/dashboard/projects/${price.product.projectId}?tab=orders`,
+      env().NEXT_PUBLIC_APP_URL,
+    ).toString();
+
+    try {
+      const { url, checkoutId } = await createProviderCheckout(account.id, {
+        providerPriceId: price.providerPriceId,
+        mode: price.product.type === "subscription" ? "subscription" : "payment",
+        successUrl: dashboardUrl,
+        cancelUrl: dashboardUrl,
+        allowPromotionCodes: false,
+        metadata: {
+          orderId: order.id,
+          projectId: price.product.projectId,
+          testCheckout: "true",
+        },
+      });
+      await db
+        .update(orders)
+        .set({ providerCheckoutId: checkoutId, checkoutUrl: url })
+        .where(eq(orders.id, order.id));
+      return { url };
+    } catch (error) {
+      await db.update(orders).set({ status: "failed" }).where(eq(orders.id, order.id));
+      throw error;
+    }
+  } catch (error) {
+    return actionError(error);
+  }
 }
 
 /**

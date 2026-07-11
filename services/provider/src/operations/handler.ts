@@ -13,7 +13,34 @@ import {
   verifyWebhook,
 } from "../providers";
 import { encryptSecret } from "../secrets";
-import { createId } from "../utils/id";
+import { ProviderInputError } from "./errors";
+
+async function validateCredentials(
+  provider: ProviderName,
+  secretKey: string,
+  environment: string,
+) {
+  try {
+    const api =
+      provider === "stripe"
+        ? new (await import("../providers/adapters/stripe")).StripeProvider(
+            secretKey,
+            null,
+          )
+        : new (await import("../providers/adapters/polar")).PolarProvider(
+            secretKey,
+            null,
+            environment,
+          );
+    await api.validateCredentials();
+  } catch (error) {
+    throw new ProviderInputError(
+      error instanceof Error
+        ? error.message
+        : "Provider credentials could not be validated.",
+    );
+  }
+}
 
 async function account(id: string, provider?: ProviderName) {
   const row = await db.query.providerAccounts.findFirst({
@@ -28,7 +55,32 @@ async function account(id: string, provider?: ProviderName) {
 export async function handleProviderRequest(request: ProviderServiceRequest) {
   switch (request.op) {
     case "create-provider-account": {
-      const id = createId("prov");
+      await validateCredentials(
+        request.provider,
+        request.secretKey,
+        request.environment,
+      );
+      const id = request.accountId;
+      const api =
+        request.provider === "stripe"
+          ? new (await import("../providers/adapters/stripe")).StripeProvider(
+              request.secretKey,
+              null,
+            )
+          : new (await import("../providers/adapters/polar")).PolarProvider(
+              request.secretKey,
+              null,
+              request.environment,
+            );
+      // Webhook permissions are optional for a restricted key. Provision one
+      // when possible, but keep the manual wizard as a safe fallback.
+      let webhookSecret: string | null = null;
+      try {
+        webhookSecret = (await api.createWebhook({ url: request.webhookUrl }))
+          .webhookSecret;
+      } catch {
+        // The dashboard will guide the user through manual setup.
+      }
       const secretKeyEnc = await encryptSecret(request.secretKey, {
         accountId: id,
         provider: request.provider,
@@ -43,9 +95,18 @@ export async function handleProviderRequest(request: ProviderServiceRequest) {
           label: request.label,
           environment: request.environment,
           secretKeyEnc,
+          ...(webhookSecret
+            ? {
+                webhookSecretEnc: await encryptSecret(webhookSecret, {
+                  accountId: id,
+                  provider: request.provider,
+                  purpose: "webhook_secret",
+                }),
+              }
+            : {}),
         })
         .returning({ id: providerAccounts.id });
-      return { id: row.id };
+      return { id: row.id, webhookConfigured: webhookSecret !== null };
     }
     case "save-webhook-secret": {
       const row = await account(request.accountId);
@@ -67,6 +128,7 @@ export async function handleProviderRequest(request: ProviderServiceRequest) {
         environment: request.environment,
       };
       if (request.secretKey) {
+        await validateCredentials(row.provider, request.secretKey, request.environment);
         patch.secretKeyEnc = await encryptSecret(
           request.secretKey,
           secretContext(row, "provider_api_key"),

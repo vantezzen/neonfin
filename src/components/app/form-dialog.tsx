@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useActionState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +32,7 @@ export function FormDialog({
   description,
   action,
   submitLabel = "Save",
+  successMessage = "Saved",
   children,
   open: openProp,
   onOpenChange,
@@ -42,6 +44,7 @@ export function FormDialog({
   description?: string;
   action: DialogAction;
   submitLabel?: string;
+  successMessage?: string;
   children: React.ReactNode;
   /** Controlled open state - lets a parent (e.g. a menu item) drive the dialog. */
   open?: boolean;
@@ -81,6 +84,7 @@ export function FormDialog({
             key={String(open)}
             action={action}
             submitLabel={submitLabel}
+            successMessage={successMessage}
             onSuccess={() => setOpen(false)}
           >
             {children}
@@ -94,18 +98,24 @@ export function FormDialog({
 function Inner({
   action,
   submitLabel,
+  successMessage,
   onSuccess,
   children,
 }: {
   action: DialogAction;
   submitLabel: string;
+  successMessage: string;
   onSuccess: () => void;
   children: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   useEffect(() => {
-    if (state.ok) onSuccess();
-  }, [state.ok, onSuccess]);
+    if (state.error) toast.error(state.error);
+    if (state.ok) {
+      toast.success(successMessage);
+      onSuccess();
+    }
+  }, [state, successMessage, onSuccess]);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -115,7 +125,7 @@ function Inner({
       ) : null}
       <DialogFooter>
         <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : submitLabel}
+          {pending ? `${submitLabel.replace(/\.$/, "")}…` : submitLabel}
         </Button>
       </DialogFooter>
     </form>

@@ -13,6 +13,9 @@ const config = env();
 const githubConfigured = Boolean(
   config.GITHUB_CLIENT_ID && config.GITHUB_CLIENT_SECRET,
 );
+const emailVerificationEnabled = Boolean(
+  config.RESEND_API_KEY && config.RESEND_FROM,
+);
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema: authSchema }),
@@ -20,7 +23,10 @@ export const auth = betterAuth({
   baseURL: config.BETTER_AUTH_URL,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    // A self-hosted instance without an email provider cannot deliver the
+    // verification link. Let its operator sign in rather than permanently
+    // locking every account out; hosted deployments keep verification on.
+    requireEmailVerification: emailVerificationEnabled,
     autoSignIn: false,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
@@ -39,8 +45,8 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
-    sendOnSignIn: true,
+    sendOnSignUp: emailVerificationEnabled,
+    sendOnSignIn: emailVerificationEnabled,
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60 * 24,
     sendVerificationEmail: async ({ user, url }) => {

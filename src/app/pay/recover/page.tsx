@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft, MailCheck } from "lucide-react";
@@ -22,13 +23,11 @@ function safeReturnUrl(value: string | string[] | undefined): string | null {
   }
 }
 
-export default async function RecoverWalletPage({
+export default function RecoverWalletPage({
   searchParams,
 }: {
   searchParams: Promise<{ returnUrl?: string | string[] }>;
 }) {
-  const returnUrl = safeReturnUrl((await searchParams).returnUrl);
-
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
       <div className="w-full max-w-lg">
@@ -48,20 +47,36 @@ export default async function RecoverWalletPage({
               </div>
             </div>
 
-            <RecoveryForm returnUrl={returnUrl} />
-
-            {returnUrl ? (
-              <Link
-                href={returnUrl}
-                className={buttonVariants({ variant: "outline" })}
-              >
-                <ArrowLeft className="size-4" />
-                Return to app
-              </Link>
-            ) : null}
+            <Suspense>
+              <RecoverySection searchParams={searchParams} />
+            </Suspense>
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+async function RecoverySection({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnUrl?: string | string[] }>;
+}) {
+  const returnUrl = safeReturnUrl((await searchParams).returnUrl);
+
+  return (
+    <>
+      <RecoveryForm returnUrl={returnUrl} />
+
+      {returnUrl ? (
+        <Link
+          href={returnUrl}
+          className={buttonVariants({ variant: "outline" })}
+        >
+          <ArrowLeft className="size-4" />
+          Return to app
+        </Link>
+      ) : null}
+    </>
   );
 }

@@ -1,0 +1,80 @@
+import "server-only";
+import { and, desc, eq, lt, or } from "drizzle-orm";
+import { db } from "@/db";
+import { ledgerEntries, products } from "@/db/schema";
+import { toNum } from "@/lib/credits";
+
+type Cursor = { createdAt: string; id: string };
+
+export function decodeLedgerCursor(value: string | undefined): Cursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (
+      typeof parsed?.createdAt !== "string" ||
+      Number.isNaN(new Date(parsed.createdAt).valueOf()) ||
+      typeof parsed?.id !== "string"
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function encodeLedgerCursor(entry: { createdAt: Date; id: string }): string {
+  return Buffer.from(
+    JSON.stringify({ createdAt: entry.createdAt.toISOString(), id: entry.id }),
+  ).toString("base64url");
+}
+
+/** List a wallet's immutable balance changes with stable cursor pagination. */
+export async function listWalletLedger(
+  walletId: string,
+  cursor: Cursor | null,
+  limit: number,
+) {
+  const cursorDate = cursor ? new Date(cursor.createdAt) : null;
+  const rows = await db
+    .select({
+      id: ledgerEntries.id,
+      productId: ledgerEntries.productId,
+      productName: products.name,
+      creditUnit: products.creditUnit,
+      delta: ledgerEntries.delta,
+      reason: ledgerEntries.reason,
+      orderId: ledgerEntries.orderId,
+      createdAt: ledgerEntries.createdAt,
+    })
+    .from(ledgerEntries)
+    .innerJoin(products, eq(products.id, ledgerEntries.productId))
+    .where(
+      cursor && cursorDate
+        ? and(
+            eq(ledgerEntries.walletId, walletId),
+            or(
+              lt(ledgerEntries.createdAt, cursorDate),
+              and(
+                eq(ledgerEntries.createdAt, cursorDate),
+                lt(ledgerEntries.id, cursor.id),
+              ),
+            ),
+          )
+        : eq(ledgerEntries.walletId, walletId),
+    )
+    .orderBy(desc(ledgerEntries.createdAt), desc(ledgerEntries.id))
+    .limit(limit + 1);
+  const hasMore = rows.length > limit;
+  const entries = rows.slice(0, limit);
+  const last = entries.at(-1);
+
+  return {
+    entries: entries.map((entry) => ({
+      ...entry,
+      delta: toNum(entry.delta),
+      createdAt: entry.createdAt.toISOString(),
+    })),
+    nextCursor: hasMore && last ? encodeLedgerCursor(last) : null,
+  };
+}

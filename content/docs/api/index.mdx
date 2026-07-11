@@ -17,6 +17,7 @@ balance refresh, and checkout confirmation automatically.
 | Non-React browser app | REST API with a publishable key |
 | Existing logged-in users | [createPayServerClient](/docs/components/server) with a secret key |
 | Promo/support credits | `POST /api/v1/credit` with a secret key |
+| React to payment events | [Consumer webhooks](/docs/api/webhooks) |
 
 ## Key types
 
@@ -43,6 +44,28 @@ https://pay.vantezzen.io/api/v1
 
 Use the REST API directly if you are not using the registry client.
 
+## Versioning and compatibility
+
+The public REST surface is versioned in the URL. Existing `/api/v1` fields and
+error codes are stable: new optional fields, endpoints, and enum values may be
+added without a version bump, but existing required inputs and documented
+responses are not removed or renamed within v1.
+
+If a breaking change is ever needed, it will ship under a new path version with
+a migration note. Deprecations are announced in the dashboard and documentation
+before a replacement is required.
+
+## OpenAPI
+
+The machine-readable API description is available at:
+
+```txt
+GET /api/openapi.json
+```
+
+It uses a relative `/api/v1` server URL, so tooling can import it from either
+the hosted service or a self-hosted deployment.
+
 ## Authentication
 
 All requests use bearer auth:
@@ -54,6 +77,18 @@ Authorization: Bearer pay_pk_...
 Browser calls should use publishable keys. Server-only calls that create
 external-auth wallets, deduct from them, or grant credits require secret keys -
 see [Server-side users](/docs/api/server-side-users) for those endpoints.
+
+## Rate limits
+
+Publishable-key requests are limited per API key and client IP to a burst of 30
+requests, refilling at 5 requests per second. Invalid recovery-code attempts
+are limited to 20 per hour; anonymous-wallet creation uses the project limit
+configured in the dashboard.
+
+When a request is limited, the `429` response includes `Retry-After`,
+`RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`. Browser code
+can read those headers because they are exposed through CORS. Retry only after
+the reported interval.
 
 ## Catalog
 
@@ -140,6 +175,16 @@ A wallet with access looks like:
 }
 ```
 
+List immutable credit changes for a wallet with an opaque cursor:
+
+```http
+GET /api/v1/wallets/{code}/ledger?limit=25
+```
+
+Each entry contains its `delta`, `reason` (`purchase`, `deduction`,
+`free_grant`, `manual`, `refund`, or `expiry`), product identity, optional
+`orderId`, and timestamp. Pass `nextCursor` to retrieve the next page.
+
 Deduct credits:
 
 ```http
@@ -215,6 +260,36 @@ Redirect the browser to `url`.
 
 ## Orders
 
+Confirm the configured project and key mode when diagnosing an integration:
+
+```http
+GET /api/v1/me
+```
+
+```json
+{
+  "projectId": "proj_...",
+  "project": "image-tools",
+  "mode": "credit_codes",
+  "keyKind": "publishable"
+}
+```
+
+List recent project orders with an opaque cursor:
+
+```http
+GET /api/v1/orders?limit=25
+```
+
+Pass `nextCursor` to retrieve the next page. The endpoint returns only orders
+for the authenticated project.
+
+An order is `pending` while the payment provider completes checkout. Checkout
+attempts still pending after 24 hours are returned as `expired`; `paid`,
+`failed`, and `refunded` are the other final states. A delayed verified payment
+webhook may still transition an expired attempt to `paid` so a completed payment
+is never discarded.
+
 ```http
 GET /api/v1/orders/{orderIdOrCheckoutId}
 ```
@@ -226,7 +301,11 @@ Returns:
   "id": "ord_...",
   "status": "paid",
   "code": "SKIP-8F3K-L9PQ-2MVT",
-  "balance": 100
+  "balance": 100,
+  "amountCents": 500,
+  "currency": "USD",
+  "createdAt": "2026-07-10T12:00:00.000Z",
+  "paidAt": "2026-07-10T12:01:00.000Z"
 }
 ```
 

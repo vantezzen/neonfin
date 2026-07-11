@@ -4,9 +4,12 @@ import {
   authenticate,
   corsHeaders,
   apiError,
+  invalidBodyError,
   invalidCodeAttempt,
   preflight,
+  rateLimitHeaders,
 } from "@/lib/api/http";
+import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
 import {
   deductByCode,
   findActiveCodeWallet,
@@ -43,7 +46,7 @@ export async function POST(
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return apiError(400, "invalid_body", parsed.error.issues[0]?.message ?? "Invalid body", cors);
+    return invalidBodyError(parsed.error, cors);
   }
 
   // Default to the sole product when the caller omits one.
@@ -57,10 +60,12 @@ export async function POST(
       if (!wallet) {
         const limit = await invalidCodeAttempt(project.id, req);
         if (!limit.ok) {
-          return apiError(429, "rate_limited", "Too many invalid recovery codes", {
-            ...cors,
-            "Retry-After": String(limit.retryAfterSec),
-          });
+          return apiError(
+            429,
+            "rate_limited",
+            "Too many invalid recovery codes",
+            rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
+          );
         }
         return apiError(404, "wallet_not_found", "Wallet not found", cors);
       }
@@ -83,10 +88,12 @@ export async function POST(
     if (e instanceof WalletNotFoundError) {
       const limit = await invalidCodeAttempt(project.id, req);
       if (!limit.ok) {
-        return apiError(429, "rate_limited", "Too many invalid recovery codes", {
-          ...cors,
-          "Retry-After": String(limit.retryAfterSec),
-        });
+        return apiError(
+          429,
+          "rate_limited",
+          "Too many invalid recovery codes",
+          rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
+        );
       }
       return apiError(404, "wallet_not_found", "Wallet not found", cors);
     }

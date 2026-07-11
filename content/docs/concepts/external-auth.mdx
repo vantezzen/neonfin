@@ -221,6 +221,9 @@ export async function POST(req: Request) {
       successUrl: body.successUrl,
       cancelUrl: body.cancelUrl,
       customerEmail: user.email,
+      allowPromotionCodes: body.allowPromotionCodes,
+      discountCode: body.discountCode,
+      idempotencyKey: body.idempotencyKey,
     }),
   );
 }
@@ -241,4 +244,7 @@ export async function POST(req: Request) {
 The bridge should ignore or verify any `externalUserId` sent by the browser and
 use the authenticated session as the source of truth. Add a `/api/pay/deduct`
 route only when client-triggered deductions are appropriate; server-side paid
-work should deduct directly in the route or job that performs the work.
+work should deduct directly in the route or job that performs the work. Forward
+the optional checkout fields shown above unchanged: `allowPromotionCodes`,
+`discountCode`, and a stable `idempotencyKey` are part of the browser client's
+checkout request.

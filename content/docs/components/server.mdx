@@ -27,12 +27,17 @@ export const payServer = createPayServerClient({
 });
 ```
 
+Pass an `idempotencyKey` to `createCheckout()` when the initiating request can
+be retried. Repeating the same key returns the original checkout instead of
+creating another provider session.
+
 ## Config
 
 | Field | Type | Description |
 |---|---|---|
 | `baseUrl` | `string` | Public URL of your vantezzen/pay instance. |
 | `secretKey` | `string` | Secret API key starting with `pay_sk_`. Keep it server-only. |
+| `requestTimeoutMs` | `number` | API request timeout in milliseconds. Defaults to 15,000. |
 
 ## When to use it
 
@@ -59,6 +64,11 @@ const wallet = await payServer.getOrCreateWallet(user.id);
 | Method | Returns | Description |
 |---|---|---|
 | `getOrCreateWallet(externalUserId)` | `Promise<ExternalWallet>` | Gets or creates the wallet tied to your user id. Idempotent by `externalUserId`. |
+| `getWallet(externalUserId)` | `Promise<ExternalWallet \| null>` | Reads an existing wallet without creating one. |
+| `getProducts()` | `Promise<Product[]>` | Lists active products and purchasable prices. |
+| `getOrder(ref)` | `Promise<OrderStatus>` | Reads an order by its vantezzen/pay or provider checkout id. |
+| `listOrders({ cursor?, limit? })` | `Promise<OrderPage>` | Lists project orders with cursor pagination. |
+| `getMe()` | `Promise<PayIdentity>` | Inspects the configured project and key mode. |
 
 Call this on billing pages, after signup, or before showing account credit
 state. It returns balances, unlocked features, and subscriptions in one response.

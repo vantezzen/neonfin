@@ -39,14 +39,18 @@ export function CreditGate({
   fallback,
   purchaseButtonProps,
 }: CreditGateProps) {
-  const { hasCredits, loading, confirming, creditUnit } = useCredits(productId);
+  const { hasCredits, loading, error, creditUnit } = useCredits(productId);
 
-  if (loading || confirming) {
+  if (loading) {
     return (
       <span className="inline-flex items-center text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
       </span>
     );
+  }
+
+  if (error) {
+    return <span role="alert" className="text-sm text-muted-foreground">Unable to check credits.</span>;
   }
 
   if (hasCredits(cost)) return <>{children}</>;

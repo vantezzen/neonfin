@@ -47,12 +47,14 @@ export function WalletMenu() {
 The dialog can restore wallet links like:
 
 ```txt
-https://your-app.com/dashboard?__pay_wallet=SKIP-8F3K-L9PQ-2MVT
+https://your-app.com/dashboard#__pay_wallet=SKIP-8F3K-L9PQ-2MVT
 ```
 
 When a page opens with `__pay_wallet`, `WalletButton` opens the dialog,
 validates the code, saves it, refreshes balances, and removes the query
-parameter from the URL.
+or fragment parameter from the URL. New transfer links use a fragment so the
+recovery code is not sent to your server, logs, or analytics as a query string;
+legacy query links keep working.
 
 ## Lost wallet codes
 

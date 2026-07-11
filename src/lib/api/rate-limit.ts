@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { rateLimitBuckets } from "@/db/schema";
 
@@ -35,6 +35,22 @@ function fmt(n: number): string {
   return n.toFixed(6);
 }
 
+const BUCKET_RETENTION_MS = 24 * 60 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+let lastCleanupAt = 0;
+
+function pruneIdleBuckets(now: Date): void {
+  if (now.getTime() - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now.getTime();
+  void db
+    .delete(rateLimitBuckets)
+    .where(lt(rateLimitBuckets.updatedAt, new Date(now.getTime() - BUCKET_RETENTION_MS)))
+    .catch(() => {
+      // Try again on the next request instead of impacting its rate-limit result.
+      lastCleanupAt = 0;
+    });
+}
+
 /**
  * Take one token from `key`'s bucket. Returns `{ ok: false, retryAfterSec }`
  * when the bucket is empty.
@@ -44,6 +60,7 @@ export async function consumeToken(
   opts: RateLimitOptions,
   now = new Date(),
 ): Promise<RateLimitResult> {
+  pruneIdleBuckets(now);
   return db.transaction(async (tx) => {
     let [bucket] = await tx
       .select()

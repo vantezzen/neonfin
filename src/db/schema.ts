@@ -55,6 +55,9 @@ export const projects = pgTable(
     anonymousWalletsPerHour: integer("anonymous_wallets_per_hour")
       .notNull()
       .default(20),
+    // Optional normalized event destination for the project's own backend.
+    outboundWebhookUrl: text("outbound_webhook_url"),
+    outboundWebhookSecret: text("outbound_webhook_secret"),
     createdAt,
   },
   (t) => [
@@ -275,7 +278,7 @@ export const ledgerEntries = pgTable(
 // ---------------------------------------------------------------------------
 // orders - a checkout attempt and its fulfillment
 // ---------------------------------------------------------------------------
-export type OrderStatus = "pending" | "paid" | "failed" | "refunded";
+export type OrderStatus = "pending" | "paid" | "failed" | "expired" | "refunded";
 
 export const orders = pgTable(
   "orders",
@@ -294,6 +297,10 @@ export const orders = pgTable(
     }),
     provider: text("provider").$type<Provider>().notNull(),
     providerCheckoutId: text("provider_checkout_id"),
+    checkoutUrl: text("checkout_url"),
+    // Caller-supplied checkout idempotency key. Scoped to the project so a
+    // network retry returns the original provider checkout instead of billing twice.
+    idempotencyKey: text("idempotency_key"),
     providerCustomerId: text("provider_customer_id"),
     customerEmail: text("customer_email"),
     status: text("status").$type<OrderStatus>().notNull().default("pending"),
@@ -317,6 +324,10 @@ export const orders = pgTable(
   (t) => [
     index("orders_project_idx").on(t.projectId),
     index("orders_checkout_idx").on(t.providerCheckoutId),
+    uniqueIndex("orders_project_idempotency_uq").on(
+      t.projectId,
+      t.idempotencyKey,
+    ),
     // Wallet expiry checks look up paid orders per wallet on most reads.
     index("orders_wallet_idx").on(t.walletId),
   ],

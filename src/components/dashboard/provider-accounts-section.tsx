@@ -1,5 +1,7 @@
 "use client";
-import { Pencil, Plug, Trash2, TriangleAlert } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, Pencil, Plug, Trash2, TriangleAlert } from "lucide-react";
 import {
   deleteProviderAccount,
   updateProviderAccount,
@@ -10,9 +12,12 @@ import { providerDashboardUrl } from "@/lib/providers/links";
 import { EmptyState } from "@/components/app/empty-state";
 import { Status } from "@/components/app/status";
 import { CopyText } from "@/components/dashboard/copy-text";
+import { ProviderConnectWizard } from "@/components/dashboard/provider-connect-wizard";
 import { Button } from "@/components/ui/button";
+import { ConfirmAction } from "@/components/app/confirm-action";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDateTime } from "@/lib/format";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -24,6 +29,7 @@ type Account = {
   label: string;
   environment: string;
   hasWebhookSecret: boolean;
+  lastWebhookAt: Date | null;
 };
 
 const PROVIDER = {
@@ -58,6 +64,16 @@ export function ProviderAccountsSection({
   accounts: Account[];
   appUrl: string;
 }) {
+  const router = useRouter();
+  const waitingForFirstEvent = accounts.some(
+    (account) => account.hasWebhookSecret && !account.lastWebhookAt,
+  );
+  useEffect(() => {
+    if (!waitingForFirstEvent) return;
+    const interval = window.setInterval(() => router.refresh(), 10_000);
+    return () => window.clearInterval(interval);
+  }, [router, waitingForFirstEvent]);
+
   if (accounts.length === 0) {
     return (
       <EmptyState
@@ -100,35 +116,38 @@ export function ProviderAccountsSection({
               </div>
               <div className="flex items-center gap-1">
                 <EditButton account={a} />
-                <form
+                <ConfirmAction
                   action={deleteProviderAccount}
-                  onSubmit={(e) => {
-                    if (
-                      !confirm(
-                        "Remove this provider account? Products attached to it can no longer be purchased until you attach another one.",
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Remove provider account"
+                      title="Remove"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  }
+                  title="Remove this provider account?"
+                  description="Products attached to it can no longer be purchased until you attach another provider."
+                  confirmLabel="Remove provider"
+                  pendingLabel="Removing…"
+                  successMessage="Provider account removed"
                 >
                   <input type="hidden" name="id" value={a.id} />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    title="Remove"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </form>
+                </ConfirmAction>
               </div>
             </div>
 
-            {configured ? (
+            {configured && a.lastWebhookAt ? (
               <Status tone="success" className="text-xs text-muted-foreground">
-                Webhook configured - payments will be recorded.
+                Webhook received {formatDateTime(a.lastWebhookAt)} - payments are recording.
+              </Status>
+            ) : configured ? (
+              <Status tone="warning" className="text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" /> Waiting for the first event - complete a sandbox test checkout to verify this connection.
               </Status>
             ) : (
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -150,6 +169,16 @@ export function ProviderAccountsSection({
                     " Create the endpoint in Polar, then paste the secret here."
                   )}
                 </span>
+                <ProviderConnectWizard
+                  appUrl={appUrl}
+                  size="sm"
+                  resumeAccount={{
+                    id: a.id,
+                    provider: a.provider,
+                    environment:
+                      a.environment === "sandbox" ? "sandbox" : "production",
+                  }}
+                />
               </div>
             )}
 

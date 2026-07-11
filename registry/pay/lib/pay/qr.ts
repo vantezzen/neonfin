@@ -11,8 +11,9 @@ export function createWalletTransferUrl(
   param = WALLET_QUERY_PARAM,
 ): string {
   const next = new URL(currentUrl);
-  next.searchParams.set(param, code);
-  next.hash = "";
+  const fragment = new URLSearchParams(next.hash.slice(1));
+  fragment.set(param, code);
+  next.hash = fragment.toString();
   return next.toString();
 }
 
@@ -23,7 +24,9 @@ export function readWalletCode(
   const trimmed = value.trim();
   if (!trimmed) return null;
   try {
-    return new URL(trimmed).searchParams.get(param) ?? trimmed;
+    const url = new URL(trimmed);
+    const fragmentCode = new URLSearchParams(url.hash.slice(1)).get(param);
+    return fragmentCode ?? url.searchParams.get(param) ?? trimmed;
   } catch {
     return trimmed;
   }

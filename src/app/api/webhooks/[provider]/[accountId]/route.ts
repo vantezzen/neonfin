@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { webhookEvents } from "@/db/schema";
 import { processNormalizedEvent } from "@/lib/fulfillment";
+import { deliverProjectEvent } from "@/lib/outbound-webhooks";
 import {
   getProviderAccountMeta,
   verifyProviderWebhook,
@@ -98,6 +99,9 @@ export async function POST(
 
   try {
     const status = await processNormalizedEvent(event, account.id);
+    if (status === "processed") {
+      await deliverProjectEvent(eventRowId, event, account.provider);
+    }
     await db
       .update(webhookEvents)
       .set({ status: status === "skipped" ? "skipped" : "processed", error: null })

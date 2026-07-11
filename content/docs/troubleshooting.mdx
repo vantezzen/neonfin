@@ -1,0 +1,64 @@
+---
+title: Troubleshooting
+description: Fast checks for common vantezzen/pay integration and payment issues.
+---
+
+Start with the dashboard's **Orders** and **Webhooks** pages. An order tells you
+whether checkout was created; a webhook event tells you whether the provider
+reached vantezzen/pay and whether fulfillment succeeded.
+
+## Checkout does not open
+
+1. Confirm `NEXT_PUBLIC_PAY_URL` is an absolute `http(s)` URL.
+2. Confirm the browser receives a `pay_pk_...` key, never a `pay_sk_...` key.
+3. Confirm the product and price are active and the price is synced to a
+   connected provider.
+4. For browser requests, add your exact app origin to the project allowed
+   origins. Include the scheme and local port, such as `http://localhost:5173`.
+
+The browser client throws `PayError` with `code: "network_error"` for network
+or CORS failures. See [API errors](/docs/api/errors) for the stable error codes.
+
+## Payment completed but credits did not appear
+
+1. Open **Webhooks** in the dashboard. If there is no event, check the provider
+   endpoint URL and signing secret.
+2. If the event has an error, fix the reported condition and use **Replay**.
+   Replaying a verified payment event does not double-credit a wallet.
+3. If the event is processed, poll `GET /api/v1/orders/{orderId}` or let
+   `PayProvider` finish its background confirmation.
+
+The provider account card stays in “Waiting for the first event” state until a
+real signed delivery arrives. Use a sandbox test checkout to verify a new setup.
+
+## A wallet code cannot be restored
+
+Check for a typo first. Codes are case-insensitive, but the prefix must belong
+to the right project. A `wallet_expired` response means an unpaid inactive code
+was intentionally expired; start with a new wallet or restore another code.
+Paid wallets do not expire under the anonymous-code expiry policy.
+
+For a lost paid code, use the hosted [wallet recovery page](/pay/recover) or
+follow [Lost wallets](/docs/workflows/lost-wallets).
+
+## External-auth users are not seeing access
+
+Use a secret key only on your server, and pass the same stable
+`externalUserId` to every wallet, checkout, and deduction call. Check
+`GET /api/v1/me` to confirm the project mode and key type. Browser React
+components in external-auth mode also need same-origin bridge routes; see
+[PayProvider](/docs/components/provider).
+
+## Self-hosted instance is unhealthy
+
+Check these first:
+
+- `DATABASE_URL` reaches the same Postgres database from web and provider
+  service.
+- `PAY_PROVIDER_SERVICE_SECRET` matches exactly in both services.
+- `PAY_ENCRYPTION_KEY` stays only on the provider service and has not changed.
+- `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` match the public HTTPS URL.
+- Migrations have run for the deployed revision.
+
+Use the [self-hosted operations guide](/docs/self-host/operations) for routine
+checks, webhook replay, upgrades, and backups.

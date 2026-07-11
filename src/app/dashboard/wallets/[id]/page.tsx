@@ -17,6 +17,7 @@ import { FormDialog } from "@/components/app/form-dialog";
 import { CopyInline } from "@/components/app/copy";
 import { StatusDot, type StatusTone } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
+import { MutationForm } from "@/components/app/mutation-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,8 +61,6 @@ export default async function WalletDetailPage({
   const access = await computeWalletAccess(db, wallet.id);
   const manualFeatures = new Set(wallet.featureGrants.map((g) => g.feature));
   const activeSubs = wallet.subscriptions.filter((s) => s.status === "active");
-  const showAccess =
-    access.features.length > 0 || wallet.subscriptions.length > 0;
 
   return (
     <>
@@ -155,8 +154,7 @@ export default async function WalletDetailPage({
           )}
         </section>
 
-        {showAccess ? (
-          <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-3">
             <SectionHeader
               title="Access"
               description="Subscriptions and unlocked features. Access follows subscriptions and purchases automatically."
@@ -234,23 +232,32 @@ export default async function WalletDetailPage({
                       >
                         {humanizeFeatureKey(f)}
                         {manual ? (
-                          <form action={revokeWalletFeature}>
-                            <input
-                              type="hidden"
-                              name="walletId"
-                              value={wallet.id}
-                            />
-                            <input type="hidden" name="feature" value={f} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon-xs"
-                              className="text-muted-foreground hover:text-destructive"
-                              title="Revoke manual grant"
-                            >
-                              <Trash2 className="size-3" />
-                            </Button>
-                          </form>
+                          <MutationForm
+                            action={revokeWalletFeature}
+                            successMessage="Feature grant revoked"
+                          >
+                            {(pending) => (
+                              <>
+                                <input
+                                  type="hidden"
+                                  name="walletId"
+                                  value={wallet.id}
+                                />
+                                <input type="hidden" name="feature" value={f} />
+                                <Button
+                                  type="submit"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Revoke manual grant"
+                                  aria-label="Revoke manual grant"
+                                  disabled={pending}
+                                >
+                                  <Trash2 className="size-3" />
+                                </Button>
+                              </>
+                            )}
+                          </MutationForm>
                         ) : (
                           <span
                             className="text-muted-foreground"
@@ -265,8 +272,7 @@ export default async function WalletDetailPage({
                 </div>
               )}
             </div>
-          </section>
-        ) : null}
+        </section>
 
         <section className="flex flex-col gap-3">
           <SectionHeader

@@ -67,11 +67,13 @@ export async function getProviderAccountMeta(
 }
 
 export async function createProviderAccount(input: {
+  accountId: string;
   ownerId: string;
   provider: Provider;
   label: string;
   environment: string;
   secretKey: string;
+  webhookUrl: string;
 }) {
   return callProviderService({ op: "create-provider-account", ...input });
 }
