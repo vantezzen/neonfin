@@ -28,20 +28,54 @@ This selection was made autonomously per the maintainer's standing brief.
 
 ## Execution order & status
 
-| Plan | Title | Priority | Effort | Risk | Depends on | Status |
-|------|-------|----------|--------|------|------------|--------|
-| 014 | Delete 44 unused UI components, dead files, 6 unused deps | P1 | S | LOW | — | TODO |
-| 022 | Self-host ops hardening (auto-migrate, health, internal port, docs) | P1 | S | LOW | — | TODO |
-| 020 | Provider-service hygiene (dead code, boot validation, log context, Vault timeout) | P1 | M | LOW | — | TODO |
-| 017 | Deduplicate /api/v1 route plumbing (cursor, credit errors, sole-product) | P1 | M | MED | — | TODO |
-| 016 | Consolidate copy-to-clipboard primitives | P2 | S | LOW | — | TODO |
-| 015 | Split 1132-line products-section.tsx into products/ module | P2 | M | MED | after 014 (soft) | TODO |
-| 018 | Split 859-line credits.ts into credits/ package (move-only) | P2 | M | MED | after 017 | TODO |
-| 021 | Shared secret-encryption module; seed-script crypto diet | P2 | M | MED | after 020 | TODO |
-| 019 | Restructure registry browser client + shared formatting | P2 | M | MED | — | TODO |
-| 023 | Gate marketing surface off self-hosted instances | P3 | M | MED | maintainer sign-off on the decision section | TODO |
+Executed 2026-07-11 by the improve `execute` flow. Each plan ran in its own
+isolated git worktree branched from `c34070b` ("Improve checkout reliability" —
+the maintainer's commit of the working-tree state the plans were written
+against). Each was reviewed diff-by-diff and its automated gates re-run by the
+reviewer. **Nothing has been merged — each plan is a branch awaiting the
+maintainer's merge decision.**
+
+| Plan | Title | Branch | Status |
+|------|-------|--------|--------|
+| 014 | Delete unused UI components/deps | — | REMOVED (plan file deleted by maintainer) |
+| 022 | Self-host ops hardening | `advisor/022-self-host-ops` | DONE — approved |
+| 020 | Provider-service hygiene | `advisor/020-provider-service-hygiene` | DONE — approved (Step 1 skipped, see note) |
+| 017 | Deduplicate /api/v1 route plumbing | `advisor/017-dedupe-v1-api-plumbing` | DONE — approved |
+| 016 | Consolidate copy primitives | `advisor/016-consolidate-copy-primitives` | DONE — approved |
+| 015 | Split products-section.tsx | `advisor/015-split-products-section` | DONE — approved (curly-quote regression fixed in review) |
+| 018 | Split credits.ts (move-only) | `advisor/018-split-credits-module` | DONE — approved |
+| 021 | Shared secret-encryption + seed diet | `advisor/021-shared-encryption` | DONE — approved (stacked on 020; run DB seed→decrypt roundtrip before merge) |
+| 019 | Registry client structure | `advisor/019-registry-client-structure` | DONE — approved |
+| 023 | Gate marketing surface off self-hosted | — | DEFERRED (maintainer skipped for now) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (reason) | REJECTED (rationale).
+
+### Execution notes / deviations
+
+- **020 Step 1 was skipped (blocked by design).** The "dead" adapter methods
+  `verifyAndNormalize`/`normalizeStoredPayload` are declared as **required**
+  methods on the `PaymentProvider` interface in `shared/provider-service.ts`,
+  which the plan marks out-of-scope and a STOP condition. They cannot be deleted
+  from the adapters without editing the shared contract. Steps 2–4 (boot
+  validation, `op`-context error log, Vault timeout, webhook-provision warning)
+  landed. To finish Step 1, decide whether to also drop these methods from the
+  shared interface (a follow-up plan).
+- **021 deviation:** the executor refactored the provider's crypto **classes
+  into standalone functions** rather than a strict verbatim move. The reviewer
+  verified line-by-line that every crypto operation and the `env:v1:` wire
+  format is byte-identical, so existing ciphertext still decrypts — but confirm
+  with a real `bun run db:seed` → dashboard decrypt roundtrip before merging.
+- **Merge-order dependencies:** merge **020 before 021** (021 is branched on top
+  of 020 and both touch `secrets/index.ts`). 017 and 018 touch disjoint files
+  (`@/lib/credits` path stays stable) — either order. All others are
+  independent.
+- **Pre-existing build failure (NOT introduced by any plan):** `bun run build`
+  fails at prerender of `/pay/cancelled` — "Uncached data was accessed outside
+  of <Suspense>" (a cacheComponents violation in `src/app/pay/cancelled/`).
+  Present on `c34070b` before any plan. Every plan's build reaches
+  "✓ Compiled successfully" and fails only on this page. Worth a separate fix
+  (wrap the `searchParams`-reading render in `<Suspense>`).
+- **010 remains SUPERSEDED by 015** — do not merge `advisor/010-split-products-section-component`.
 
 ## Recommended approach
 
