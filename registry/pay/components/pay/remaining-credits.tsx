@@ -36,7 +36,7 @@ export function RemainingCredits({
   }
 
   if (error) {
-    return <span className={cn("text-muted-foreground", className)}>—</span>;
+    return <span className={cn("text-muted-foreground", className)}>-</span>;
   }
 
   return (

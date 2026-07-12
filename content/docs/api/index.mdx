@@ -24,7 +24,7 @@ balance refresh, and checkout confirmation automatically.
 | Key | Starts with | Where it can be used | What it can do |
 |---|---|---|---|
 | Publishable | `pay_pk_` | Browser or server | Read catalog, create/read code wallets, deduct, start checkout |
-| Secret | `pay_sk_` | Server only | Create external wallets, grant credits |
+| Secret | `pay_sk_` | Server only | Wallets, grants, deduct, checkout, portal, features, and orders |
 
 Never ship a secret key to a browser.
 
@@ -258,7 +258,7 @@ Returns:
 
 Redirect the browser to `url`.
 
-## Orders
+## Identify your key
 
 Confirm the configured project and key mode when diagnosing an integration:
 
@@ -274,6 +274,8 @@ GET /api/v1/me
   "keyKind": "publishable"
 }
 ```
+
+## Orders
 
 List recent project orders with an opaque cursor:
 

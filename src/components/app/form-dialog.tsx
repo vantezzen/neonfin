@@ -112,7 +112,8 @@ function Inner({
   useEffect(() => {
     if (state.error) toast.error(state.error);
     if (state.ok) {
-      toast.success(successMessage);
+      if (state.warning) toast.warning(state.warning);
+      else toast.success(successMessage);
       onSuccess();
     }
   }, [state, successMessage, onSuccess]);

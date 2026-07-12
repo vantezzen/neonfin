@@ -30,9 +30,7 @@ export default function SuccessPage({
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
       <div className="w-full max-w-md">
-        <h1 className="mb-6 text-center text-xl font-semibold tracking-tight">
-          Thank you
-        </h1>
+        <h1 className="sr-only">Payment status</h1>
         <Card>
           <CardContent className="pt-6">
             <Suspense
@@ -46,6 +44,15 @@ export default function SuccessPage({
             </Suspense>
           </CardContent>
         </Card>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Secure checkout · powered by{" "}
+          <a
+            href="https://pay.vantezzen.io"
+            className="font-medium hover:underline"
+          >
+            vantezzen/pay
+          </a>
+        </p>
       </div>
     </div>
   );

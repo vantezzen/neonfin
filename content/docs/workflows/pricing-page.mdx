@@ -1,0 +1,92 @@
+---
+title: Build a pricing page
+description: Render subscription tiers, highlight a recommendation, and manage the current plan.
+---
+
+This component loads one subscription product, renders its first three tiers,
+and sends existing subscribers to the provider billing portal.
+
+```tsx title="components/pricing.tsx"
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Product } from "@/lib/pay";
+import { formatMoney } from "@/lib/pay/format";
+import { PurchaseButton } from "@/components/pay/purchase-dialog";
+import { usePay, useSubscription } from "@/components/pay/provider";
+import { Button } from "@/components/ui/button";
+
+export function Pricing() {
+  const pay = usePay();
+  const [product, setProduct] = useState<Product | null>(null);
+  const { subscription, subscribed } = useSubscription(product?.id);
+
+  useEffect(() => {
+    void pay.getProducts().then((products) => {
+      setProduct(products.find((item) => item.type === "subscription") ?? null);
+    });
+  }, [pay]);
+
+  if (!product) return null;
+  const tiers = product.prices.slice(0, 3);
+  const recommendedPriceId = tiers[1]?.id;
+
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      {tiers.map((price) => {
+        const current = subscription?.priceId === price.id;
+        return (
+          <article key={price.id} className="rounded-xl border p-5">
+            <h2 className="font-semibold">{price.label ?? product.name}</h2>
+            <p className="mt-2 text-2xl font-semibold">
+              {formatMoney(price.amountCents, price.currency)}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {price.creditsGranted} {product.creditUnit} per period
+            </p>
+
+            {subscribed ? (
+              <Button
+                className="mt-5 w-full"
+                variant={current ? "default" : "outline"}
+                onClick={async () => window.location.assign(await pay.getPortalUrl())}
+              >
+                {current ? "Manage current plan" : "Switch in billing portal"}
+              </Button>
+            ) : (
+              <PurchaseButton
+                className="mt-5 w-full"
+                filters={{ match: ({ price: candidate }) => candidate.id === price.id }}
+                recommendedPriceId={recommendedPriceId}
+              >
+                Choose {price.label ?? "plan"}
+              </PurchaseButton>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+```
+
+`renderOption` receives the option plus `PurchaseOptionControls`:
+
+| Field | Meaning |
+|---|---|
+| `busy` | Checkout is starting for this option. |
+| `disabled` | The option cannot currently start checkout. |
+| `current` | This is the wallet's current tier. |
+| `recurring` | The price renews monthly or yearly. |
+| `recommended` | Its id matches `recommendedPriceId`. |
+| `buy()` | Starts checkout for the option. |
+
+## Hooks reference
+
+- `useSubscription(productId?)` returns `subscription`, `subscribed`,
+  `loading`, `error`, `confirming`, and `refresh`.
+- `useSubscriptions()` returns every active subscription for the wallet.
+- `usePayMode()` returns `credit_codes` or `external_auth`.
+- `usePayCheckout()` returns the checkout helper used by the built-in dialog.
+- `PAY_CHECKOUT_PAID_EVENT` is the browser event name emitted after a paid
+  popup checkout.

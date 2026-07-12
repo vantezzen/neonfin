@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";
 import {
   createProject,
@@ -21,6 +22,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -43,12 +45,21 @@ type ProjectSettings = Pick<
 
 type ProjectSettingsWithWebhook = ProjectSettings & {
   hasOutboundWebhookSecret: boolean;
+  hasWallets: boolean;
 };
 
-export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook }) {
+export function ProjectForm({
+  project,
+}: {
+  project?: ProjectSettingsWithWebhook;
+}) {
   const editing = Boolean(project);
   const searchParams = useSearchParams();
   const allowedOriginsRef = useRef<HTMLTextAreaElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const allowModeChange = useRef(false);
+  const [mode, setMode] = useState(project?.mode ?? "credit_codes");
+  const [modeConfirmationOpen, setModeConfirmationOpen] = useState(false);
   const [state, action, pending] = useActionState(
     editing ? updateProject : createProject,
     initial,
@@ -72,8 +83,27 @@ export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook 
     return () => window.clearTimeout(timeout);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (state.ok) toast.success("Saved.");
+  }, [state.ok]);
+
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form
+      ref={formRef}
+      action={action}
+      className="flex flex-col gap-5"
+      onSubmit={(event) => {
+        if (
+          editing &&
+          project?.hasWallets &&
+          mode !== project.mode &&
+          !allowModeChange.current
+        ) {
+          event.preventDefault();
+          setModeConfirmationOpen(true);
+        }
+      }}
+    >
       {editing ? <input type="hidden" name="id" value={project!.id} /> : null}
 
       <Field label="Name">
@@ -112,7 +142,10 @@ export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook 
         <NativeSelect
           name="mode"
           className="w-full"
-          defaultValue={project?.mode ?? "credit_codes"}
+          value={mode}
+          onChange={(event) =>
+            setMode(event.currentTarget.value as Project["mode"])
+          }
         >
           <NativeSelectOption value="credit_codes">
             Credit codes (anonymous)
@@ -124,7 +157,7 @@ export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook 
       </div>
       <Field
         label="Allowed origins"
-        hint="CORS allowlist for browser (publishable-key) calls - one per line. Blank allows any."
+        hint="One origin per line, e.g. https://app.example.com. Blank allows any origin - fine for development, restrict before launch."
       >
         <div
           id="allowed-origins"
@@ -208,13 +241,44 @@ export function ProjectForm({ project }: { project?: ProjectSettingsWithWebhook 
       {state.error ? (
         <p className="text-sm text-destructive">{state.error}</p>
       ) : null}
-      {state.ok ? <p className="text-sm text-emerald-600">Saved.</p> : null}
-
       <div className="flex justify-end">
         <Button type="submit" disabled={pending} size="sm">
           {pending ? "Saving…" : "Save changes"}
         </Button>
       </div>
+      <Dialog
+        open={modeConfirmationOpen}
+        onOpenChange={setModeConfirmationOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Switch identity mode?</DialogTitle>
+            <DialogDescription>
+              Switching modes strands existing wallets of the other kind.
+              Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setModeConfirmationOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                allowModeChange.current = true;
+                setModeConfirmationOpen(false);
+                formRef.current?.requestSubmit();
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
@@ -280,9 +344,9 @@ function ModeHelp() {
               <span className="font-medium">Credit codes (anonymous)</span>
               <p className="text-muted-foreground">
                 No login required. Each visitor gets a code like{" "}
-                <code>SKIP-8F3K-L9PQ-2MVT</code> stored in their browser. Best for
-                client-only tools - the SDK handles it invisibly, and the code
-                doubles as a recovery key across devices.
+                <code>SKIP-8F3K-L9PQ-2MVT</code> stored in their browser. Best
+                for client-only tools - the SDK handles it invisibly, and the
+                code doubles as a recovery key across devices.
               </p>
             </div>
             <div className="flex flex-col gap-1">
@@ -301,4 +365,3 @@ function ModeHelp() {
     </>
   );
 }
-

@@ -209,7 +209,7 @@ price that unlocks the feature.
 Next, deduct credits in the paid work path. This is usually a click handler, form action, or job-start path. Deduct only after the user has confirmed the paid
 action.
 
-When deducting credits, it&apos;s best to pass a stable `idempotencyKey` for retryable work, such as a job id or request id. If you omit it, the client generates one, which is fine for a single button click but not for server retries.
+When deducting credits, it's best to pass a stable `idempotencyKey` for retryable work, such as a job id or request id. If you omit it, the client generates one, which is fine for a single button click but not for server retries.
 
 ### Deduct in a client click handler
 
@@ -255,7 +255,7 @@ export function PaidAction() {
 ```ts title="app/api/run-paid-work/route.ts"
 import { PayError, createPayServerClient } from "@/lib/pay/server";
 
-export const payServer = createPayServerClient({
+const payServer = createPayServerClient({
   baseUrl: process.env.NEXT_PUBLIC_PAY_URL!,
   secretKey: process.env.PAY_SECRET_KEY!, // pay_sk_… - server only
 });

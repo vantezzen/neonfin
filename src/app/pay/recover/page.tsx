@@ -52,6 +52,15 @@ export default function RecoverWalletPage({
             </Suspense>
           </CardContent>
         </Card>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Secure checkout · powered by{" "}
+          <a
+            href="https://pay.vantezzen.io"
+            className="font-medium hover:underline"
+          >
+            vantezzen/pay
+          </a>
+        </p>
       </div>
     </div>
   );

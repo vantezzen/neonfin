@@ -1,0 +1,115 @@
+---
+title: 5-minute quickstart
+description: From a fresh project to a paid test checkout.
+---
+
+## Prerequisites
+
+- A vantezzen/pay instance login.
+- Stripe in test mode.
+- A Next.js app with shadcn initialized (`npx shadcn@latest init`).
+
+<Steps>
+<Step>
+
+### Create a project & connect Stripe
+
+Create a credit-codes project, then connect Stripe with a restricted test key.
+The wizard registers the webhook automatically when the key permits it. See
+[dashboard setup](/docs/getting-started/dashboard) for the detailed path.
+
+</Step>
+<Step>
+
+### Create a product and pack
+
+Create a credit-pack product and a one-time pack, for example **600 minutes - $5**.
+Attach the product to your Stripe account so the price is synced.
+
+</Step>
+<Step>
+
+### Install
+
+```bash
+npx shadcn@latest add \
+  https://pay.vantezzen.io/r/pay-provider.json \
+  https://pay.vantezzen.io/r/pay-credits.json \
+  https://pay.vantezzen.io/r/pay-purchase.json \
+  https://pay.vantezzen.io/r/pay-gate.json \
+  https://pay.vantezzen.io/r/pay-wallet.json
+```
+
+```bash title=".env.local"
+NEXT_PUBLIC_PAY_URL=https://pay.vantezzen.io
+NEXT_PUBLIC_PAY_KEY=pay_pk_your_key
+```
+
+</Step>
+<Step>
+
+### Wrap your app in `<PayProvider>`
+
+```tsx title="app/layout.tsx"
+import { PayProvider } from "@/components/pay/provider";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <PayProvider
+          baseUrl={process.env.NEXT_PUBLIC_PAY_URL!}
+          publishableKey={process.env.NEXT_PUBLIC_PAY_KEY!}
+        >
+          {children}
+        </PayProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+</Step>
+<Step>
+
+### Gate a feature
+
+```tsx
+"use client";
+
+import { CreditGate } from "@/components/pay/credit-gate";
+import { useCredits } from "@/components/pay/provider";
+import { Button } from "@/components/ui/button";
+
+export function ProcessButton() {
+  const { deduct } = useCredits();
+  return (
+    <CreditGate cost={10}>
+      <Button onClick={() => deduct(10, { idempotencyKey: crypto.randomUUID() })}>
+        Process file
+      </Button>
+    </CreditGate>
+  );
+}
+```
+
+</Step>
+<Step>
+
+### Make a test payment
+
+Open the purchase dialog, pay with `4242 4242 4242 4242`, any future expiry,
+and any CVC. Watch the balance update, then confirm the paid order under
+**Dashboard → Orders**.
+
+<Callout title="Running vantezzen/pay locally?">
+Stripe cannot deliver webhooks to localhost. Run the exact `stripe listen
+--forward-to ...` command shown on the Providers page or the checkout will
+succeed without adding credits.
+</Callout>
+
+</Step>
+
+</Steps>
+
+Want the detail behind each step? Follow [the full path](/docs/getting-started).

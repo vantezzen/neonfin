@@ -11,7 +11,6 @@ import {
   Menu,
   Plug,
   Receipt,
-  Settings,
   Wallet,
   Webhook,
 } from "lucide-react";

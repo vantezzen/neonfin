@@ -70,4 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 The provider loads the current wallet balance, creates a wallet when needed,
 and resumes checkout confirmation when the user returns from Stripe.
 
+Drop `<RemainingCredits />` anywhere inside the provider. If you see a number,
+your keys, origin, and instance are wired correctly.
+
 Next, [gate your first paid feature](/docs/getting-started/first-feature).

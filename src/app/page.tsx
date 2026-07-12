@@ -42,6 +42,8 @@ const GATE_SNIPPET = `const { deduct } = useCredits();
     Process file
   </Button>
 </CreditGate>`;
+const INSTALL_SNIPPET =
+  "npx shadcn@latest add https://pay.vantezzen.io/r/pay-purchase.json";
 
 const STEPS = [
   {
@@ -61,7 +63,7 @@ const STEPS = [
 const FEATURES = [
   {
     icon: Ticket,
-    title: "No auth required, unless you already have one",
+    title: "No user accounts needed - unless you have them",
     body: "Visitors get a wallet on their first visit and can restore it on any device. Great for tools too small to deserve auth.",
   },
   {
@@ -148,10 +150,20 @@ function Nav() {
             href="/guides"
             className={cn(
               buttonVariants({ variant: "ghost" }),
-              "text-muted-foreground",
+              "hidden text-muted-foreground sm:inline-flex",
             )}
           >
             Guides
+          </Link>
+          <Link
+            href="https://github.com/vantezzen/pay"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "text-muted-foreground",
+            )}
+          >
+            <GitHubIcon />
+            <span className="hidden sm:inline">GitHub</span>
           </Link>
           <Link
             href="/docs"
@@ -168,6 +180,14 @@ function Nav() {
         </nav>
       </div>
     </header>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-current">
+      <path d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.02c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.74-1.55-2.57-.3-5.27-1.29-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+    </svg>
   );
 }
 
@@ -193,7 +213,7 @@ function Hero() {
           you ship gets wallets, checkout, and drop-in components - in an
           afternoon, not a week.
         </p>
-        <div className="mt-9 flex items-center gap-3 duration-700 fill-mode-backwards delay-300 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3 duration-700 fill-mode-backwards delay-300 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3">
           <Link
             href="/register"
             className={cn(buttonVariants({ size: "lg" }), "px-5")}
@@ -252,6 +272,13 @@ function Demo() {
             The gate shows your feature while credits last and swaps in the
             purchase flow when they run out - the loop on the left, verbatim.
           </p>
+          <CodeSnippet code={INSTALL_SNIPPET} />
+          <p className="text-xs text-muted-foreground">
+            Components install into your codebase - you own the files.
+          </p>
+          <Link href="/example" className="text-sm font-medium hover:underline">
+            Or try the live example →
+          </Link>
         </div>
       </div>
     </section>
@@ -266,7 +293,7 @@ function AiPrompt() {
   return (
     <section className="mx-auto w-full max-w-5xl px-6 mt-3">
       <div className="rounded-2xl border bg-canvas shadow-xs p-8 grid gap-3">
-        <p className="leading-relaxed">Using an AI Agent?</p>
+        <h3 className="leading-relaxed">Using an AI Agent?</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Paste this into your agent and it will integrate vantezzen/pay into
           your app.
@@ -355,6 +382,48 @@ function Features() {
   );
 }
 
+function Hosting() {
+  return (
+    <section className="mx-auto w-full max-w-5xl px-6 py-20 sm:py-28">
+      <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
+        Hosted or self-hosted
+      </p>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+        Both are the real thing
+      </h2>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <article className="rounded-xl border p-6">
+          <h3 className="font-semibold">Use the hosted instance</h3>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Sign up on pay.vantezzen.io and connect your own Stripe or Polar
+            account. Your providers charge their fees - vantezzen/pay adds none.
+          </p>
+          <Link href="/register" className={cn(buttonVariants(), "mt-5")}>
+            Start selling
+          </Link>
+        </article>
+        <article className="rounded-xl border p-6">
+          <h3 className="font-semibold">Run your own</h3>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            One small Next.js + Postgres app. Same features, your
+            infrastructure, your keys.
+          </p>
+          <Link
+            href="/docs/self-host"
+            className={cn(buttonVariants({ variant: "outline" }), "mt-5")}
+          >
+            Self-host guide
+          </Link>
+        </article>
+      </div>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Card data never touches your server - checkout is hosted by Stripe or
+        Polar.
+      </p>
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------ cta+footer */
 
 async function CtaButton() {
@@ -438,6 +507,15 @@ function Footer() {
           <Link href="/docs/self-host" className="hover:text-foreground">
             Self-host
           </Link>
+          <Link
+            href="https://github.com/vantezzen/pay"
+            className="hover:text-foreground"
+          >
+            GitHub
+          </Link>
+          <Link href="/docs/llms.txt" className="hover:text-foreground">
+            llms.txt
+          </Link>
           <Link href="/dashboard" className="hover:text-foreground">
             Dashboard
           </Link>
@@ -488,6 +566,7 @@ export default function Home() {
         <AiPrompt />
         <Steps />
         <Features />
+        <Hosting />
         <FinalCta />
       </main>
       <Footer />

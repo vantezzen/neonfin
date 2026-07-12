@@ -38,8 +38,9 @@ export function formatDate(value: Date | string | number): string {
 
 export function formatLargeNumber(
   value: string | number,
-  unit: string = "credits",
+  unit?: string,
 ): string {
   const n = typeof value === "number" ? value : parseFloat(value);
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 }) + ` ${unit}`;
+  const formatted = n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return unit ? `${formatted} ${unit}` : formatted;
 }

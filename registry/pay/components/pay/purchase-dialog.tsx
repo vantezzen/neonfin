@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { Check, Loader2, Settings, ShoppingCart } from "lucide-react";
+import { Check, Loader2, Lock, Settings, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import { formatCredits, formatMoney } from "@/lib/pay/format";
 import {
   usePay,
   usePayCheckout,
+  usePayMode,
   useSubscriptions,
 } from "@/components/pay/provider";
 
@@ -48,6 +49,17 @@ function offerTitle(product: Product, price: Price): string {
     return `${formatCredits(price.creditsGranted)} ${product.creditUnit}`;
   }
   return product.name;
+}
+
+export function unitPriceHint(price: Price, product: Product): string | null {
+  if (price.creditsGranted <= 0 || price.amountCents <= 0) return null;
+  const centsPerUnit = price.amountCents / price.creditsGranted;
+  const units = centsPerUnit >= 10 ? 1 : 100;
+  const unit =
+    units === 1
+      ? product.creditUnit.replace(/ies$/, "y").replace(/s$/, "")
+      : `${units} ${product.creditUnit}`;
+  return `≈ ${formatMoney(centsPerUnit * units, price.currency)} per ${unit}`;
 }
 
 export type PurchaseOption = {
@@ -74,30 +86,40 @@ export type PurchaseOptionControls = {
   disabled: boolean;
   current: boolean;
   recurring: boolean;
+  recommended?: boolean;
   buy: () => void;
 };
 
 export function PurchaseOptionButton({
   option: { product, price, discountCode },
   controls,
+  recommendedLabel = "Popular",
 }: {
   option: PurchaseOption;
   controls: PurchaseOptionControls;
+  recommendedLabel?: string;
 }) {
+  const unitHint = unitPriceHint(price, product);
   return (
     <button
       type="button"
       disabled={controls.disabled}
       onClick={controls.buy}
       className={cn(
-        "flex items-start justify-between gap-3 rounded-lg border p-3 text-left transition-colors",
-        "hover:bg-accent disabled:pointer-events-none disabled:opacity-60",
+        "flex items-start justify-between gap-3 rounded-xl border p-4 text-left transition-colors",
+        "hover:border-primary/40 hover:bg-accent/40 disabled:pointer-events-none disabled:opacity-60",
         controls.current && controls.recurring && "border-primary/40",
+        controls.recommended && "border-primary ring-1 ring-primary",
       )}
     >
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex items-center gap-2 font-medium">
           {offerTitle(product, price)}
+          {controls.recommended ? (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+              {recommendedLabel}
+            </span>
+          ) : null}
           {controls.current && controls.recurring ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
               <Check className="size-3" /> Current plan
@@ -122,21 +144,25 @@ export function PurchaseOptionButton({
             ))}
           </span>
         ) : null}
-        <span className="text-sm text-muted-foreground">{product.name}</span>
+        {unitHint ? (
+          <span className="text-xs text-muted-foreground">{unitHint}</span>
+        ) : null}
       </span>
       <div className="flex flex-col items-end gap-1">
         <span
           className={cn(
-            "flex shrink-0 items-center gap-2 font-medium tabular-nums",
+            "flex shrink-0 items-center gap-2 text-base font-semibold tabular-nums",
             discountCode ? "line-through text-muted-foreground" : "",
           )}
         >
           {controls.busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {formatMoney(price.amountCents, price.currency)}
-          <span className="text-muted-foreground">
+        </span>
+        {INTERVAL[price.interval] ? (
+          <span className="text-xs text-muted-foreground">
             {INTERVAL[price.interval]}
           </span>
-        </span>
+        ) : null}
 
         {discountCode ? (
           <span className="text-muted-foreground">
@@ -189,6 +215,12 @@ export type PurchaseDialogProps = {
   customerEmail?: string;
   /** Show the optional receipt and wallet-recovery email field. */
   collectCustomerEmail?: boolean;
+  /** Visually highlight one price as the suggested option. */
+  recommendedPriceId?: string;
+  /** Pill text for the recommended option. */
+  recommendedLabel?: string;
+  /** Show the vantezzen/pay attribution link. */
+  showBranding?: boolean;
   renderOption?: (
     option: PurchaseOption,
     controls: PurchaseOptionControls,
@@ -212,22 +244,27 @@ export function PurchaseDialog({
   open,
   onOpenChange,
   children,
-  title = "Buy credits or subscription",
-  description = "Choose an option to continue.",
-  emptyMessage = "No purchase options are available yet.",
+  title,
+  description = "Payment is handled by our secure checkout.",
+  emptyMessage = "Nothing is available to buy right now. Please check back later.",
   allowPromotionCodes = true,
   discountCode,
   customerEmail,
-  collectCustomerEmail = true,
+  collectCustomerEmail,
+  recommendedPriceId,
+  recommendedLabel = "Popular",
+  showBranding = true,
   renderOption,
 }: PurchaseDialogProps) {
   const client = usePay();
+  const mode = usePayMode();
   const startCheckout = usePayCheckout();
   const subscriptions = useSubscriptions();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [enteredEmail, setEnteredEmail] = useState("");
   const receiptEmailId = React.useId();
 
@@ -240,11 +277,16 @@ export function PurchaseDialog({
     if (!isOpen) return;
     let active = true;
     setError(null);
+    setNotice(null);
     setProducts(null);
     client
       .getProducts()
       .then((p) => active && setProducts(p))
-      .catch((err) => { if (!active) return; console.error("[pay] Failed to load products:", err); setError("Couldn't load purchase options."); });
+      .catch((err) => {
+        if (!active) return;
+        console.error("[pay] Failed to load products:", err);
+        setError("Couldn't load purchase options.");
+      });
     return () => {
       active = false;
     };
@@ -260,6 +302,7 @@ export function PurchaseDialog({
     }
     setBusy(priceId);
     setError(null);
+    setNotice(null);
     try {
       await startCheckout(priceId, {
         flow,
@@ -282,8 +325,8 @@ export function PurchaseDialog({
       } else if (err instanceof PayError && err.code === "checkout_cancelled") {
         setError("Checkout was cancelled. No charge was made.");
       } else if (err instanceof PayError && err.code === "checkout_closed") {
-        setError(
-          "Confirming your payment. This page will update automatically when it is recorded.",
+        setNotice(
+          "Confirming your payment - this page updates automatically once it's recorded.",
         );
       } else {
         console.error("[pay] Failed to start checkout:", err);
@@ -295,6 +338,7 @@ export function PurchaseDialog({
   async function openPortal() {
     setPortalBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const url = await client.getPortalUrl();
       if (typeof window !== "undefined") window.location.assign(url);
@@ -307,12 +351,30 @@ export function PurchaseDialog({
 
   const effectiveFilters: PurchaseFilters | undefined =
     productId && !filters?.productId ? { ...filters, productId } : filters;
-  const options = (products ?? [])
-    .flatMap((product) => product.prices.map((price) => ({ product, price })))
-    .filter((option) => matchesFilters(option, effectiveFilters));
+  const options = (products ?? []).flatMap((product) =>
+    product.prices
+      .map((price) => ({ product, price }))
+      .filter((option) => matchesFilters(option, effectiveFilters))
+      .sort((a, b) => a.price.amountCents - b.price.amountCents),
+  );
+  const productCount = new Set(options.map((option) => option.product.id)).size;
+  const effectiveTitle =
+    title ??
+    (effectiveFilters?.features?.length === 1
+      ? `Unlock ${humanizeFeature(effectiveFilters.features[0]!)}`
+      : effectiveFilters?.grantsCredits
+        ? "Add credits"
+        : "Choose your plan");
+  const showEmail =
+    (collectCustomerEmail ?? mode === "credit_codes") &&
+    customerEmail === undefined;
 
   // Show "Manage subscription" if any product on offer is already subscribed.
   const canManage = options.some((o) => subscribedProductIds.has(o.product.id));
+  const hasSubscriptionDisabledOption = options.some(
+    ({ product, price }) =>
+      price.interval !== "one_time" && subscribedProductIds.has(product.id),
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
@@ -329,13 +391,22 @@ export function PurchaseDialog({
       ) : null}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{effectiveTitle}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}
+          </p>
+        ) : null}
+        {notice ? (
+          <p
+            role="status"
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            <Loader2 className="size-4 animate-spin" />
+            {notice}
           </p>
         ) : null}
         {busy ? (
@@ -346,25 +417,10 @@ export function PurchaseDialog({
           </p>
         ) : null}
 
-        {collectCustomerEmail && customerEmail === undefined ? (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={receiptEmailId} className="text-xs">
-              Receipt and recovery email <span className="text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              id={receiptEmailId}
-              type="email"
-              autoComplete="email"
-              value={enteredEmail}
-              onChange={(event) => setEnteredEmail(event.currentTarget.value)}
-              placeholder="you@example.com"
-            />
-          </div>
-        ) : null}
-
         {products === null && !error ? (
-          <div className="flex justify-center py-8 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
+          <div className="flex flex-col gap-2">
+            <div className="h-[76px] animate-pulse rounded-xl border bg-muted/40" />
+            <div className="h-[76px] animate-pulse rounded-xl border bg-muted/40" />
           </div>
         ) : options.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -372,7 +428,7 @@ export function PurchaseDialog({
           </p>
         ) : (
           <div className="flex min-w-0 flex-col gap-2">
-            {options.map(({ product, price }) => {
+            {options.map(({ product, price }, index) => {
               const subscription = subscriptions.find(
                 (s) => s.productId === product.id,
               );
@@ -388,38 +444,94 @@ export function PurchaseDialog({
                   (recurring && subscribedProductIds.has(product.id)),
                 current,
                 recurring,
+                recommended: recommendedPriceId === price.id,
                 buy: () => buy(price.id),
               };
-              return renderOption ? (
+              const groupLabel =
+                productCount > 1 &&
+                (index === 0 ||
+                  options[index - 1]?.product.id !== product.id) ? (
+                  <p className="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {product.name}
+                  </p>
+                ) : null;
+              return (
                 <React.Fragment key={price.id}>
-                  {renderOption({ product, price }, controls)}
+                  {groupLabel}
+                  {renderOption ? (
+                    renderOption({ product, price }, controls)
+                  ) : (
+                    <PurchaseOptionButton
+                      option={{ product, price, discountCode }}
+                      controls={controls}
+                      recommendedLabel={recommendedLabel}
+                    />
+                  )}
                 </React.Fragment>
-              ) : (
-                <PurchaseOptionButton
-                  key={price.id}
-                  option={{ product, price, discountCode }}
-                  controls={controls}
-                />
               );
             })}
           </div>
         )}
 
+        {showEmail ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={receiptEmailId} className="text-xs">
+              Email (optional)
+            </Label>
+            <Input
+              id={receiptEmailId}
+              type="email"
+              autoComplete="email"
+              value={enteredEmail}
+              onChange={(event) => setEnteredEmail(event.currentTarget.value)}
+              placeholder="you@example.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              Get a receipt and a recovery link for your credits.
+            </p>
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-3 border-t pt-3">
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Lock className="size-3" aria-hidden />
+            Secure checkout - card details never touch this site
+          </p>
+          {showBranding ? (
+            <a
+              href="https://pay.vantezzen.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 text-[11px] text-muted-foreground/70 transition-colors hover:text-muted-foreground"
+            >
+              powered by <span className="font-medium">vantezzen/pay</span>
+            </a>
+          ) : null}
+        </div>
+
         {canManage ? (
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openPortal}
-              disabled={portalBusy}
-            >
-              {portalBusy ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Settings className="size-4" />
-              )}
-              Manage subscription
-            </Button>
+            <div className="flex w-full flex-col gap-2">
+              {hasSubscriptionDisabledOption ? (
+                <p className="text-xs text-muted-foreground">
+                  To switch plans, use Manage subscription - a new checkout
+                  can't change an existing subscription.
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openPortal}
+                disabled={portalBusy}
+              >
+                {portalBusy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Settings className="size-4" />
+                )}
+                Manage subscription
+              </Button>
+            </div>
           </DialogFooter>
         ) : null}
       </DialogContent>
@@ -438,6 +550,9 @@ export type PurchaseButtonProps = {
   discountCode?: string;
   customerEmail?: string;
   collectCustomerEmail?: boolean;
+  recommendedPriceId?: string;
+  recommendedLabel?: string;
+  showBranding?: boolean;
   renderOption?: PurchaseDialogProps["renderOption"];
   className?: string;
   children?: React.ReactNode;
@@ -455,6 +570,9 @@ export function PurchaseButton({
   discountCode,
   customerEmail,
   collectCustomerEmail,
+  recommendedPriceId,
+  recommendedLabel,
+  showBranding,
   renderOption,
   children = filters?.features?.length === 1 ? (
     `Unlock ${humanizeFeature(filters.features[0]!)}`
@@ -481,6 +599,9 @@ export function PurchaseButton({
       discountCode={discountCode}
       customerEmail={customerEmail}
       collectCustomerEmail={collectCustomerEmail}
+      recommendedPriceId={recommendedPriceId}
+      recommendedLabel={recommendedLabel}
+      showBranding={showBranding}
       renderOption={renderOption}
     >
       <Button {...props} aria-label={ariaLabel}>

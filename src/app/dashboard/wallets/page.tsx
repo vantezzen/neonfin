@@ -227,7 +227,7 @@ export default async function WalletsPage({
                 );
                 const creditSummary =
                   units.size === 1
-                    ? `${formatLargeNumber(total)} ${[...units][0]}`
+                    ? formatLargeNumber(total, [...units][0])
                     : `${w.balances.length} balances`;
                 return (
                   <TableRow key={w.id}>

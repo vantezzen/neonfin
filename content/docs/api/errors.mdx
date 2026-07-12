@@ -19,12 +19,9 @@ change. The typed clients throw `PayError` carrying `status`, `code`, and
 the message. For the common out-of-credits case you don't need to remember
 either - check `err.isInsufficientCredits`.
 
-`PayError.requestId` is available when the API returned a request identifier.
-Include it when reporting an unexpected provider or server error.
-
-Every API error also has a `requestId` in its JSON body and `X-Request-Id`
-response header. Include it when reporting an unexpected provider or server
-error.
+Every API error has a `requestId` in its JSON body and `X-Request-Id` response
+header. The typed client exposes it as `PayError.requestId`; include it when
+reporting an unexpected provider or server error.
 
 ## Common statuses
 

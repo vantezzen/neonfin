@@ -1,4 +1,10 @@
+import { Suspense } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { and, eq } from "drizzle-orm";
+import { X } from "lucide-react";
+import { db } from "@/db";
+import { orders } from "@/db/schema";
 import { env } from "@/lib/env";
 import { requireUser } from "@/lib/auth/dal";
 import { getProjectDetail } from "@/lib/queries/projects";
@@ -13,6 +19,8 @@ import { ProjectTabs } from "@/components/dashboard/project-tabs";
 import { ProjectFirstSteps } from "@/components/dashboard/project-first-steps";
 import { CopyInline } from "@/components/app/copy";
 import { DevAiCoding } from "@/components/dashboard/dev-ai-coding";
+import { Status } from "@/components/app/status";
+import { buttonVariants } from "@/components/ui/button";
 
 const MODE_LABEL = {
   credit_codes: "Anonymous credit codes",
@@ -21,8 +29,10 @@ const MODE_LABEL = {
 
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ "test-checkout"?: string; order?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
@@ -45,6 +55,7 @@ export default async function ProjectDetailPage({
     anonymousWalletsPerHour: project.anonymousWalletsPerHour,
     outboundWebhookUrl: project.outboundWebhookUrl,
     hasOutboundWebhookSecret: Boolean(project.outboundWebhookSecret),
+    hasWallets: project.wallets.length > 0,
   };
 
   return (
@@ -59,7 +70,30 @@ export default async function ProjectDetailPage({
             <span>{MODE_LABEL[project.mode]}</span>
           </span>
         }
+        action={
+          <>
+            <Link
+              href={`/dashboard/orders?project=${project.id}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Orders
+            </Link>
+            <Link
+              href={`/dashboard/wallets?project=${project.id}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Wallets
+            </Link>
+          </>
+        }
       />
+
+      <Suspense fallback={null}>
+        <TestCheckoutOutcome
+          projectId={project.id}
+          searchParams={searchParams}
+        />
+      </Suspense>
 
       <div className="mb-6">
         <ProjectFirstSteps
@@ -113,5 +147,76 @@ export default async function ProjectDetailPage({
         }
       />
     </>
+  );
+}
+
+async function TestCheckoutOutcome({
+  projectId,
+  searchParams,
+}: {
+  projectId: string;
+  searchParams: Promise<{ "test-checkout"?: string; order?: string }>;
+}) {
+  const outcome = await searchParams;
+  const result = outcome["test-checkout"];
+  if (result !== "success" && result !== "cancelled") return null;
+
+  const order = outcome.order
+    ? await db.query.orders.findFirst({
+        where: and(
+          eq(orders.id, outcome.order),
+          eq(orders.projectId, projectId),
+        ),
+        columns: { status: true },
+      })
+    : null;
+  const paid = order?.status === "paid";
+
+  return (
+    <div className="mb-6 flex items-start gap-3 rounded-lg border bg-muted/20 px-4 py-3 text-sm">
+      <div className="flex-1">
+        <Status tone={result === "success" && paid ? "success" : "neutral"}>
+          {result === "cancelled"
+            ? "Test checkout cancelled - no order was completed."
+            : paid
+              ? "Test payment received - your integration works end to end."
+              : "Test checkout completed - waiting for the webhook to record it."}
+        </Status>
+        {result === "success" ? (
+          <div className="mt-2 flex gap-4 text-xs">
+            {paid ? (
+              <>
+                <Link
+                  href={`/dashboard/orders?project=${projectId}`}
+                  className="font-medium hover:underline"
+                >
+                  View order
+                </Link>
+                <Link
+                  href="/dashboard/webhooks"
+                  className="font-medium hover:underline"
+                >
+                  Webhook log
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/dashboard/providers"
+                className="font-medium hover:underline"
+              >
+                Provider status
+              </Link>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <Link
+        href={`/dashboard/projects/${projectId}`}
+        aria-label="Dismiss test checkout outcome"
+        className="text-muted-foreground hover:text-foreground"
+      >
+        <X className="size-4" />
+      </Link>
+    </div>
   );
 }

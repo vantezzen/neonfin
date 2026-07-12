@@ -19,6 +19,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -56,6 +57,10 @@ export function ApiKeysSection({
           </>
         }
       />
+      <p className="text-xs text-muted-foreground">
+        A publishable key was created with your project - you only need a secret
+        key for server-side calls.
+      </p>
 
       {active.length > 0 ? (
         <div className="flex flex-col gap-2">
@@ -203,6 +208,8 @@ function IssueKeyButton({
     {},
   );
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [warningKey, setWarningKey] = useState<string | null>(null);
   // Only secret keys need a one-time reveal; publishable keys show in the list.
   const revealOpen =
     kind === "secret" && Boolean(state.key) && dismissedKey !== state.key;
@@ -225,7 +232,9 @@ function IssueKeyButton({
       <Dialog
         open={revealOpen}
         onOpenChange={(next) => {
-          if (!next) setDismissedKey(state.key ?? null);
+          if (next || !state.key) return;
+          if (copiedKey === state.key) setDismissedKey(state.key);
+          else setWarningKey(state.key);
         }}
       >
         <DialogContent>
@@ -236,7 +245,40 @@ function IssueKeyButton({
               only.
             </DialogDescription>
           </DialogHeader>
-          {state.key ? <CopyField value={state.key} /> : null}
+          {state.key ? (
+            <CopyField
+              value={state.key}
+              onCopy={() => setCopiedKey(state.key!)}
+            />
+          ) : null}
+          {state.key && warningKey === state.key ? (
+            <p className="text-sm text-destructive">
+              Copy the key first - it won’t be shown again.
+            </p>
+          ) : null}
+          {state.key ? (
+            <DialogFooter>
+              {warningKey === state.key ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setDismissedKey(state.key!)}
+                >
+                  Close without copying
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(state.key!);
+                  setCopiedKey(state.key!);
+                  setDismissedKey(state.key!);
+                }}
+              >
+                Copy and close
+              </Button>
+            </DialogFooter>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

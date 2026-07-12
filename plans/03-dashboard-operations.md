@@ -1,7 +1,7 @@
-# Plan 03 — Day-2 dashboard: operations, support, and navigation
+# Plan 03 - Day-2 dashboard: operations, support, and navigation
 
-**Goal:** once a project is live, the owner's core questions — "did customer X
-pay?", "why does this wallet have N credits?", "did the webhook fail?" — must be
+**Goal:** once a project is live, the owner's core questions - "did customer X
+pay?", "why does this wallet have N credits?", "did the webhook fail?" - must be
 answerable in seconds. Today entities don't link to each other, Orders has no
 search, and a copy bug renders "1,234 credits credits" on four surfaces.
 
@@ -42,14 +42,14 @@ small unit test (`src/lib/format.test.ts`, mirroring `amounts.test.ts` style).
 3. **Wallet identity block**: under the title, render createdAt, lastSeenAt,
    customer email (when present), and provider customer id with a provider
    deep-link where `providerCustomerUrl` logic exists (`src/lib/providers/links.ts`
-   — add a customer-URL helper for Stripe; Polar returns null, render plain
+   - add a customer-URL helper for Stripe; Polar returns null, render plain
    text). Extend `getWalletDetail`'s select accordingly.
 4. **Webhook rows** (`src/app/dashboard/webhooks/page.tsx`): in the expanded
    area, when the stored event references an order the fulfillment matched,
    link `Order → /dashboard/orders?…` or, better, straight to the wallet if
    resolvable. If the linkage isn't cheaply available from `webhook_events`,
    render the `providerEventId` (already fetched at `orders.ts:71`, never
-   displayed) + full error text (see E.2) and skip deep links — do not build a
+   displayed) + full error text (see E.2) and skip deep links - do not build a
    new join table for this.
 
 ## C. Orders page: search + filters (`src/app/dashboard/orders/page.tsx`)
@@ -62,12 +62,12 @@ small unit test (`src/lib/format.test.ts`, mirroring `amounts.test.ts` style).
    next to the existing project filter; both submit via the existing GET form.
 3. Fix the filtered-empty state: when any filter/search is active, say
    `“No orders match your filters.”` with a "Clear filters" link (Wallets
-   already does this — copy the pattern, `wallets/page.tsx:188-197`).
-4. Remove "sortable by status" (alphabetical status sort is meaningless) —
+   already does this - copy the pattern, `wallets/page.tsx:188-197`).
+4. Remove "sortable by status" (alphabetical status sort is meaningless) -
    status is now a filter.
 5. Add a "Refunds happen in your provider's dashboard" affordance: a one-line
    muted note under the header:
-   `"Need to refund? Open the order in Stripe or Polar — refunds sync back automatically."`
+   `"Need to refund? Open the order in Stripe or Polar - refunds sync back automatically."`
    And fix the headerless provider-link column: give it a header `Provider`,
    and for Polar orders render a plain `Polar` label (no URL available,
    `src/lib/providers/links.ts:55-64`) instead of blank.
@@ -75,28 +75,28 @@ small unit test (`src/lib/format.test.ts`, mirroring `amounts.test.ts` style).
 ## D. Subscriptions get a home
 
 There is no way to answer "how many active subscribers do I have?". Add a
-**Subscriptions** section to the Orders page (tab or stacked section — prefer a
+**Subscriptions** section to the Orders page (tab or stacked section - prefer a
 stacked section above Orders when any subscription exists, to avoid new nav):
 - Query: new `listSubscriptions(ownerId, { projectId })` in
   `src/lib/queries/` (read-only module) joining product/price/wallet.
 - Columns: wallet (link), product + tier label, status dot
-  (Active / Canceled — access until {date}), renews/ends `formatDateTime`,
+  (Active / Canceled - access until {date}), renews/ends `formatDateTime`,
   provider link.
 - Wallet detail: stop hiding non-active subscriptions
-  (`wallets/[id]/page.tsx:57`) — show canceled ones as
-  `"Canceled — access until {currentPeriodEnd}"` with a neutral dot.
+  (`wallets/[id]/page.tsx:57`) - show canceled ones as
+  `"Canceled - access until {currentPeriodEnd}"` with a neutral dot.
 
 ## E. Webhooks page polish (`src/app/dashboard/webhooks/page.tsx`)
 
-1. Map the `pending` status in the STATUS map (lines 20-24) — it currently
+1. Map the `pending` status in the STATUS map (lines 20-24) - it currently
    renders as raw lowercase "pending"; label `Pending`, neutral tone.
 2. Show the full error in the expanded area (today it's only a truncated
    one-liner in the summary row, line 120): `<pre className="whitespace-pre-wrap
    text-xs">` with the complete stored error.
 3. Show which provider **account** (label) received the event, not just
-   "stripe" — extend the query (`src/lib/queries/orders.ts:63-77`) to join the
+   "stripe" - extend the query (`src/lib/queries/orders.ts:63-77`) to join the
    account label.
-4. Replay button: make the toast honest — surface the fulfillment outcome
+4. Replay button: make the toast honest - surface the fulfillment outcome
    (`processed` / `skipped (already fulfilled)` / error) instead of the
    unconditional "Webhook replayed" (`replay-webhook-button.tsx:9`).
 
@@ -114,7 +114,7 @@ stacked section above Orders when any subscription exists, to avoid new nav):
    `/dashboard/wallets?project={id}` (both pages already support `?project=`).
 4. **Timezone hints**: add `title={date.toISOString()}` to the webhook timestamp
    (`webhooks/page.tsx:129-131`) and ledger dates
-   (`wallets/[id]/page.tsx:280-282`) — Wallets/Orders already do this.
+   (`wallets/[id]/page.tsx:280-282`) - Wallets/Orders already do this.
 
 ## G. Design-language consistency sweep
 
@@ -128,7 +128,7 @@ stacked section above Orders when any subscription exists, to avoid new nav):
 4. Guard the **identity mode switch** on live projects
    (`project-form.tsx:107-124`): when the project has any wallet and the mode
    changes, require an inline confirmation
-   (`"Switching modes strands existing wallets of the other kind. Continue?"` —
+   (`"Switching modes strands existing wallets of the other kind. Continue?"` -
    use `ConfirmAction`/dialog, don't silently save).
 
 ## H. Wallet support-tooling gaps (smaller, do last)

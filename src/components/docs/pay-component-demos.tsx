@@ -7,11 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCopy } from "@/components/app/copy";
 import { CreditGate } from "@/components/pay/credit-gate";
 import { FeatureGate } from "@/components/pay/feature-gate";
-import {
-  PayProvider,
-  useCredits,
-  useFeature,
-} from "@/components/pay/provider";
+import { PayProvider, useCredits, useFeature } from "@/components/pay/provider";
 import { PurchaseButton } from "@/components/pay/purchase-dialog";
 import { RemainingCredits } from "@/components/pay/remaining-credits";
 import { WalletButton } from "@/components/pay/wallet-button";
@@ -45,7 +41,7 @@ export function SpendCreditsButton() {
   const { balance, deduct, loading } = useCredits();
 
   return (
-    <Button onClick={() => deduct(10)}>
+    <Button onClick={() => deduct(10, { idempotencyKey: crypto.randomUUID() })}>
       Use 10 credits
     </Button>
   );
@@ -56,12 +52,14 @@ export function BuyCredits() {
   return <PurchaseButton>Buy credits</PurchaseButton>;
 }`,
   creditGate: `import { CreditGate } from "@/components/pay/credit-gate";
+import { useCredits } from "@/components/pay/provider";
 import { Button } from "@/components/ui/button";
 
 export function PremiumAction() {
+  const { deduct } = useCredits();
   return (
     <CreditGate cost={5}>
-      <Button>Run premium action</Button>
+      <Button onClick={() => deduct(5)}>Run premium action</Button>
     </CreditGate>
   );
 }`,
@@ -133,8 +131,8 @@ function ComponentExample({
 function MissingExampleConfig() {
   return (
     <p className="max-w-sm text-center text-sm text-muted-foreground">
-      Set NEXT_PUBLIC_EXAMPLE_PAY_URL and NEXT_PUBLIC_EXAMPLE_PAY_KEY to
-      render the interactive example.
+      Set NEXT_PUBLIC_EXAMPLE_PAY_URL and NEXT_PUBLIC_EXAMPLE_PAY_KEY to render
+      the interactive example.
     </p>
   );
 }
@@ -326,6 +324,12 @@ function FeatureGatePanel() {
       <p className="text-xs text-muted-foreground">
         {loading ? "Checking feature..." : enabled ? "Unlocked" : "Locked"}
       </p>
+      {!loading && !enabled ? (
+        <p className="max-w-sm text-center text-xs text-muted-foreground">
+          Locked? Buy the subscription in the PurchaseDialog demo - the demos
+          share one wallet, so it unlocks here.
+        </p>
+      ) : null}
     </div>
   );
 }

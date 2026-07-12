@@ -3,11 +3,13 @@
   "icon": "Rocket",
   "pages": [
     "index",
+    "quickstart",
     "choose-setup",
     "dashboard",
     "install",
-    "frameworks",
     "first-feature",
+    "frameworks",
+    "test-payment",
     "go-live"
   ]
 }

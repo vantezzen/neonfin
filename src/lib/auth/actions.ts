@@ -9,7 +9,7 @@ import { account } from "@/db/auth-schema";
 import { appUrl } from "@/lib/email";
 import { consumeToken } from "@/lib/api/rate-limit";
 import { sha256 } from "@/lib/crypto";
-import { auth } from "./server";
+import { auth, emailVerificationIsEnabled } from "./server";
 import { requireUser } from "./dal";
 
 export type AuthState = { error?: string; message?: string };
@@ -56,6 +56,13 @@ export async function register(
       return { error: authErrorMessage(e, "Could not create account") };
     }
     throw e;
+  }
+  if (!emailVerificationIsEnabled()) {
+    await auth.api.signInEmail({
+      body: { email, password, callbackURL: appUrl("/dashboard") },
+      headers: await headers(),
+    });
+    redirect("/dashboard");
   }
   redirect(`/verify-request?email=${encodeURIComponent(email)}`);
 }
@@ -252,6 +259,11 @@ export async function resendVerificationForEmail(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { error: "Email is required" };
+  if (!emailVerificationIsEnabled()) {
+    return {
+      message: "This instance doesn't send email. You can sign in directly.",
+    };
+  }
 
   const generic = "If that address needs verification, we sent a new link.";
   const limit = await consumeToken(`verify-email:${sha256(email)}`, {

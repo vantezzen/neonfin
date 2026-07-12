@@ -6,6 +6,7 @@
     "providers",
     "provider-capabilities",
     "subscriptions",
+    "pricing-page",
     "billing-portal",
     "lost-wallets",
     "refunds",

@@ -3,4 +3,5 @@ export const movedDocs = new Map([
   ["/docs/installation", "/docs/getting-started"],
   ["/docs/client", "/docs/components/client"],
   ["/docs/deploy", "/docs/self-host"],
+  ["/docs/concepts/providers", "/docs/workflows/providers"],
 ]);

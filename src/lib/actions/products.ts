@@ -199,7 +199,9 @@ export async function createPrice(
 ): Promise<FormState> {
   // Scope to the product's owner, not the client-supplied projectId, so a price
   // can't be attached to (and synced onto) another tenant's product/provider.
-  const product = await requireOwnedProduct(String(formData.get("productId") ?? ""));
+  const product = await requireOwnedProduct(
+    String(formData.get("productId") ?? ""),
+  );
   try {
     const parsed = priceInput.parse({
       productId: product.id,
@@ -214,7 +216,8 @@ export async function createPrice(
     // would only fail later, at the provider, when a buyer tries to pay.
     if (product.type === "subscription" && parsed.interval === "one_time") {
       return {
-        error: "A subscription product needs a recurring price (monthly or yearly).",
+        error:
+          "A subscription product needs a recurring price (monthly or yearly).",
       };
     }
     if (product.type !== "subscription" && parsed.interval !== "one_time") {
@@ -233,7 +236,16 @@ export async function createPrice(
     });
     // Provision the just-added price (and any prior unsynced ones) if the
     // product has a provider attached. No-op otherwise.
-    await syncProductPrices(parsed.productId);
+    try {
+      await syncProductPrices(parsed.productId);
+    } catch (error) {
+      refresh(parsed.projectId);
+      const reason = actionError(error).error ?? "Unknown provider error";
+      return {
+        ok: true,
+        warning: `Price saved, but syncing to your provider failed: ${reason}. Fix the provider connection, then use Sync now on the product.`,
+      };
+    }
     refresh(parsed.projectId);
     return { ok: true };
   } catch (e) {
@@ -296,7 +308,9 @@ export async function attachProvider(
   formData: FormData,
 ): Promise<FormState> {
   const providerAccountId = String(formData.get("providerAccountId") ?? "");
-  const product = await requireOwnedProduct(String(formData.get("productId") ?? ""));
+  const product = await requireOwnedProduct(
+    String(formData.get("productId") ?? ""),
+  );
   const projectId = product.projectId;
   // Only the caller's own provider accounts may be attached.
   if (providerAccountId) await requireOwnedProviderAccount(providerAccountId);
@@ -355,14 +369,21 @@ export async function createTestCheckout(
   try {
     const price = await requireOwnedPrice(priceId);
     if (!price.active || !price.product.active) {
-      return { error: "Activate this price and product before testing checkout." };
+      return {
+        error: "Activate this price and product before testing checkout.",
+      };
     }
     if (!price.providerPriceId || !price.product.providerAccountId) {
-      return { error: "Sync this price to a provider before testing checkout." };
+      return {
+        error: "Sync this price to a provider before testing checkout.",
+      };
     }
 
-    const account = await getProviderAccountMeta(price.product.providerAccountId);
-    if (!account) return { error: "The connected provider account was not found." };
+    const account = await getProviderAccountMeta(
+      price.product.providerAccountId,
+    );
+    if (!account)
+      return { error: "The connected provider account was not found." };
     if (account.environment !== "sandbox") {
       return {
         error:
@@ -387,17 +408,22 @@ export async function createTestCheckout(
         priceLabelSnapshot: price.label,
       })
       .returning();
-    const dashboardUrl = new URL(
-      `/dashboard/projects/${price.product.projectId}?tab=orders`,
+    const successUrl = new URL(
+      `/dashboard/projects/${price.product.projectId}?test-checkout=success&order=${order.id}`,
+      env().NEXT_PUBLIC_APP_URL,
+    ).toString();
+    const cancelUrl = new URL(
+      `/dashboard/projects/${price.product.projectId}?test-checkout=cancelled`,
       env().NEXT_PUBLIC_APP_URL,
     ).toString();
 
     try {
       const { url, checkoutId } = await createProviderCheckout(account.id, {
         providerPriceId: price.providerPriceId,
-        mode: price.product.type === "subscription" ? "subscription" : "payment",
-        successUrl: dashboardUrl,
-        cancelUrl: dashboardUrl,
+        mode:
+          price.product.type === "subscription" ? "subscription" : "payment",
+        successUrl,
+        cancelUrl,
         allowPromotionCodes: false,
         metadata: {
           orderId: order.id,
@@ -411,7 +437,10 @@ export async function createTestCheckout(
         .where(eq(orders.id, order.id));
       return { url };
     } catch (error) {
-      await db.update(orders).set({ status: "failed" }).where(eq(orders.id, order.id));
+      await db
+        .update(orders)
+        .set({ status: "failed" })
+        .where(eq(orders.id, order.id));
       throw error;
     }
   } catch (error) {
@@ -460,7 +489,7 @@ async function syncProductPrices(productId: string): Promise<void> {
         // Polar makes one product per price - name it by tier so the provider
         // dashboard is readable. Stripe reuses one shared product (name unused).
         productName: price.label
-          ? `${product.name} — ${price.label}`
+          ? `${product.name} - ${price.label}`
           : product.name,
         productDescription: product.description ?? undefined,
         amountCents: price.amountCents,

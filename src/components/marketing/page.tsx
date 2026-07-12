@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
-  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -52,7 +51,7 @@ export function MarketingIndexPage({
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
       <section className="border-b bg-canvas">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 sm:py-24 lg:grid-cols-[1fr_360px] lg:items-end">
+        <div className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-24">
           <div>
             <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
               {eyebrow}
@@ -62,25 +61,6 @@ export function MarketingIndexPage({
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               {description}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-background p-5 shadow-xs">
-            <p className="text-sm font-medium">Discovery focus</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {[
-                "side project billing",
-                "no-auth monetization",
-                "shadcn payments",
-                "self-hosted payment layer",
-              ].map((tag) => (
-                <Badge key={tag} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Practical pages for developers who are already trying to charge
-              for a useful small tool.
             </p>
           </div>
         </div>
@@ -193,14 +173,7 @@ export function MarketingArticlePage({ page }: { page: MarketingPage }) {
             </div>
 
             <aside className="rounded-xl border bg-background p-5 shadow-xs lg:self-end">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Sparkles className="size-4" />
-                Search intent
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                {page.intent}
-              </p>
-              <div className="mt-5 flex items-center gap-2 border-t pt-4 font-mono text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
                 <Clock3 className="size-3.5" />
                 Updated {formatDate(page.updated)}
               </div>

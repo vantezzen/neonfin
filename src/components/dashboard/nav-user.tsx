@@ -23,8 +23,9 @@ export async function NavUser() {
           </span>
         ) : null}
       </div>
-      <Link href="/dashboard/settings">
+      <Link href="/dashboard/settings" title="Settings">
         <CogIcon className="size-4 text-muted-foreground/70" />
+        <span className="sr-only">Settings</span>
       </Link>
       <form action={logout}>
         <Button

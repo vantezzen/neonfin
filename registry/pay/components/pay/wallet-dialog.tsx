@@ -13,10 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PayError } from "@/lib/pay";
-import {
-  createWalletTransferUrl,
-  WALLET_QUERY_PARAM,
-} from "@/lib/pay/qr";
+import { createWalletTransferUrl, WALLET_QUERY_PARAM } from "@/lib/pay/qr";
 import { useCredits, usePay, usePayMode } from "@/components/pay/provider";
 import { WalletCodeField } from "@/components/pay/wallet-code-field";
 import { WalletQrCode } from "@/components/pay/wallet-qr-code";
@@ -72,7 +69,7 @@ export function WalletDialog({
     description ??
     (externalAuth
       ? "Manage billing for your signed-in account."
-      : "Your wallet code keeps credits available across devices.");
+      : "Your wallet code keeps credits available across devices - like a gift card number.");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -283,6 +280,9 @@ export function WalletDialog({
                 onClick={openBillingPortal}
                 disabled={
                   externalAuth ? billingBusy : !currentCode || billingBusy
+                }
+                title={
+                  !currentCode && !externalAuth ? "Loading wallet…" : undefined
                 }
               >
                 {billingBusy ? (

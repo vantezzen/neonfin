@@ -37,6 +37,7 @@ export async function replayWebhookEvent(
     });
     if (!account) return { error: "Webhook event not found" };
 
+    let outcome: "processed" | "skipped";
     try {
       const normalized = await normalizeProviderWebhook({
         provider: account.provider,
@@ -44,6 +45,7 @@ export async function replayWebhookEvent(
         providerEventId: event.providerEventId,
       });
       const status = await processNormalizedEvent(normalized, account.id);
+      outcome = status;
       await db
         .update(webhookEvents)
         .set({ status, error: null })
@@ -57,7 +59,13 @@ export async function replayWebhookEvent(
     }
 
     revalidatePath("/dashboard/webhooks");
-    return { ok: true };
+    return {
+      ok: true,
+      message:
+        outcome === "processed"
+          ? "Webhook processed"
+          : "Webhook skipped (already fulfilled)",
+    };
   } catch (e) {
     return actionError(e);
   }

@@ -1,4 +1,4 @@
-# Plan 04 — Documentation: fix the broken path, add the missing steps
+# Plan 04 - Documentation: fix the broken path, add the missing steps
 
 **Goal:** the docs are already strong (accurate props tables, live demos,
 llms.txt), but the advertised "5-minute quickstart" 404s, the getting-started
@@ -18,7 +18,7 @@ sample you touch against `registry/pay/lib/pay/index.ts` /
 `content/docs/getting-started/index.mdx:43`, `choose-setup.mdx:22`,
 `frameworks.mdx:39` (and named in `workflows/index.mdx:6`) but does not exist.
 
-Create `content/docs/getting-started/quickstart.mdx` — one condensed page,
+Create `content/docs/getting-started/quickstart.mdx` - one condensed page,
 Next.js App Router + credit-codes mode, assembled from content that already
 exists in `dashboard.mdx`, `install.mdx`, `first-feature.mdx`:
 
@@ -27,16 +27,16 @@ exists in `dashboard.mdx`, `install.mdx`, `first-feature.mdx`:
 2. **Prerequisites** (3 bullets): a pay instance login, Stripe in test mode,
    a Next.js app with shadcn initialized (`npx shadcn@latest init`).
 3. **Steps** (use the `<Steps>` component like the workflow pages):
-   1. *Create a project & connect Stripe* — two sentences + link to
+   1. *Create a project & connect Stripe* - two sentences + link to
       `getting-started/dashboard` for detail. Mention the wizard registers the
       webhook automatically with a restricted key.
-   2. *Create a product and pack* — e.g. "600 minutes — $5".
-   3. *Install* — the single multi-URL `npx shadcn@latest add` command +
+   2. *Create a product and pack* - e.g. "600 minutes - $5".
+   3. *Install* - the single multi-URL `npx shadcn@latest add` command +
       `.env.local` block (copy from `install.mdx`, keep in sync).
-   4. *Wrap your app in `<PayProvider>`* — minimal snippet.
-   5. *Gate a feature* — the `<CreditGate>` + `useCredits().deduct()` snippet
+   4. *Wrap your app in `<PayProvider>`* - minimal snippet.
+   5. *Gate a feature* - the `<CreditGate>` + `useCredits().deduct()` snippet
       from `first-feature.mdx` (short form).
-   6. *Make a test payment* — click the purchase button, pay with
+   6. *Make a test payment* - click the purchase button, pay with
       `4242 4242 4242 4242`, watch the balance update; check the order under
       Dashboard → Orders. Include the local-webhook callout (see B).
 4. End with: "Want the detail behind each step? Follow [the full path](/docs/getting-started)."
@@ -54,7 +54,7 @@ Create `content/docs/getting-started/test-payment.mdx`, slotted in
   "Test checkout" button on a synced sandbox price).
 - Test card `4242 4242 4242 4242`, any future expiry, any CVC.
 - **Local development callout** (this is the trap that eats 20 minutes): if your
-  pay instance runs on localhost, Stripe can't deliver webhooks — run
+  pay instance runs on localhost, Stripe can't deliver webhooks - run
   `stripe listen --forward-to <your-instance>/api/webhooks/stripe/<accountId>`
   (the exact command with the right account id is shown on the Providers page).
   Without it the checkout succeeds but credits never arrive.
@@ -71,13 +71,13 @@ Create `content/docs/getting-started/test-payment.mdx`, slotted in
 1. **Slug collision**: delete `content/docs/components.mdx` (legacy stub that
    collides with `components/index.mdx` on `/docs/components`). If old inbound
    links matter, add `"/docs/components"` handling to `src/lib/docs/moved.ts`
-   only if the path differs — it doesn't, so plain deletion is correct.
+   only if the path differs - it doesn't, so plain deletion is correct.
 2. **`content/docs/components/client.mdx`**: the "Read orders" section is wedged
    between the `## Config` heading and its table. Move "Read orders" down beside
    the checkout/orders material so Config is followed by its table.
 3. **Mermaid block renders as plain text** in
    `content/docs/concepts/checkout-flow.mdx`: the numbered list below it already
-   covers the same content — delete the ```mermaid block (do not add a mermaid
+   covers the same content - delete the ```mermaid block (do not add a mermaid
    dependency).
 4. **Orphaned page**: `content/docs/concepts/providers.mdx` is absent from
    `concepts/meta.json`, has zero inbound links, and lags
@@ -85,21 +85,21 @@ Create `content/docs/getting-started/test-payment.mdx`, slotted in
    only). Delete it and add a redirect entry in `src/lib/docs/moved.ts` →
    `/docs/workflows/providers`.
 5. **`content/docs/api/errors.mdx`**: two consecutive paragraphs both explain
-   `requestId` and end with the same sentence — merge into one.
+   `requestId` and end with the same sentence - merge into one.
 6. **`content/docs/api/server-side-users.mdx`**: the get-or-create wallet
    response example omits `features` and `subscriptions`, which the real
    `ExternalWallet` type returns (`registry/pay/lib/pay/server.ts:41`). Add them
    to the example JSON.
 7. **`content/docs/workflows/support-adjustments.mdx`**: snippets call an
-   undefined `pay` — add the one-line setup
+   undefined `pay` - add the one-line setup
    `const pay = createPayServerClient({ baseUrl, secretKey })` (or an import
    comment) at the top of the first snippet.
 8. **`content/docs/agent.mdx`**: (a) the first server-route example uses
-   `export const payServer = …` inside a route file — exporting non-handler
+   `export const payServer = …` inside a route file - exporting non-handler
    values from an App Router route file breaks the build; change to plain
    `const`. (b) Replace the literal `&apos;` entity with a real apostrophe.
 9. **`content/docs/workflows/index.mdx:6`**: "sit between the quickstart and the
-   low-level reference" — fine once A ships; verify the link points to the new
+   low-level reference" - fine once A ships; verify the link points to the new
    page.
 10. **`content/docs/api/index.mdx`**: move the `GET /api/v1/me` example out of
     "## Orders" into its own "## Identify your key" heading; expand the secret
@@ -108,25 +108,25 @@ Create `content/docs/getting-started/test-payment.mdx`, slotted in
 11. **Vocabulary**: add "Feature" (and "Credits") to the vocabulary list in
     `concepts/index.mdx`, and add `access-and-features` to its "Recommended
     reading" list.
-12. **`getting-started/frameworks.mdx`**: reframe as the branch it is — retitle
+12. **`getting-started/frameworks.mdx`**: reframe as the branch it is - retitle
     intro to "Not using the Next.js App Router?" and move it after
     `first-feature` in `meta.json`; update the numbered "The path" list in
     `getting-started/index.mdx` accordingly.
 
 ## D. Demo snippets must match demo behavior (`src/components/docs/pay-component-demos.tsx`)
 
-*(Coordinate with plan 01, which also touches this file — land 01 first.)*
+*(Coordinate with plan 01, which also touches this file - land 01 first.)*
 
 1. **CreditGate demo**: the displayed snippet shows a bare
    `<CreditGate cost={5}><Button>Run premium action</Button></CreditGate>` while
    the live panel actually calls `deduct(5)` on click. Update the snippet string
-   to include the `onClick={() => deduct(5)}` handler — the docs' own core
+   to include the `onClick={() => deduct(5)}` handler - the docs' own core
    lesson is "deduct inside the click handler".
 2. **useCredits demo snippet**: add the `idempotencyKey` the page's callout
    insists on (e.g. `deduct(10, { idempotencyKey: crypto.randomUUID() })`).
 3. **FeatureGate demo**: virtually every visitor sees "Locked" with no path to
    unlock. Add a caption under the demo:
-   `"Locked? Buy the subscription in the PurchaseDialog demo — the demos share one wallet, so it unlocks here."`
+   `"Locked? Buy the subscription in the PurchaseDialog demo - the demos share one wallet, so it unlocks here."`
    (Verify the demo subscription actually grants the `analytics` feature slug
    used here; if not, align the slugs.)
 4. **Discoverability of consumer webhooks**: in `first-feature.mdx`, after "You
@@ -138,13 +138,13 @@ Create `content/docs/getting-started/test-payment.mdx`, slotted in
 
 Create `content/docs/workflows/pricing-page.mdx` (add to `workflows/meta.json`):
 compose `getProducts()` + `PurchaseDialog`/`renderOption` (or inline
-`PurchaseOptionButton`s) + `useSubscription` into an inline pricing table —
+`PurchaseOptionButton`s) + `useSubscription` into an inline pricing table -
 the single most common payments page. Include:
 - A complete, copy-pasteable component: three tiers side by side, current-plan
   state from `useSubscription`, `recommendedPriceId` highlight (new prop from
   plan 01), and a "Manage subscription" path via `getPortalUrl()`.
 - Document `PurchaseOptionControls` (`busy/disabled/current/recurring/buy`,
-  plus `recommended` after plan 01) — currently undocumented anywhere despite
+  plus `recommended` after plan 01) - currently undocumented anywhere despite
   `renderOption` being a public prop.
 - A short "Hooks reference" section (or separate page
   `components/hooks.mdx` if cleaner): `useSubscription` (full return shape from
@@ -163,7 +163,7 @@ the single most common payments page. Include:
    add the missing final command (`bun run dev`) so the sequence actually starts
    the app.
 4. `getting-started/install.mdx`: add one visible-feedback sanity check at the
-   end — "Drop `<RemainingCredits />` anywhere inside the provider; if you see a
+   end - "Drop `<RemainingCredits />` anywhere inside the provider; if you see a
    number, your keys, origin, and instance are wired correctly."
 5. `self-host/database.mdx` vs TECH.md: check `scripts/db-reset.ts` for the real
    flag (`--yes` vs `--force`) and make both documents agree.

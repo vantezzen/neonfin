@@ -35,24 +35,40 @@ export function ProjectFirstSteps({
       null,
     ) ?? null;
   const knownFeatures = knownFeaturesOf(products);
-  const actionNoun = firstProduct ? productPriceNoun(firstProduct.type) : "price";
+  const actionNoun = firstProduct
+    ? productPriceNoun(firstProduct.type)
+    : "price";
   const stepNoun = firstProduct?.type === "subscription" ? "tier" : "price";
   const integrationKey = `pay:first-steps:${projectId}:integrated`;
+  const originsKey = `pay:first-steps:${projectId}:origins-reviewed`;
   const [integrationDone, setIntegrationDone] = useState(false);
+  const [originsDone, setOriginsDone] = useState(false);
 
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is the external source for this user-confirmed checklist item.
-      setIntegrationDone(window.localStorage.getItem(integrationKey) === "true");
+      setIntegrationDone(
+        window.localStorage.getItem(integrationKey) === "true",
+      );
+      setOriginsDone(window.localStorage.getItem(originsKey) === "true");
     } catch {
       // Ignore private-mode/storage failures; the step remains manually clickable.
     }
-  }, [integrationKey]);
+  }, [integrationKey, originsKey]);
 
   function markIntegrationDone() {
     setIntegrationDone(true);
     try {
       window.localStorage.setItem(integrationKey, "true");
+    } catch {
+      // Non-critical: the in-memory state still gives immediate feedback.
+    }
+  }
+
+  function markOriginsDone() {
+    setOriginsDone(true);
+    try {
+      window.localStorage.setItem(originsKey, "true");
     } catch {
       // Non-critical: the in-memory state still gives immediate feedback.
     }
@@ -108,17 +124,23 @@ export function ProjectFirstSteps({
       ),
     },
     {
-      done: hasAllowedOrigins,
-      title: "Add allowed origins",
+      done: hasAllowedOrigins || originsDone,
+      title: "Review allowed origins",
       description:
-        "Add at least one app domain in Settings and save the project.",
+        "Restrict browser calls to your app's domains in Settings - recommended before launch.",
       action: (
-        <Link
-          href={`/dashboard/projects/${projectId}?tab=settings&highlight=allowed-origins#allowed-origins`}
-          className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-        >
-          Settings
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/projects/${projectId}?tab=settings&highlight=allowed-origins#allowed-origins`}
+            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+          >
+            Settings
+          </Link>
+          <Button type="button" size="sm" onClick={markOriginsDone}>
+            <Check className="size-3.5" />
+            Mark done
+          </Button>
+        </div>
       ),
     },
   ];

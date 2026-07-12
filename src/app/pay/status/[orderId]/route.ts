@@ -17,15 +17,17 @@ export async function GET(
   });
   if (!order) return Response.json({ error: "Not found" }, { status: 404 });
 
+  const price = order.priceId
+    ? await db.query.prices.findFirst({
+        where: eq(prices.id, order.priceId),
+        with: {
+          product: { columns: { id: true, name: true, creditUnit: true } },
+        },
+      })
+    : null;
   let balance: number | null = null;
   let creditUnit: string | null = null;
   if (order.walletId && (order.productIdSnapshot || order.priceId)) {
-    const price = order.priceId
-      ? await db.query.prices.findFirst({
-          where: eq(prices.id, order.priceId),
-          with: { product: { columns: { id: true, creditUnit: true } } },
-        })
-      : null;
     const productId = order.productIdSnapshot ?? price?.product.id;
     if (productId) {
       creditUnit = order.creditUnitSnapshot ?? price?.product.creditUnit ?? null;
@@ -47,5 +49,14 @@ export async function GET(
     code: order.issuedCode,
     balance,
     creditUnit,
+    productName: price?.product.name ?? null,
+    amountCents: order.amountCents,
+    currency: order.currency,
+    creditsGranted:
+      order.creditsGrantedSnapshot != null
+        ? toNum(order.creditsGrantedSnapshot)
+        : price
+          ? toNum(price.creditsGranted)
+          : null,
   });
 }

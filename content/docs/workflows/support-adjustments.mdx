@@ -39,6 +39,13 @@ workflows.
 Grant credits:
 
 ```ts
+import { createPayServerClient } from "@/lib/pay/server";
+
+const pay = createPayServerClient({
+  baseUrl: process.env.PAY_URL!,
+  secretKey: process.env.PAY_SECRET_KEY!,
+});
+
 await pay.grantCredits({
   externalUserId: "user_123",
   productId: "prod_...",

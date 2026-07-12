@@ -54,12 +54,12 @@ product, which lets the SDK infer it automatically in `useCredits()` /
 A price is one purchasable offer. Depending on the product shape it stores:
 
 - **Amount and currency.**
-- **Billing interval** — one-time for packs and unlocks; monthly/yearly for
+- **Billing interval** - one-time for packs and unlocks; monthly/yearly for
   subscription tiers.
-- **Credits granted** — on purchase (packs/unlocks) or included each cycle
+- **Credits granted** - on purchase (packs/unlocks) or included each cycle
   (subscriptions). May be `0` for a pure access offer.
-- **A tier label** — e.g. "Pro" (subscriptions).
-- **Features** — slugs this offer unlocks (see
+- **A tier label** - e.g. "Pro" (subscriptions).
+- **Features** - slugs this offer unlocks (see
   [Access & features](/docs/concepts/access-and-features)).
 
 Labels and features are vantezzen/pay-only; they're never sent to Stripe or Polar, so

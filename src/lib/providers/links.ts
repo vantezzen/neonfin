@@ -62,3 +62,27 @@ export function providerOrderUrl(
   }
   return null;
 }
+
+/** A subscription's page at the provider. */
+export function providerSubscriptionUrl(
+  provider: Provider,
+  environment: string,
+  providerSubscriptionId: string | null | undefined,
+): string | null {
+  if (provider === "stripe" && providerSubscriptionId) {
+    return `${stripeBase(environment)}/subscriptions/${providerSubscriptionId}`;
+  }
+  return null;
+}
+
+/** A customer's page at the provider. */
+export function providerCustomerUrl(
+  provider: Provider,
+  environment: string,
+  providerCustomerId: string | null | undefined,
+): string | null {
+  if (provider === "stripe" && providerCustomerId) {
+    return `${stripeBase(environment)}/customers/${providerCustomerId}`;
+  }
+  return null;
+}

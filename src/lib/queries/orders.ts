@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
-import { orders, providerAccounts, webhookEvents } from "@/db/schema";
+import { orders, providerAccounts, subscriptions, wallets, webhookEvents } from "@/db/schema";
 import { ownedProjectIds } from "./projects";
 
 export async function listOrders(
@@ -10,7 +10,9 @@ export async function listOrders(
     limit?: number;
     offset?: number;
     projectId?: string;
-    sort?: "createdAt" | "status";
+    search?: string;
+    status?: "paid" | "pending" | "failed" | "refunded" | "expired";
+    sort?: "createdAt";
     direction?: "asc" | "desc";
   } = {},
 ) {
@@ -19,11 +21,25 @@ export async function listOrders(
     ? ids.filter((id) => id === opts.projectId)
     : ids;
   if (projectIds.length === 0) return [];
+  const conditions = [inArray(orders.projectId, projectIds)];
+  const search = opts.search?.trim();
+  const escaped = search?.replace(/[\\%_]/g, (match) => `\\${match}`);
+  const pattern = escaped ? `%${escaped}%` : undefined;
+  if (pattern) {
+    conditions.push(
+      or(
+        ilike(orders.customerEmail, pattern),
+        ilike(orders.id, pattern),
+        ilike(orders.providerCheckoutId, pattern),
+        ilike(orders.issuedCode, pattern),
+      )!,
+    );
+  }
+  if (opts.status) conditions.push(eq(orders.status, opts.status));
   const order = opts.direction === "asc" ? asc : desc;
-  const column = opts.sort === "status" ? orders.status : orders.createdAt;
   return db.query.orders.findMany({
-    where: inArray(orders.projectId, projectIds),
-    orderBy: [order(column), order(orders.id)],
+    where: and(...conditions),
+    orderBy: [order(orders.createdAt), order(orders.id)],
     limit: opts.limit ?? 100,
     offset: opts.offset,
     with: {
@@ -42,6 +58,32 @@ export async function listOrders(
   });
 }
 
+export async function listSubscriptions(
+  ownerId: string,
+  opts: { projectId?: string } = {},
+) {
+  const ids = await ownedProjectIds(ownerId);
+  const projectIds = opts.projectId ? ids.filter((id) => id === opts.projectId) : ids;
+  if (projectIds.length === 0) return [];
+  const walletRows = await db
+    .select({ id: wallets.id })
+    .from(wallets)
+    .where(inArray(wallets.projectId, projectIds));
+  if (walletRows.length === 0) return [];
+  return db.query.subscriptions.findMany({
+    where: inArray(subscriptions.walletId, walletRows.map((wallet) => wallet.id)),
+    orderBy: desc(subscriptions.createdAt),
+    with: {
+      wallet: { columns: { id: true, code: true, externalUserId: true } },
+      product: {
+        columns: { name: true },
+        with: { providerAccount: { columns: { environment: true } } },
+      },
+      price: { columns: { label: true } },
+    },
+  });
+}
+
 export async function listWebhookEvents(
   ownerId: string,
   opts: {
@@ -52,7 +94,7 @@ export async function listWebhookEvents(
   } = {},
 ) {
   const accounts = await db
-    .select({ id: providerAccounts.id })
+    .select({ id: providerAccounts.id, label: providerAccounts.label })
     .from(providerAccounts)
     .where(eq(providerAccounts.ownerId, ownerId));
   const ids = accounts.map((a) => a.id);
@@ -60,13 +102,14 @@ export async function listWebhookEvents(
   const conditions = [inArray(webhookEvents.providerAccountId, ids)];
   if (opts.provider) conditions.push(eq(webhookEvents.provider, opts.provider));
   if (opts.status) conditions.push(eq(webhookEvents.status, opts.status));
-  return db.query.webhookEvents.findMany({
+  const events = await db.query.webhookEvents.findMany({
     where: and(...conditions),
     orderBy: desc(webhookEvents.createdAt),
     limit: opts.limit ?? 100,
     offset: opts.offset,
     columns: {
       id: true,
+      providerAccountId: true,
       provider: true,
       providerEventId: true,
       type: true,
@@ -75,4 +118,11 @@ export async function listWebhookEvents(
       createdAt: true,
     },
   });
+  const labels = new Map(accounts.map((account) => [account.id, account.label]));
+  return events.map((event) => ({
+    ...event,
+    accountLabel:
+      (event.providerAccountId ? labels.get(event.providerAccountId) : null) ??
+      event.provider,
+  }));
 }

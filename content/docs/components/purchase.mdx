@@ -108,14 +108,17 @@ Controlled usage:
 | `productId` | `string` | All products | Limit purchase options to one product. |
 | `filters` | `PurchaseFilters` | All prices | Filter products/prices shown in the dialog. |
 | `children` | `React.ReactNode` | Filter-aware label | Button label. |
-| `title` | `string` | `Buy credits or subscription` | Dialog title. |
-| `description` | `string` | `Choose an option to continue.` | Dialog description. |
-| `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
+| `title` | `string` | Filter-aware title | Dialog title. |
+| `description` | `string` | `Payment is handled by our secure checkout.` | Dialog description. |
+| `emptyMessage` | `string` | `Nothing is available to buy right now. Please check back later.` | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
 | `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
-| `collectCustomerEmail` | `boolean` | `true` | Shows the optional receipt and wallet-recovery email field. |
+| `collectCustomerEmail` | `boolean` | Mode-aware | Shows the optional receipt and wallet-recovery email field. Defaults to `true` in credit-codes mode and `false` in external-auth mode. |
+| `recommendedPriceId` | `string` | - | Highlights one price as the suggested option. |
+| `recommendedLabel` | `string` | `Popular` | Label shown on the recommended price. |
+| `showBranding` | `boolean` | `true` | Shows the vantezzen/pay attribution link. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 | `className` | `string` | - | Extra classes. |
 | Button props | `React.ComponentProps<typeof Button>` | - | Forwarded to the local shadcn button. |
@@ -129,14 +132,17 @@ Controlled usage:
 | `open` | `boolean` | Internal state | Controlled open state. |
 | `onOpenChange` | `(open: boolean) => void` | Internal setter | Controlled open callback. |
 | `children` | `React.ReactNode` | - | Optional trigger element. |
-| `title` | `string` | `Buy credits or subscription` | Dialog title. |
-| `description` | `string` | `Choose an option to continue.` | Dialog description. |
-| `emptyMessage` | `string` | Built-in empty text | Text shown when filters match no prices. |
+| `title` | `string` | Filter-aware title | Dialog title. |
+| `description` | `string` | `Payment is handled by our secure checkout.` | Dialog description. |
+| `emptyMessage` | `string` | `Nothing is available to buy right now. Please check back later.` | Text shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
 | `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
-| `collectCustomerEmail` | `boolean` | `true` | Shows the optional receipt and wallet-recovery email field. |
+| `collectCustomerEmail` | `boolean` | Mode-aware | Shows the optional receipt and wallet-recovery email field. Defaults to `true` in credit-codes mode and `false` in external-auth mode. |
+| `recommendedPriceId` | `string` | - | Highlights one price as the suggested option. |
+| `recommendedLabel` | `string` | `Popular` | Label shown on the recommended price. |
+| `showBranding` | `boolean` | `true` | Shows the vantezzen/pay attribution link. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
 
 ### PurchaseFilters
@@ -152,6 +158,9 @@ Controlled usage:
 The default `CreditGate` fallback uses `filters={{ productId, grantsCredits:
 true }}`. The default `FeatureGate` fallback uses `filters={{ features:
 [feature] }}`.
+
+Custom option renderers receive `PurchaseOptionControls` with `busy`,
+`disabled`, `current`, `recurring`, `recommended`, and a `buy()` callback.
 
 ## Checkout return behavior
 

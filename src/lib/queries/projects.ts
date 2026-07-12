@@ -49,6 +49,7 @@ export async function getProjectDetail(id: string, ownerId: string) {
           createdAt: true,
         },
       },
+      wallets: { columns: { id: true }, limit: 1 },
     },
   });
   return project ?? null;

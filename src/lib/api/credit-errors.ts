@@ -20,7 +20,7 @@ import type { Project } from "@/db/schema";
 /**
  * Map well-known credits-domain errors to HTTP responses.
  * Returns null when `e` is not a recognized error (caller should rethrow).
- * Does NOT handle WalletNotFoundError — code routes must rate-limit first.
+ * Does NOT handle WalletNotFoundError - code routes must rate-limit first.
  */
 export function creditErrorResponse(
   e: unknown,

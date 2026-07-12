@@ -34,6 +34,7 @@ bun install --cwd services/provider
 bun run setup
 docker compose up -d postgres
 bun run db:migrate
+bun run dev
 ```
 
 `bun run setup` copies both environment templates, generates the shared

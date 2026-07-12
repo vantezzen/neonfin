@@ -1,4 +1,4 @@
-# UX Improvement Plans — vantezzen/pay
+# UX Improvement Plans - vantezzen/pay
 
 Source: full UX audit (2026-07-12) covering the dashboard, developer/registry components,
 end-customer checkout flow, documentation, and marketing surfaces.
@@ -16,7 +16,7 @@ end-customer checkout flow, documentation, and marketing surfaces.
 Each plan is self-contained: exact files, exact copy, and acceptance criteria. They
 can be implemented independently and in parallel (they touch disjoint files, with
 one noted exception: plan 01 and plan 04 both touch
-`src/components/docs/pay-component-demos.tsx` — land 01 first).
+`src/components/docs/pay-component-demos.tsx` - land 01 first).
 
 ## Conventions for implementers (read before starting)
 
@@ -24,7 +24,7 @@ one noted exception: plan 01 and plan 04 both touch
   `node_modules/next/dist/docs/` before writing Next-specific code.
   `cacheComponents` is enabled: any dynamic access (`await params`,
   `await searchParams`, cookies, etc.) must be isolated inside a `<Suspense>`
-  boundary or `next build` fails. Only `next build` catches this — always run it.
+  boundary or `next build` fails. Only `next build` catches this - always run it.
 - **Registry files (`registry/pay/**`) ship into consumer apps.** They must stay
   zero-dependency (lib) / shadcn-only (components), browser-safe, and must not
   import dashboard-only utilities. `src/` symlinks into `registry/` so
@@ -36,10 +36,10 @@ one noted exception: plan 01 and plan 04 both touch
   existing `FormDialog` / `ConfirmAction` / `MutationForm` patterns.
 - **Verification:** `node_modules/.bin/tsc --noEmit`, `bun run lint`,
   `bun run test`, `bun run build`. After registry changes also
-  `bun run registry:build`. Do NOT start dev servers or curl/browser-test —
+  `bun run registry:build`. Do NOT start dev servers or curl/browser-test -
   the maintainer does manual testing.
 - **If you run inside an isolated agent worktree:** the worktree may branch from a
   stale ancestor. `git reset --hard` to the intended base commit as your first step.
 - Do not reintroduce the old "neonfin" naming anywhere user-facing.
 - Typography in user-facing copy: when a plan specifies an em/en dash, use the
-  actual character (`—`/`–`), not a hyphen-minus.
+  actual character (`-`/`–`), not a hyphen-minus.

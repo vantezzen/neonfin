@@ -73,7 +73,7 @@ Useful scripts:
 | `bun run test` | Run Bun tests. |
 | `bun run db:generate` | Generate Drizzle migrations after schema changes. |
 | `bun run db:migrate` | Apply migrations. |
-| `bun run db:reset -- --yes` | Reset local DB, then run migrations. |
+| `bun run db:reset -- --force` | Reset local DB, then run migrations. |
 | `bun run db:seed` | Create screenshot/demo data. |
 | `bun run db:studio` | Open Drizzle Studio. |
 | `bun run registry:build` | Build shadcn registry output. |

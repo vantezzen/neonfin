@@ -31,17 +31,6 @@ export const pay = createPayClient({
 
 ## Config
 
-## Read orders
-
-Use cursor pagination when your app needs a customer-facing purchase history:
-
-```ts
-const page = await pay.listOrders({ limit: 25 });
-const next = page.nextCursor
-  ? await pay.listOrders({ cursor: page.nextCursor })
-  : null;
-```
-
 | Field | Type | Description |
 |---|---|---|
 | `baseUrl` | `string` | Public URL of your vantezzen/pay instance. |
@@ -64,6 +53,7 @@ storage. Do not call it during SSR or in server code; use
 
 ```ts
 const products = await pay.getProducts();
+const project = await pay.getMe();
 const code = await pay.getOrCreateCode();
 const wallet = await pay.getWallet();
 const result = await pay.deduct(10, { idempotencyKey: "job_123" });
@@ -89,6 +79,7 @@ deduct, and checkout calls clear it and create a fresh wallet automatically.
 
 | Method | Returns | Description |
 |---|---|---|
+| `getMe()` | `Promise<PayIdentity>` | Identifies the authenticated project, mode, and key kind. |
 | `getProducts()` | `Promise<Product[]>` | Reads active products and prices. |
 | `getWallet(code?)` | `Promise<WalletInfo>` | Reads balances, features, and subscriptions in one call. |
 | `getBalances(code?)` | `Promise<Balance[]>` | Reads all balances for a code wallet. |
@@ -159,6 +150,8 @@ Checkout options:
 | `customerEmail` | `string` | Pre-fills the checkout email when the provider supports it. |
 | `allowPromotionCodes` | `boolean` | Lets the customer enter a provider promotion or discount code. |
 | `discountCode` | `string` | Applies or pre-fills a specific provider promotion or discount code. |
+| `idempotencyKey` | `string` | Reuses the original checkout when a request is retried. |
+| `code` | `string` | Explicit credit-code wallet to top up. |
 
 `CheckoutResult` contains:
 
@@ -168,6 +161,17 @@ type CheckoutResult = {
   checkoutId: string;
   orderId: string;
 };
+```
+
+## Read orders
+
+Use cursor pagination when your app needs a customer-facing purchase history:
+
+```ts
+const page = await pay.listOrders({ limit: 25 });
+const next = page.nextCursor
+  ? await pay.listOrders({ cursor: page.nextCursor })
+  : null;
 ```
 
 ## Billing portal

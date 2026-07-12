@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
 import { Plus } from "lucide-react";
@@ -92,8 +93,11 @@ export function NewProductButton({
         <Field label="Payment provider">
           {providerAccounts.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Connect a provider in Settings to enable checkout. You can add the
-              product now and attach one later.
+              Connect Stripe or Polar under{" "}
+              <Link href="/dashboard/providers" className="font-medium underline-offset-4 hover:underline">
+                Providers
+              </Link>{" "}
+              to enable checkout. You can add the product now and attach one later.
             </p>
           ) : (
             <NativeSelect name="providerAccountId" className="w-full">

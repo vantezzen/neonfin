@@ -1,4 +1,4 @@
-# Plan 01 — End-customer checkout experience
+# Plan 01 - End-customer checkout experience
 
 **Goal:** the checkout surfaces our developers' *users* see (PurchaseDialog, the
 popup/redirect handoff pages, wallet dialog) must look polished, build trust, and
@@ -9,13 +9,13 @@ branding.
 
 **Files touched:**
 - `registry/pay/components/pay/purchase-dialog.tsx` (main redesign)
-- `registry/pay/components/pay/provider.tsx` (only if `usePayMode` isn't already exported — it is, at `provider.tsx:282`; no change expected)
+- `registry/pay/components/pay/provider.tsx` (only if `usePayMode` isn't already exported - it is, at `provider.tsx:282`; no change expected)
 - `src/app/pay/success/[orderId]/page.tsx`, `success-poller.tsx`
 - `src/app/pay/status/[orderId]/route.ts`
 - `src/app/pay/cancelled/page.tsx`
 - `src/app/pay/recover/page.tsx`
 - `content/docs/components/purchase.mdx` (props table update)
-- `src/components/docs/pay-component-demos.tsx` (purchase demo caption only — coordinate with plan 04)
+- `src/components/docs/pay-component-demos.tsx` (purchase demo caption only - coordinate with plan 04)
 
 **Constraints (critical):**
 - `registry/pay/**` ships into consumer apps via shadcn. Keep everything
@@ -23,7 +23,7 @@ branding.
   theme. No hard-coded brand colors. No new dependencies. base-ui shadcn:
   `render` prop, never `asChild`.
 - Do NOT change the public API of `PurchaseOptionControls`, `PurchaseOption`,
-  `PurchaseFilters`, or the `renderOption` contract — consumers already use them.
+  `PurchaseFilters`, or the `renderOption` contract - consumers already use them.
   New props are additive with safe defaults.
 - After changes: `bun run registry:build`, `tsc --noEmit`, `bun run test`,
   `bun run build`.
@@ -32,7 +32,7 @@ branding.
 
 ## 1. PurchaseDialog redesign (`registry/pay/components/pay/purchase-dialog.tsx`)
 
-### 1.1 Option rows — make them look like offers, not table rows
+### 1.1 Option rows - make them look like offers, not table rows
 
 Current row (`PurchaseOptionButton`, lines 80–149): flat `rounded-lg border p-3`,
 title and price share the same `font-medium` weight, `product.name` is repeated
@@ -59,11 +59,11 @@ Concrete changes:
    the busy `Loader2` and the discount line-through behavior exactly as today.
 3. **Remove the per-row `product.name` line** (current line 125) when all
    rendered options belong to one product. When options span multiple products,
-   render group headers instead (see 1.3) — never repeat the product name inside
+   render group headers instead (see 1.3) - never repeat the product name inside
    every row.
 4. **Unit-price hint** (new, only when `price.creditsGranted > 0` and
    `price.amountCents > 0`): a `text-xs text-muted-foreground` line under the
-   title column. Format: pick the denominator that keeps the number readable —
+   title column. Format: pick the denominator that keeps the number readable -
    per 1 unit if unit price ≥ $0.10, else per 100 units. Use the existing
    `formatMoney`. Examples: `≈ $0.83 per 100 minutes`, `≈ $0.10 per image`.
    Implement as a small pure helper `unitPriceHint(price, product): string | null`
@@ -79,7 +79,7 @@ Concrete changes:
    recommendedLabel?: string; // default "Popular"
    ```
    Pass a new optional `recommended: boolean` field on
-   `PurchaseOptionControls` (additive — existing consumers unaffected) and let
+   `PurchaseOptionControls` (additive - existing consumers unaffected) and let
    `PurchaseOptionButton` read it. Add both props to `PurchaseButtonProps` and
    forward them.
 6. Keep the "Current plan" pill exactly as-is (check icon + `bg-primary/10`).
@@ -98,7 +98,7 @@ each product's rows: `<p className="pt-1 text-xs font-medium uppercase tracking-
 Single-product case renders the flat list exactly like today (minus the
 redundant name line).
 
-### 1.4 Email field — move it below the decision
+### 1.4 Email field - move it below the decision
 
 Today the optional "Receipt and recovery email" input renders *above* the
 options (lines 349–363): form friction before the user has seen what they can
@@ -107,15 +107,15 @@ buy. Changes:
 2. Default visibility becomes mode-aware: the field only matters for anonymous
    wallets (recovery). Read `usePayMode()` (exported from
    `@/components/pay/provider`) and change the render condition to:
-   `collectCustomerEmail ?? mode === "credit_codes"` — i.e. change the prop type
+   `collectCustomerEmail ?? mode === "credit_codes"` - i.e. change the prop type
    to `collectCustomerEmail?: boolean` with **no** literal default (remove
    `= true`), and compute the effective value. Document this default change in
    `purchase.mdx`.
-3. New copy — label: `Email (optional)`; add a helper line under the input:
+3. New copy - label: `Email (optional)`; add a helper line under the input:
    `<p className="text-xs text-muted-foreground">Get a receipt and a recovery link for your credits.</p>`.
    Keep `autoComplete="email"`, keep the same validation and error message.
 
-### 1.5 Header copy — derive a human default title
+### 1.5 Header copy - derive a human default title
 
 Replace the static defaults (`title = "Buy credits or subscription"`,
 `description = "Choose an option to continue."`) with:
@@ -132,13 +132,13 @@ remain overridable props.
 ### 1.6 Trust footer + branding ("tony" branding)
 
 Add a footer strip at the bottom of `DialogContent` (below options/email, above
-the `canManage` footer — or merged with it):
+the `canManage` footer - or merged with it):
 
 ```tsx
 <div className="flex items-center justify-between gap-3 border-t pt-3">
   <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
     <Lock className="size-3" aria-hidden />
-    Secure checkout — card details never touch this site
+    Secure checkout - card details never touch this site
   </p>
   {showBranding ? (
     <a
@@ -156,15 +156,15 @@ the `canManage` footer — or merged with it):
 New prop `showBranding?: boolean` (default `true`) on both `PurchaseDialogProps`
 and `PurchaseButtonProps`. Import `Lock` from lucide-react. Use a real em dash.
 
-### 1.7 Status messaging — separate reassurance from errors
+### 1.7 Status messaging - separate reassurance from errors
 
 `checkout_closed` currently renders in destructive red (lines 284–287) even
 though its message is reassuring. Introduce a second state
 `const [notice, setNotice] = useState<string | null>(null)`:
-- `checkout_closed` → `setNotice("Confirming your payment — this page updates automatically once it's recorded.")` (not `setError`).
+- `checkout_closed` → `setNotice("Confirming your payment - this page updates automatically once it's recorded.")` (not `setError`).
 - Render notice as `<p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> {notice}</p>`.
 - `checkout_cancelled` stays an error but soften to informational styling too if
-  trivial; otherwise keep as-is (it is not the user's failure — acceptable either way).
+  trivial; otherwise keep as-is (it is not the user's failure - acceptable either way).
 - Clear `notice` wherever `error` is cleared today.
 
 ### 1.8 Loading and empty states
@@ -180,7 +180,7 @@ though its message is reassuring. Introduce a second state
 When `canManage` is true (user already subscribes to a product on offer), the
 other tiers of that product render disabled with no explanation. Above the
 "Manage subscription" footer button add:
-`<p className="text-xs text-muted-foreground">To switch plans, use Manage subscription — a new checkout can't change an existing subscription.</p>`
+`<p className="text-xs text-muted-foreground">To switch plans, use Manage subscription - a new checkout can't change an existing subscription.</p>`
 (only when at least one rendered option was disabled for that reason).
 
 ---
@@ -195,15 +195,15 @@ default redirect target. It should feel like a receipt moment, not a debug view.
 `src/app/pay/status/[orderId]/route.ts` currently returns
 `{ status, code, balance, creditUnit }`. Add: `productName: string | null`,
 `amountCents: number | null`, `currency: string | null`, `creditsGranted: number | null`
-— all from the order's entitlement snapshot / joined price+product (the order
+- all from the order's entitlement snapshot / joined price+product (the order
 row already snapshots these; read, don't recompute). Update the `Status` type in
-`success-poller.tsx`. This is a pay-internal route consumed only by this page —
+`success-poller.tsx`. This is a pay-internal route consumed only by this page -
 additive change, safe.
 
 ### 2.2 Page shell (`page.tsx`)
 
 - Keep the `Suspense`-isolated `Resolver` pattern exactly (cacheComponents
-  requirement — do not inline `await params` outside the boundary).
+  requirement - do not inline `await params` outside the boundary).
 - Drop the floating "Thank you" `<h1>` above the card. The card itself carries
   the moment (heading moves inside, see 2.3). Keep an `<h1 className="sr-only">Payment status</h1>` for a11y.
 - Add a footer under the card:
@@ -215,21 +215,21 @@ additive change, safe.
         (✓)            ← CheckCircle2 size-10 text-emerald-600,
                           className="motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-500"
    Payment complete    ← text-lg font-semibold
- 600 minutes — $5.00   ← NEW: from creditsGranted/creditUnit + amountCents/currency
+ 600 minutes - $5.00   ← NEW: from creditsGranted/creditUnit + amountCents/currency
                           (fall back to productName; omit line if all null)
  1,240 minutes now available.   ← existing balance line, keep
 ```
 
 - When the window has an opener (popup flow): after posting the message, render
-  `"Returning you to the app…"` instead of `"You can return to the app and keep going."` (the window closes itself 900ms later — say so).
+  `"Returning you to the app…"` instead of `"You can return to the app and keep going."` (the window closes itself 900ms later - say so).
 - When there is **no** opener (redirect flow) and `returnOrigin` is a valid
   origin: render a primary button `Return to app` →
   `window.location.assign(returnOrigin)`. When no returnOrigin: keep the
-  current sentence but change to `"You're all set — you can close this tab."`
+  current sentence but change to `"You're all set - you can close this tab."`
 - Format the amount with a tiny local `formatMoney(amountCents, currency)`
   helper (Intl.NumberFormat, same approach as `registry/pay/lib/pay/format.ts`;
   this page is app-side so it may import from `@/lib/format` if an equivalent
-  exists — check `src/lib/format.ts` first, it has `formatMoney`).
+  exists - check `src/lib/format.ts` first, it has `formatMoney`).
 - Keep the recovery-code block exactly as designed (it's good), but move it
   visually below the return CTA.
 
@@ -242,7 +242,7 @@ terminal status:
 - Body: failed/expired → `"No charge was made. You can close this window and try again."`;
   refunded → `"This payment was refunded. Credits from it have been removed."`
 - Below, a muted order-id line with a copy button (reuse the copy-button pattern
-  already in this file): `Order {orderId}` — support conversations need it, but
+  already in this file): `Order {orderId}` - support conversations need it, but
   it shouldn't be the headline like today.
 - If `returnOrigin` is valid and no opener: show the `Return to app` button here too.
 
@@ -256,7 +256,7 @@ stuck user can contact support without screenshotting a spinner.
 ## 3. Cancelled page (`src/app/pay/cancelled/page.tsx`)
 
 Currently a static "Checkout cancelled / No charge was made. You can close this
-window and try again." — correct for the popup flow, a dead end for redirect.
+window and try again." - correct for the popup flow, a dead end for redirect.
 
 - Keep the `CancelledPopupNotice` postMessage behavior untouched.
 - Pass `returnOrigin` through to the visible content: when valid (reuse the same
@@ -271,18 +271,18 @@ window and try again." — correct for the popup flow, a dead end for redirect.
 ## 4. Recover page (`src/app/pay/recover/page.tsx`)
 
 Small consistency pass only: add the same branding footer line under the card as
-success/cancelled. No other changes — the page is already good.
+success/cancelled. No other changes - the page is already good.
 
 ---
 
-## 5. WalletDialog — light polish only (`registry/pay/components/pay/wallet-dialog.tsx`)
+## 5. WalletDialog - light polish only (`registry/pay/components/pay/wallet-dialog.tsx`)
 
 Do NOT restructure. Three small fixes:
-1. The billing box description `"Manage invoices, payment methods, and subscriptions."` — fine. But the **billing "Manage" button** for code wallets is disabled until `currentCode` loads with no hint; add `title="Loading wallet…"` while `!currentCode && !externalAuth`.
-2. Copy affordance: `copy()` silently no-ops when clipboard is unavailable —
+1. The billing box description `"Manage invoices, payment methods, and subscriptions."` - fine. But the **billing "Manage" button** for code wallets is disabled until `currentCode` loads with no hint; add `title="Loading wallet…"` while `!currentCode && !externalAuth`.
+2. Copy affordance: `copy()` silently no-ops when clipboard is unavailable -
   acceptable, but show the code selected (`select()` on the field) as fallback if
   `WalletCodeField` exposes a ref cheaply; if not, skip (do not over-engineer).
-3. Dialog description for code wallets → `"Your wallet code keeps credits available across devices — like a gift card number."` (the analogy does more than the abstract sentence).
+3. Dialog description for code wallets → `"Your wallet code keeps credits available across devices - like a gift card number."` (the analogy does more than the abstract sentence).
 
 ---
 
@@ -295,7 +295,7 @@ Do NOT restructure. Three small fixes:
   values; document `PurchaseOptionControls.recommended`.
 - `src/components/docs/pay-component-demos.tsx`: set
   `recommendedPriceId` in the purchase demo if a stable demo price id is
-  available via env/config — if not cheaply available, skip; do not hardcode ids.
+  available via env/config - if not cheaply available, skip; do not hardcode ids.
 
 ## Acceptance criteria
 

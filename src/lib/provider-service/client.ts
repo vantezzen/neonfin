@@ -25,7 +25,7 @@ function serviceConfig() {
   const { PAY_PROVIDER_SERVICE_URL, PAY_PROVIDER_SERVICE_SECRET } = env();
   if (!PAY_PROVIDER_SERVICE_URL || !PAY_PROVIDER_SERVICE_SECRET) {
     throw new Error(
-      "PAY_PROVIDER_SERVICE_URL and PAY_PROVIDER_SERVICE_SECRET are required for provider operations",
+      "The provider service isn't reachable. Check PAY_PROVIDER_SERVICE_URL/SECRET on the server, then retry.",
     );
   }
   return { url: PAY_PROVIDER_SERVICE_URL, secret: PAY_PROVIDER_SERVICE_SECRET };
@@ -35,18 +35,30 @@ async function callProviderService<T extends ProviderServiceRequest["op"]>(
   request: ProviderServiceRequest & { op: T },
 ): Promise<ProviderServiceData<T>> {
   const { url, secret } = serviceConfig();
-  const res = await fetch(new URL("/internal/provider", url), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
+  let res: Response;
+  try {
+    res = await fetch(new URL("/internal/provider", url), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+  } catch {
+    throw new Error(
+      "The provider service isn't reachable. Check PAY_PROVIDER_SERVICE_URL/SECRET on the server, then retry.",
+    );
+  }
   const data = (await res.json().catch(() => null)) as
     | ProviderServiceResponse<T>
     | null;
   if (!res.ok || !data?.ok) {
+    if (res.status >= 500) {
+      throw new Error(
+        "The provider service isn't reachable. Check PAY_PROVIDER_SERVICE_URL/SECRET on the server, then retry.",
+      );
+    }
     throw new Error(data?.ok === false ? data.error : "Provider service failed");
   }
   return data.data;

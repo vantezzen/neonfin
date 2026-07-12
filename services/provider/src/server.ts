@@ -10,7 +10,7 @@ import { validateSecretsConfig } from "./secrets";
 
 const config = providerServiceConfig();
 
-// Validate secrets configuration at boot — exits non-zero on misconfiguration.
+// Validate secrets configuration at boot - exits non-zero on misconfiguration.
 validateSecretsConfig();
 
 Bun.serve({
@@ -22,7 +22,10 @@ Bun.serve({
       return Response.json({ ok: false, error: "Not found" }, { status: 404 });
     }
     if (!isAuthorized(req, config.authSecret)) {
-      return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     let op: string | undefined;

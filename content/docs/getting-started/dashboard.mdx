@@ -13,7 +13,9 @@ finish the project setup checklist.
 
 ## 1. Connect Stripe
 
-Open **Providers** and connect Stripe with a test key, for example `sk_test_...`.
+Open **Providers** and connect Stripe with a restricted test key, for example
+`rk_test_...`. See [Connect a provider](/docs/workflows/providers) for the
+required scopes.
 
 ![Add Stripe panel](./add-stripe.png)
 
@@ -79,7 +81,8 @@ Each price is a package users can buy. For example:
 | $5 starter pack | 600 minutes | One-time |
 | $19 monthly pack | 3,000 minutes | Monthly |
 
-Attach the product to your Stripe account so vantezzen/pay can sync the provider
+On the product card, use the provider strip and click **Attach** to connect the
+product to your Stripe account so vantezzen/pay can sync the provider
 catalog and create checkout sessions. vantezzen/pay creates and manages the price in
 Stripe automatically - you never touch the Stripe catalog yourself.
 

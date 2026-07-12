@@ -23,7 +23,7 @@ export function MutationForm({
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
-    if (state.ok) toast.success(successMessage);
+    if (state.ok) toast.success(state.message ?? successMessage);
   }, [state, successMessage]);
 
   return (

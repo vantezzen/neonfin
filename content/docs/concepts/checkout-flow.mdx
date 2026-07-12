@@ -7,22 +7,6 @@ vantezzen/pay keeps checkout wiring small in your app.
 
 ## The user flow
 
-```mermaid
-sequenceDiagram
-  participant App as Your app
-  participant Pay as vantezzen/pay
-  participant Provider as Stripe or Polar
-
-  App->>Pay: Create checkout for a price
-  Pay->>Provider: Create checkout session
-  Provider-->>App: Checkout URL
-  App->>Provider: Buyer completes payment
-  Provider->>Pay: Signed payment webhook
-  Pay->>Pay: Verify, fulfill, and credit wallet
-  App->>Pay: Poll or resume pending order
-  Pay-->>App: Updated wallet and paid order
-```
-
 1. The user clicks `PurchaseButton`.
 2. `PurchaseDialog` lists the matching prices configured in vantezzen/pay.
 3. The user picks a package.
@@ -55,6 +39,8 @@ The default components handle the return path:
 - When the order is paid, it stores the issued code and refreshes balances.
 
 That means most apps do not need a custom checkout callback page.
+If your server needs to react to payments, use
+[consumer webhooks](/docs/api/webhooks).
 
 ## Refunds and subscriptions
 

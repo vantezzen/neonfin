@@ -1,6 +1,13 @@
 "use client";
 import type * as React from "react";
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import {
   Eye,
@@ -12,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Product } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import { humanizeFeatureKey } from "@/lib/features";
 import {
   attachProvider,
@@ -103,7 +111,9 @@ function ProductMenu({
   useEffect(() => {
     if (toggleState.error) toast.error(toggleState.error);
     if (toggleState.ok) {
-      toast.success(product.active ? "Product deactivated" : "Product activated");
+      toast.success(
+        product.active ? "Product deactivated" : "Product activated",
+      );
     }
   }, [product.active, toggleState]);
 
@@ -332,7 +342,7 @@ export function ProductCard({
                 {price.label === null &&
                 Number(price.creditsGranted) === 0 &&
                 price.features.length === 0 ? (
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">-</span>
                 ) : null}
               </span>
               {!price.providerPriceId ? (
@@ -343,7 +353,19 @@ export function ProductCard({
                   Not synced
                 </Status>
               ) : null}
-              <div className="ml-auto flex shrink-0 items-center gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+              {price.providerPriceId && attached?.environment === "sandbox" ? (
+                <span className="ml-auto shrink-0">
+                  <TestCheckoutButton priceId={price.id} sandbox />
+                </span>
+              ) : null}
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100",
+                  !(
+                    price.providerPriceId && attached?.environment === "sandbox"
+                  ) && "ml-auto",
+                )}
+              >
                 <CopyInline value={price.id} label="Copy ID" />
                 {price.providerPriceId && productUrl ? (
                   <ProviderLink
@@ -353,7 +375,8 @@ export function ProductCard({
                     className="p-1"
                   />
                 ) : null}
-                {price.providerPriceId ? (
+                {price.providerPriceId &&
+                attached?.environment !== "sandbox" ? (
                   <TestCheckoutButton
                     priceId={price.id}
                     sandbox={attached?.environment === "sandbox"}
@@ -399,50 +422,65 @@ export function ProductCard({
       )}
 
       {/* Provider strip: a single status line + the one action that fixes it. */}
-      {providerAccounts.length > 0 ? (
-        <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-4 py-2">
-          <Status
-            tone={attached ? (hasUnsynced ? "warning" : "success") : "warning"}
-            className="text-xs text-muted-foreground"
-          >
-            {attached
-              ? hasUnsynced
-                ? "Some prices aren't synced yet"
-                : `Live via ${attached.label}`
-              : "No payment provider - checkout is disabled"}
-          </Status>
-          <div className="flex shrink-0 items-center gap-1">
-            {productUrl ? (
-              <ProviderLink href={productUrl} className="mr-1">
-                View in {attached?.label ?? "provider"}
-              </ProviderLink>
-            ) : null}
-            {attached && hasUnsynced ? (
-              <MutationForm
-                action={syncProduct}
-                successMessage="Product prices synced"
-              >
-                {(pending) => (
-                  <>
-                    <input type="hidden" name="id" value={product.id} />
-                    <input type="hidden" name="projectId" value={projectId} />
-                    <Button type="submit" variant="ghost" size="xs" disabled={pending}>
-                      <RefreshCw className={pending ? "size-3 animate-spin" : "size-3"} />
-                      {pending ? "Syncing…" : "Sync now"}
-                    </Button>
-                  </>
-                )}
-              </MutationForm>
-            ) : null}
+      <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-4 py-2">
+        <Status
+          tone={attached ? (hasUnsynced ? "warning" : "success") : "warning"}
+          className="text-xs text-muted-foreground"
+        >
+          {attached
+            ? hasUnsynced
+              ? "Some prices aren't synced yet"
+              : `Live via ${attached.label}`
+            : "No payment provider - checkout is disabled"}
+        </Status>
+        <div className="flex shrink-0 items-center gap-1">
+          {productUrl ? (
+            <ProviderLink href={productUrl} className="mr-1">
+              View in {attached?.label ?? "provider"}
+            </ProviderLink>
+          ) : null}
+          {attached && hasUnsynced ? (
+            <MutationForm
+              action={syncProduct}
+              successMessage="Product prices synced"
+            >
+              {(pending) => (
+                <>
+                  <input type="hidden" name="id" value={product.id} />
+                  <input type="hidden" name="projectId" value={projectId} />
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="xs"
+                    disabled={pending}
+                  >
+                    <RefreshCw
+                      className={pending ? "size-3 animate-spin" : "size-3"}
+                    />
+                    {pending ? "Syncing…" : "Sync now"}
+                  </Button>
+                </>
+              )}
+            </MutationForm>
+          ) : null}
+          {providerAccounts.length > 0 ? (
             <AttachProviderButton
               productId={product.id}
               projectId={projectId}
               providerAccounts={providerAccounts}
               current={product.providerAccountId}
             />
-          </div>
+          ) : (
+            <Button
+              render={<Link href="/dashboard/providers" />}
+              variant="ghost"
+              size="xs"
+            >
+              Connect provider
+            </Button>
+          )}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

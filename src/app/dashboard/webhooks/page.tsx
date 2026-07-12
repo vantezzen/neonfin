@@ -18,6 +18,7 @@ import {
 export const metadata = { title: "Webhooks" };
 
 const STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  pending: { label: "Pending", tone: "neutral" },
   processed: { label: "Processed", tone: "success" },
   skipped: { label: "Skipped", tone: "neutral" },
   error: { label: "Error", tone: "danger" },
@@ -113,8 +114,8 @@ export default async function WebhooksPage({
                     <code className="truncate font-mono text-[13px] font-medium">
                       {e.type}
                     </code>
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {e.provider}
+                    <span className="text-xs text-muted-foreground">
+                      {e.accountLabel}
                     </span>
                     {e.error ? (
                       <span className="truncate text-xs text-destructive">
@@ -126,11 +127,15 @@ export default async function WebhooksPage({
                     <Status tone={status.tone} className="text-[13px]">
                       {status.label}
                     </Status>
-                    <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline">
+                    <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline" title={e.createdAt.toISOString()}>
                       {formatDateTime(e.createdAt)}
                     </span>
                   </div>
                 </summary>
+                <div className="border-t bg-muted/20 px-4 py-3 text-xs">
+                  <p className="text-muted-foreground">Provider event <code>{e.providerEventId}</code></p>
+                  {e.error ? <pre className="mt-2 whitespace-pre-wrap text-xs text-destructive">{e.error}</pre> : null}
+                </div>
                 <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-4 py-2.5">
                   <p className="text-xs text-muted-foreground">
                     Replay re-runs fulfillment from the stored verified payload.

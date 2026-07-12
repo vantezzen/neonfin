@@ -55,8 +55,13 @@ export type DashboardProjectActivity = {
 };
 
 export type SetupState = {
-  /** Provider connected with a webhook secret in place. */
+  /** At least one provider account exists. */
   hasProvider: boolean;
+  incompleteProvider: {
+    id: string;
+    provider: "stripe" | "polar";
+    environment: "sandbox" | "production";
+  } | null;
   /** At least one project exists. */
   hasProject: boolean;
   /** A price is synced to a provider, or there's a paid order. */
@@ -65,6 +70,7 @@ export type SetupState = {
   firstProjectId: string | null;
   /** True once every step is done - the checklist hides. */
   complete: boolean;
+  completedRecently: boolean;
 };
 
 /**
@@ -74,15 +80,14 @@ export type SetupState = {
 export async function getSetupState(ownerId: string): Promise<SetupState> {
   const [providerRows, projectRows] = await Promise.all([
     db
-      .select({ id: providerAccounts.id })
+      .select({
+        id: providerAccounts.id,
+        provider: providerAccounts.provider,
+        environment: providerAccounts.environment,
+        webhookSecretEnc: providerAccounts.webhookSecretEnc,
+      })
       .from(providerAccounts)
-      .where(
-        and(
-          eq(providerAccounts.ownerId, ownerId),
-          isNotNull(providerAccounts.webhookSecretEnc),
-        ),
-      )
-      .limit(1),
+      .where(eq(providerAccounts.ownerId, ownerId)),
     db
       .select({ id: projects.id })
       .from(projects)
@@ -92,10 +97,20 @@ export async function getSetupState(ownerId: string): Promise<SetupState> {
   ]);
 
   const hasProvider = providerRows.length > 0;
+  const incomplete = providerRows.find((row) => !row.webhookSecretEnc);
+  const incompleteProvider = incomplete
+    ? {
+        id: incomplete.id,
+        provider: incomplete.provider,
+        environment: incomplete.environment as "sandbox" | "production",
+      }
+    : null;
   const hasProject = projectRows.length > 0;
   const firstProjectId = projectRows[0]?.id ?? null;
 
   let isLive = false;
+  let paidOrderCount = 0;
+  let latestPaidOrder: Date | null = null;
   if (hasProject) {
     const projectIds = await ownedProjectIds(ownerId);
     const [syncedPrice, paidOrder] = await Promise.all([
@@ -111,22 +126,35 @@ export async function getSetupState(ownerId: string): Promise<SetupState> {
         )
         .limit(1),
       db
-        .select({ id: orders.id })
+        .select({
+          count: sql<number>`count(*)::int`,
+          latest: sql<Date | null>`max(${orders.paidAt})`,
+        })
         .from(orders)
         .where(
           and(inArray(orders.projectId, projectIds), eq(orders.status, "paid")),
         )
-        .limit(1),
     ]);
-    isLive = syncedPrice.length > 0 || paidOrder.length > 0;
+    paidOrderCount = paidOrder[0]?.count ?? 0;
+    latestPaidOrder = paidOrder[0]?.latest ?? null;
+    isLive = syncedPrice.length > 0 || paidOrderCount > 0;
   }
+
+  const complete = hasProvider && hasProject && isLive;
 
   return {
     hasProvider,
+    incompleteProvider,
     hasProject,
     isLive,
     firstProjectId,
-    complete: hasProvider && hasProject && isLive,
+    complete,
+    completedRecently:
+      complete &&
+      paidOrderCount > 0 &&
+      paidOrderCount <= 3 &&
+      latestPaidOrder != null &&
+      latestPaidOrder >= new Date(Date.now() - 7 * DAY_MS),
   };
 }
 

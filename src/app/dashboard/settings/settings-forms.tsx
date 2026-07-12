@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   changeEmail,
   changePassword,
@@ -11,7 +12,7 @@ import {
   type AuthState,
 } from "@/lib/auth/actions";
 import { SectionHeader } from "@/components/dashboard/page-header";
-import { Badge } from "@/components/ui/badge";
+import { Status } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,11 @@ export function SettingsForms({ user }: { user: SettingsUser }) {
     requestAccountDeletion,
     initial,
   );
+  useActionToast(profileState);
+  useActionToast(emailState);
+  useActionToast(verificationState);
+  useActionToast(passwordState);
+  useActionToast(deleteState);
 
   return (
     <div className="flex flex-col gap-5">
@@ -77,9 +83,9 @@ export function SettingsForms({ user }: { user: SettingsUser }) {
       >
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">{user.email}</span>
-          <Badge variant={user.emailVerified ? "secondary" : "destructive"}>
+          <Status tone={user.emailVerified ? "success" : "danger"}>
             {user.emailVerified ? "Verified" : "Unverified"}
-          </Badge>
+          </Status>
         </div>
         {!user.emailVerified ? (
           <form action={verificationAction} className="flex flex-col gap-3">
@@ -238,8 +244,11 @@ function ActionMessage({ state }: { state: AuthState }) {
   if (state.error) {
     return <p className="text-sm text-destructive">{state.error}</p>;
   }
-  if (state.message) {
-    return <p className="text-sm text-muted-foreground">{state.message}</p>;
-  }
   return null;
+}
+
+function useActionToast(state: AuthState) {
+  useEffect(() => {
+    if (state.message) toast.success(state.message);
+  }, [state.message]);
 }

@@ -8,6 +8,7 @@ export type FirstStep = {
   title: string;
   description: string;
   action?: React.ReactNode;
+  note?: string;
   /** Omit for guidance steps that cannot be detected automatically. */
   done?: boolean;
 };
@@ -83,8 +84,13 @@ export function FirstSteps({
                     {step.description}
                   </p>
                 ) : null}
+                {step.note ? (
+                  <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-300">
+                    {step.note}
+                  </p>
+                ) : null}
               </div>
-              {!done && step.action ? (
+              {(!done || step.note) && step.action ? (
                 <div className="shrink-0">{step.action}</div>
               ) : null}
             </li>

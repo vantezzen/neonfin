@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { featureGrants, products, wallets } from "@/db/schema";
+import { creditBalances, featureGrants, products, wallets } from "@/db/schema";
 import { coerceSignedCreditAmountSchema } from "@/lib/amounts";
-import { requireOwnedProject } from "@/lib/auth/dal";
-import { createCodeWallet, creditWallet } from "@/lib/credits";
+import { requireOwnedProject, requireUser } from "@/lib/auth/dal";
+import { createCodeWallet, creditWallet, toNum } from "@/lib/credits";
 import { FEATURE_KEY_RE, normalizeFeatureKey } from "@/lib/features";
 import { actionError, type FormState } from "./state";
 
@@ -36,6 +36,7 @@ export async function adjustBalance(
   formData: FormData,
 ): Promise<FormState> {
   const walletId = String(formData.get("walletId") ?? "");
+  const user = await requireUser();
   const wallet = await db.query.wallets.findFirst({
     where: eq(wallets.id, walletId),
     columns: { projectId: true },
@@ -61,12 +62,32 @@ export async function adjustBalance(
       columns: { id: true },
     });
     if (!product) return { error: "Unknown product for this wallet" };
+    if (parsed.amount < 0 && formData.get("allowNegative") !== "on") {
+      const balance = await db.query.creditBalances.findFirst({
+        where: and(
+          eq(creditBalances.walletId, parsed.walletId),
+          eq(creditBalances.productId, parsed.productId),
+        ),
+        columns: { balance: true },
+      });
+      if (toNum(balance?.balance ?? 0) + parsed.amount < 0) {
+        return {
+          error:
+            "This adjustment would make the balance negative. Enable Allow negative balance to continue.",
+        };
+      }
+    }
     await creditWallet(
       parsed.walletId,
       parsed.productId,
       parsed.amount,
       "manual",
-      { metadata: parsed.note ? { note: parsed.note } : undefined },
+      {
+        metadata: {
+          ...(parsed.note ? { note: parsed.note } : {}),
+          actorUserId: user.id,
+        },
+      },
     );
     revalidatePath(`/dashboard/wallets/${walletId}`);
     return { ok: true };

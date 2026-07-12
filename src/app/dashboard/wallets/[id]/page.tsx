@@ -5,15 +5,23 @@ import { getWalletDetail } from "@/lib/queries/wallets";
 import { adjustBalance, grantWalletFeature } from "@/lib/actions/wallets";
 import { computeWalletAccess, toNum } from "@/lib/credits";
 import { humanizeFeatureKey } from "@/lib/features";
-import { formatLargeNumber, formatDate, formatDateTime } from "@/lib/format";
+import {
+  formatLargeNumber,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+} from "@/lib/format";
 import { PageHeader, SectionHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { FormDialog } from "@/components/app/form-dialog";
 import { CopyInline } from "@/components/app/copy";
-import { StatusDot, type StatusTone } from "@/components/app/status";
+import { Status, StatusDot, type StatusTone } from "@/components/app/status";
+import { ProviderLink } from "@/components/app/provider-link";
+import { providerCustomerUrl, providerOrderUrl } from "@/lib/providers/links";
 import { RevokeFeatureButton } from "@/components/dashboard/revoke-feature-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -46,6 +54,7 @@ export default async function WalletDetailPage({
 
   const products = wallet.project.products;
   const productName = new Map(products.map((p) => [p.id, p.name]));
+  const productUnit = new Map(products.map((p) => [p.id, p.creditUnit]));
   const balanceByProduct = new Map(
     wallet.balances.map((b) => [b.productId, b]),
   );
@@ -54,7 +63,22 @@ export default async function WalletDetailPage({
   // Derived access (features + active subscriptions) - the source of truth.
   const access = await computeWalletAccess(db, wallet.id);
   const manualFeatures = new Set(wallet.featureGrants.map((g) => g.feature));
-  const activeSubs = wallet.subscriptions.filter((s) => s.status === "active");
+  const knownFeatures = [
+    ...new Set(
+      products.flatMap((product) =>
+        product.prices.flatMap((price) => price.features),
+      ),
+    ),
+  ];
+  const customerOrder = wallet.orders.find((order) => order.providerCustomerId);
+  const customerUrl = customerOrder
+    ? providerCustomerUrl(
+        customerOrder.provider,
+        customerOrder.price?.product.providerAccount?.environment ??
+          "production",
+        wallet.providerCustomerId,
+      )
+    : null;
 
   return (
     <>
@@ -73,6 +97,39 @@ export default async function WalletDetailPage({
         action={<CopyInline value={identifier} label="Copy code" />}
       />
 
+      <div className="mb-8 grid gap-2 rounded-xl border px-4 py-3 text-sm sm:grid-cols-2">
+        <p>
+          <span className="text-muted-foreground">Created:</span>{" "}
+          <span title={wallet.createdAt.toISOString()}>
+            {formatDateTime(wallet.createdAt)}
+          </span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Last seen:</span>{" "}
+          <span title={wallet.lastSeenAt.toISOString()}>
+            {formatDateTime(wallet.lastSeenAt)}
+          </span>
+        </p>
+        {wallet.customerEmail ? (
+          <p>
+            <span className="text-muted-foreground">Email:</span>{" "}
+            {wallet.customerEmail}
+          </p>
+        ) : null}
+        {wallet.providerCustomerId ? (
+          <p>
+            <span className="text-muted-foreground">Provider customer:</span>{" "}
+            {customerUrl ? (
+              <ProviderLink href={customerUrl}>
+                {wallet.providerCustomerId}
+              </ProviderLink>
+            ) : (
+              wallet.providerCustomerId
+            )}
+          </p>
+        ) : null}
+      </div>
+
       <div className="flex flex-col gap-10">
         <section className="flex flex-col gap-3">
           <SectionHeader
@@ -80,9 +137,10 @@ export default async function WalletDetailPage({
             description="One balance per product. Adjustments are recorded as manual ledger entries."
           />
           {products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              This project has no products yet.
-            </p>
+            <EmptyState
+              title="This project has no products yet."
+              className="py-10"
+            />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {products.map((product) => {
@@ -107,7 +165,7 @@ export default async function WalletDetailPage({
                     <FormDialog
                       trigger="Adjust"
                       title={`Adjust ${product.name}`}
-                      description="Positive grants credits; negative debits them. Recorded as a manual ledger entry."
+                      description={`Current balance: ${formatLargeNumber(value, product.creditUnit)}. Positive grants credits; negative debits them.`}
                       action={adjustBalance}
                       submitLabel="Apply"
                     >
@@ -130,6 +188,10 @@ export default async function WalletDetailPage({
                           required
                         />
                       </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox name="allowNegative" />
+                        Allow negative balance
+                      </label>
                       <div className="flex flex-col gap-2">
                         <Label htmlFor={`note-${product.id}`}>
                           Note (optional)
@@ -149,101 +211,183 @@ export default async function WalletDetailPage({
         </section>
 
         <section className="flex flex-col gap-3">
-            <SectionHeader
-              title="Access"
-              description="Subscriptions and unlocked features. Access follows subscriptions and purchases automatically."
-              action={
-                <FormDialog
-                  trigger="Grant feature"
-                  title="Grant a feature"
-                  description="Manually unlock a feature for this wallet (comps, support). Revoke only removes manual grants."
-                  action={grantWalletFeature}
-                  submitLabel="Grant"
+          <SectionHeader
+            title="Access"
+            description="Subscriptions and unlocked features. Access follows subscriptions and purchases automatically."
+            action={
+              <FormDialog
+                trigger="Grant feature"
+                title="Grant a feature"
+                description="Manually unlock a feature for this wallet (comps, support). Revoke only removes manual grants."
+                action={grantWalletFeature}
+                submitLabel="Grant"
+              >
+                <input type="hidden" name="walletId" value={wallet.id} />
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="feature">Feature key</Label>
+                  <Input
+                    id="feature"
+                    name="feature"
+                    placeholder="analytics"
+                    list="known-features"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                  />
+                  <datalist id="known-features">
+                    {knownFeatures.map((feature) => (
+                      <option key={feature} value={feature} />
+                    ))}
+                  </datalist>
+                </div>
+              </FormDialog>
+            }
+          />
+
+          {wallet.subscriptions.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {wallet.subscriptions.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3"
                 >
-                  <input type="hidden" name="walletId" value={wallet.id} />
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="feature">Feature key</Label>
-                    <Input
-                      id="feature"
-                      name="feature"
-                      placeholder="analytics"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      required
-                    />
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium">
+                      {s.product.name}
+                      {s.price?.label ? (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {s.price.label}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <StatusDot
+                        tone={s.status === "active" ? "success" : "neutral"}
+                      />
+                      {s.status === "active" ? "Active" : "Canceled"}
+                      {s.currentPeriodEnd
+                        ? ` · ${s.status === "active" ? "renews" : "access until"} ${formatDate(s.currentPeriodEnd)}`
+                        : ""}
+                    </span>
                   </div>
-                </FormDialog>
-              }
-            />
+                </div>
+              ))}
+            </div>
+          ) : null}
 
-            {activeSubs.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {activeSubs.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3"
-                  >
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm font-medium">
-                        {s.product.name}
-                        {s.price?.label ? (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            · {s.price.label}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
-                        <StatusDot tone="success" />
-                        Active
-                        {s.currentPeriodEnd
-                          ? ` · renews ${formatDate(s.currentPeriodEnd)}`
-                          : ""}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] text-muted-foreground">
+              Unlocked features
+            </span>
+            {access.features.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                None yet - granted by a subscription, a one-time purchase, or
+                manually.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {access.features.map((f) => {
+                  const manual = manualFeatures.has(f);
+                  return (
+                    <span
+                      key={f}
+                      className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                    >
+                      {humanizeFeatureKey(f)}
+                      {manual ? (
+                        <RevokeFeatureButton walletId={wallet.id} feature={f} />
+                      ) : (
+                        <span
+                          className="text-muted-foreground"
+                          title="Granted by a subscription or purchase"
+                        >
+                          auto
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
-            ) : null}
+            )}
+          </div>
+        </section>
 
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] text-muted-foreground">
-                Unlocked features
-              </span>
-              {access.features.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  None yet - granted by a subscription, a one-time purchase, or
-                  manually.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {access.features.map((f) => {
-                    const manual = manualFeatures.has(f);
+        <section className="flex flex-col gap-3">
+          <SectionHeader
+            title="Orders"
+            description="Checkouts that paid into this wallet."
+          />
+          {wallet.orders.length === 0 ? (
+            <EmptyState
+              title="No orders yet for this wallet."
+              className="py-10"
+            />
+          ) : (
+            <div className="overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Provider</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wallet.orders.map((order) => {
+                    const providerUrl = providerOrderUrl(
+                      order.provider,
+                      order.price?.product.providerAccount?.environment ??
+                        "production",
+                      order.providerCheckoutId,
+                    );
+                    const tone: StatusTone =
+                      order.status === "paid"
+                        ? "success"
+                        : order.status === "failed"
+                          ? "danger"
+                          : order.status === "pending"
+                            ? "neutral"
+                            : "warning";
                     return (
-                      <span
-                        key={f}
-                        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
-                      >
-                        {humanizeFeatureKey(f)}
-                        {manual ? (
-                          <RevokeFeatureButton
-                            walletId={wallet.id}
-                            feature={f}
-                          />
-                        ) : (
-                          <span
-                            className="text-muted-foreground"
-                            title="Granted by a subscription or purchase"
-                          >
-                            auto
-                          </span>
-                        )}
-                      </span>
+                      <TableRow key={order.id}>
+                        <TableCell
+                          className="text-muted-foreground"
+                          title={order.createdAt.toISOString()}
+                        >
+                          {formatDateTime(order.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          {order.price?.product.name ?? "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Status tone={tone}>
+                            <span className="capitalize">{order.status}</span>
+                          </Status>
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatMoney(order.amountCents, order.currency)}
+                        </TableCell>
+                        <TableCell>
+                          {providerUrl ? (
+                            <ProviderLink href={providerUrl}>
+                              {order.provider}
+                            </ProviderLink>
+                          ) : (
+                            <span className="capitalize text-muted-foreground">
+                              {order.provider}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </div>
-              )}
+                </TableBody>
+              </Table>
             </div>
+          )}
         </section>
 
         <section className="flex flex-col gap-3">
@@ -275,10 +419,17 @@ export default async function WalletDetailPage({
                       entry.metadata && typeof entry.metadata === "object"
                         ? (entry.metadata as { note?: string }).note
                         : undefined;
+                    const actorUserId =
+                      entry.metadata && typeof entry.metadata === "object"
+                        ? (entry.metadata as { actorUserId?: string })
+                            .actorUserId
+                        : undefined;
                     return (
                       <TableRow key={entry.id}>
                         <TableCell className="text-muted-foreground tabular-nums">
-                          {formatDateTime(entry.createdAt)}
+                          <span title={entry.createdAt.toISOString()}>
+                            {formatDateTime(entry.createdAt)}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-2">
@@ -287,6 +438,11 @@ export default async function WalletDetailPage({
                             {note ? (
                               <span className="text-muted-foreground">
                                 · {note}
+                              </span>
+                            ) : null}
+                            {actorUserId ? (
+                              <span className="text-xs text-muted-foreground">
+                                · by {actorUserId}
                               </span>
                             ) : null}
                           </span>
@@ -302,7 +458,10 @@ export default async function WalletDetailPage({
                           }`}
                         >
                           {delta > 0 ? "+" : ""}
-                          {formatLargeNumber(delta)}
+                          {formatLargeNumber(
+                            delta,
+                            productUnit.get(entry.productId),
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -311,6 +470,11 @@ export default async function WalletDetailPage({
               </Table>
             </div>
           )}
+          {wallet.ledger.length === 200 ? (
+            <p className="text-xs text-muted-foreground">
+              Showing the latest 200 entries.
+            </p>
+          ) : null}
         </section>
       </div>
     </>

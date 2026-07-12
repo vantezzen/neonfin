@@ -41,7 +41,7 @@ All application services (`web`, `provider-service`, `migrate`) use the
 only Postgres. Always pass `--profile secure` for a full stack.
 </Callout>
 
-Migrations run automatically before `web` starts — `docker compose up` is all
+Migrations run automatically before `web` starts - `docker compose up` is all
 you need. The `migrate` service uses drizzle's idempotent migration runner, so
 re-running `up` on an already-migrated database is safe.
 
@@ -50,7 +50,7 @@ environment variables in browser code at build time. Set the final HTTPS URL
 before `build`, then rebuild the image if that URL changes.
 
 The Compose file exposes web on port `3000`. The provider service is on an
-internal network only — it is not published to the host, and only the web
+internal network only - it is not published to the host, and only the web
 container can reach it. Put a TLS-terminating reverse proxy in front of the web
 service.
 

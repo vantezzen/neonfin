@@ -204,7 +204,7 @@ function ProjectActivity({
                 <span className="truncate text-xs text-muted-foreground">
                   {project.activeWallets} active wallet
                   {project.activeWallets === 1 ? "" : "s"} ·{" "}
-                  {formatLargeNumber(project.creditsConsumed)} credits used
+                  {formatLargeNumber(project.creditsConsumed, "credits")} used
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-2">

@@ -114,10 +114,16 @@ export async function saveWebhookSecret(
   formData: FormData,
 ): Promise<FormState> {
   const id = String(formData.get("id") ?? "");
-  await requireOwnedProviderAccount(id);
+  const account = await requireOwnedProviderAccount(id);
   try {
     const secret = String(formData.get("webhookSecret") ?? "").trim();
     if (!secret) return { error: "Paste the webhook signing secret" };
+    if (account.provider === "stripe" && !/^whsec_/.test(secret)) {
+      return {
+        error:
+          "That doesn't look like a signing secret (Stripe secrets start with whsec_). Copy it from the webhook endpoint you just created.",
+      };
+    }
     await saveProviderWebhookSecret(id, secret);
     revalidatePath("/dashboard/providers");
     revalidatePath("/dashboard");

@@ -1,11 +1,14 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ProviderConnectWizard } from "@/components/dashboard/provider-connect-wizard";
 import { ProjectWizardDialog } from "@/components/app/project-wizard";
 import { FirstSteps, type FirstStep } from "@/components/app/first-steps";
 import type { SetupState } from "@/lib/queries/dashboard";
+import { Button } from "@/components/ui/button";
 
 /**
  * A state-driven "get started" card on the dashboard home. Each step reflects
@@ -19,7 +22,59 @@ export function SetupChecklist({
   state: SetupState;
   appUrl: string;
 }) {
-  if (state.complete) return null;
+  const [completionDismissed, setCompletionDismissed] = useState(true);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage persists this one-time completion card.
+    setCompletionDismissed(
+      window.localStorage.getItem("pay:setup-complete-dismissed") === "true",
+    );
+  }, []);
+
+  if (state.complete) {
+    if (!state.completedRecently || completionDismissed) return null;
+    return (
+      <div className="rounded-xl border px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-medium">You’re live 🎉</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Orders, wallets, and webhooks now fill in as your app gets used.
+            </p>
+            <div className="mt-3 flex gap-3 text-sm">
+              <Link
+                href="/docs/workflows"
+                className="font-medium hover:underline"
+              >
+                Docs
+              </Link>
+              <Link
+                href="/dashboard/orders"
+                className="font-medium hover:underline"
+              >
+                Orders
+              </Link>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Dismiss setup completion"
+            onClick={() => {
+              window.localStorage.setItem(
+                "pay:setup-complete-dismissed",
+                "true",
+              );
+              setCompletionDismissed(true);
+            }}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const steps: FirstStep[] = [
     {
@@ -30,10 +85,33 @@ export function SetupChecklist({
       action: <ProjectWizardDialog />,
     },
     {
-      done: state.isLive,
-      title: "Finish project setup",
+      done: state.hasProvider,
+      title: "Connect a payment provider",
       description:
-        "Add products and prices, attach checkout, then install the SDK.",
+        "Paste a Stripe or Polar key. This powers checkout for every project.",
+      note: state.incompleteProvider
+        ? "Almost there - finish the webhook step so payments get recorded."
+        : undefined,
+      action: (
+        <div className="flex flex-wrap items-center gap-2">
+          <ProviderConnectWizard
+            appUrl={appUrl}
+            size="sm"
+            resumeAccount={state.incompleteProvider ?? undefined}
+          />
+          <Link
+            href="/docs/workflows/providers"
+            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+          >
+            Setup guide
+          </Link>
+        </div>
+      ),
+    },
+    {
+      done: state.isLive,
+      title: "Create a product and go live",
+      description: "Add a product and price, then run a test checkout.",
       action: state.firstProjectId ? (
         <Link
           href={`/dashboard/projects/${state.firstProjectId}`}
@@ -48,22 +126,6 @@ export function SetupChecklist({
         >
           Read the guide
         </Link>
-      ),
-    },
-    {
-      done: state.hasProvider,
-      title: "Connect a payment provider",
-      description: "Go paid by adding Stripe or Polar after your catalog is ready.",
-      action: (
-        <div className="flex flex-wrap items-center gap-2">
-          <ProviderConnectWizard appUrl={appUrl} size="sm" />
-          <Link
-            href="/docs/workflows/providers"
-            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-          >
-            Setup guide
-          </Link>
-        </div>
       ),
     },
   ];

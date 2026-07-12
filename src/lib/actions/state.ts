@@ -1,6 +1,6 @@
 import { ZodError } from "zod";
 
-export type FormState = { error?: string; ok?: boolean };
+export type FormState = { error?: string; ok?: boolean; warning?: string; message?: string };
 
 /** Extract a user-facing message, letting Next redirect/notFound errors pass. */
 export function actionError(e: unknown): FormState {

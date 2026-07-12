@@ -1,0 +1,37 @@
+---
+title: Test your first payment
+description: Verify checkout, webhook fulfillment, and the balance update end to end.
+---
+
+Run checkout from your gated feature, or use the flask **Test checkout** button
+on a price synced to a sandbox provider.
+
+Use Stripe's test card:
+
+- Card number: `4242 4242 4242 4242`
+- Expiry: any future date
+- CVC: any value
+
+<Callout title="Local development">
+If your vantezzen/pay instance runs on localhost, Stripe cannot deliver
+webhooks to it. Run:
+
+```bash
+stripe listen --forward-to <your-instance>/api/webhooks/stripe/<accountId>
+```
+
+The Providers page shows the exact command with the correct account id. Without
+it, checkout succeeds but credits never arrive.
+</Callout>
+
+If you configured **Allowed origins**, include your development origin (for
+example, `http://localhost:3000`) or browser calls will fail during development.
+See [Troubleshooting](/docs/troubleshooting).
+
+Verify all three outcomes:
+
+1. The balance updates in your app.
+2. The order is **Paid** under **Orders**.
+3. The webhook is **Processed** under **Webhooks**.
+
+Next, [check the go-live list](/docs/getting-started/go-live).

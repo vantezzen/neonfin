@@ -49,7 +49,13 @@ export function CopyInline({
 }
 
 /** Labeled value with a copy button - for keys/codes shown in settings. */
-export function CopyField({ value }: { value: string }) {
+export function CopyField({
+  value,
+  onCopy,
+}: {
+  value: string;
+  onCopy?: () => void;
+}) {
   const { copied, copy } = useCopy();
   return (
     <div className="flex items-center gap-2">
@@ -60,7 +66,10 @@ export function CopyField({ value }: { value: string }) {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => copy(value)}
+        onClick={() => {
+          copy(value);
+          onCopy?.();
+        }}
         aria-label={copied ? "Copied" : "Copy"}
         title={copied ? "Copied" : "Copy"}
       >

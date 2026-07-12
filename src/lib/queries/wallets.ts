@@ -88,7 +88,10 @@ export async function getWalletDetail(ownerId: string, walletId: string) {
     with: {
       project: {
         with: {
-          products: { columns: { id: true, name: true, creditUnit: true } },
+          products: {
+            columns: { id: true, name: true, creditUnit: true },
+            with: { prices: { columns: { features: true } } },
+          },
         },
       },
       balances: { with: { product: { columns: { name: true, creditUnit: true } } } },
@@ -104,5 +107,25 @@ export async function getWalletDetail(ownerId: string, walletId: string) {
     },
   });
   if (!wallet || wallet.project.ownerId !== ownerId) return null;
-  return wallet;
+  const walletOrders = await db.query.orders.findMany({
+    where: eq(orders.walletId, wallet.id),
+    orderBy: desc(orders.createdAt),
+    limit: 50,
+    with: {
+      price: {
+        with: {
+          product: {
+            columns: { name: true },
+            with: { providerAccount: { columns: { environment: true } } },
+          },
+        },
+      },
+    },
+  });
+  return {
+    ...wallet,
+    orders: walletOrders,
+    customerEmail:
+      walletOrders.find((order) => order.customerEmail)?.customerEmail ?? null,
+  };
 }

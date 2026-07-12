@@ -141,4 +141,8 @@ export function githubSignInEnabled(): boolean {
   return githubConfigured;
 }
 
+export function emailVerificationIsEnabled(): boolean {
+  return emailVerificationEnabled;
+}
+
 export type Session = typeof auth.$Infer.Session;

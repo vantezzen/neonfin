@@ -1,5 +1,6 @@
 "use client";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Info, Plus } from "lucide-react";
 import {
   connectProviderStart,
@@ -98,14 +99,6 @@ function Body({
     FormData
   >(saveWebhookSecret, {});
 
-  useEffect(() => {
-    if (secret.ok) onDone();
-  }, [secret.ok, onDone]);
-
-  useEffect(() => {
-    if (start.webhookConfigured) onDone();
-  }, [start.webhookConfigured, onDone]);
-
   const account =
     start.accountId && start.provider
       ? { id: start.accountId, provider: start.provider }
@@ -120,29 +113,54 @@ function Body({
     (account?.provider as Provider | undefined) ?? selectedProvider;
   const providerName = provider === "polar" ? "Polar" : "Stripe";
   const accountEnvironment = start.environment ?? environment;
+  const complete = Boolean(secret.ok || start.webhookConfigured);
 
   return (
     <>
       <DialogHeader>
         <DialogTitle>Connect provider</DialogTitle>
         <DialogDescription>
-          {currentStep === 0
-            ? "Paste a restricted provider key - vantezzen/pay manages the rest."
-            : currentStep === 1
-              ? "Register the webhook endpoint so payments get recorded."
-              : "Add the signing secret to finish."}
+          {complete
+            ? "Your provider is ready to record payments."
+            : currentStep === 0
+              ? "Paste a restricted provider key - vantezzen/pay manages the rest."
+              : currentStep === 1
+                ? "Register the webhook endpoint so payments get recorded."
+                : "Add the signing secret to finish."}
         </DialogDescription>
       </DialogHeader>
 
-      <Stepper steps={STEPS} current={currentStep} />
+      <Stepper steps={STEPS} current={complete ? STEPS.length : currentStep} />
 
-      {currentStep === 0 ? (
+      {complete ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground">
+            <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            <span>
+              {start.webhookConfigured
+                ? "Connected. We registered the webhook endpoint for you - complete a test checkout to see the first event arrive."
+                : "Connected. Complete a test checkout to see the first event arrive."}
+            </span>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onDone}>
+              Done
+            </Button>
+            <Button render={<Link href="/dashboard/providers" />}>
+              View provider status
+            </Button>
+          </DialogFooter>
+        </div>
+      ) : null}
+
+      {!complete && currentStep === 0 ? (
         <form action={startAction} className="flex min-w-0 flex-col gap-4">
           <div className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              vantezzen/pay creates and manages this project&apos;s products &amp;
-              prices inside your provider account automatically. We recommend a{" "}
+              vantezzen/pay creates and manages this project&apos;s products
+              &amp; prices inside your provider account automatically. We
+              recommend a{" "}
               <span className="font-medium text-foreground">
                 dedicated provider account
               </span>{" "}
@@ -215,15 +233,29 @@ function Body({
                 <li>Products: read and write</li>
                 <li>Prices and Checkout Sessions: write</li>
                 <li>Billing Portal Sessions: write</li>
-                <li>Promotion Codes: read (only when using app-owned discount codes)</li>
-                <li>Webhook Endpoints: write (optional - enables automatic setup)</li>
+                <li>
+                  Promotion Codes: read (only when using app-owned discount
+                  codes)
+                </li>
+                <li>
+                  Webhook Endpoints: write (optional - enables automatic setup)
+                </li>
               </ul>
             ) : (
               <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li><code>products:read</code> and <code>products:write</code></li>
-                <li><code>checkouts:write</code></li>
-                <li><code>customer_sessions:write</code></li>
-                <li><code>webhooks:write</code> (optional - enables automatic setup)</li>
+                <li>
+                  <code>products:read</code> and <code>products:write</code>
+                </li>
+                <li>
+                  <code>checkouts:write</code>
+                </li>
+                <li>
+                  <code>customer_sessions:write</code>
+                </li>
+                <li>
+                  <code>webhooks:write</code> (optional - enables automatic
+                  setup)
+                </li>
               </ul>
             )}
           </details>
@@ -239,8 +271,20 @@ function Body({
         </form>
       ) : null}
 
-      {currentStep === 1 && account ? (
+      {!complete && currentStep === 1 && account ? (
         <div className="flex min-w-0 flex-col gap-4">
+          {start.accountId && !start.webhookConfigured ? (
+            <p className="rounded-lg bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
+              We couldn’t create the webhook automatically (the key may lack
+              webhook write access), so add it manually below.
+            </p>
+          ) : null}
+          {start.environment && start.environment !== environment ? (
+            <p className="text-xs text-muted-foreground">
+              Detected a {start.environment === "sandbox" ? "test" : "live"} key
+              - this account is in {start.environment} mode.
+            </p>
+          ) : null}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">
               {accountEnvironment === "sandbox"
@@ -290,7 +334,7 @@ function Body({
         </div>
       ) : null}
 
-      {currentStep === 2 && account ? (
+      {!complete && currentStep === 2 && account ? (
         <form action={secretAction} className="flex min-w-0 flex-col gap-4">
           <input type="hidden" name="id" value={account.id} />
           <Field

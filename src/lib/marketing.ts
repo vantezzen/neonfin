@@ -260,16 +260,6 @@ export const guides: MarketingPage[] = [
   </CreditGate>
 </PayProvider>`,
       },
-      {
-        title: "SEO benefit of component-led docs",
-        body: "Each component maps to a real search problem: payment component, purchase dialog, credit gate, feature gate, wallet recovery, and checkout UI. The docs should stay implementation-focused so searchers and AI systems can understand exactly what vantezzen/pay provides.",
-        bullets: [
-          "Use descriptive page titles rather than internal package names alone.",
-          "Show one complete example per component page.",
-          "Link every component back to the guide for billing for side projects.",
-          "Keep copy explicit: shadcn payment components, checkout, credits, wallets, and feature gates.",
-        ],
-      },
     ],
     faqs: [
       {
@@ -462,6 +452,63 @@ export const comparisons: MarketingPage[] = [
     cta: {
       title: "Keep Stripe. Stop rebuilding the layer around it.",
       body: "Connect Stripe to vantezzen/pay, then let each project talk to the same small billing API and component set.",
+    },
+  },
+  {
+    type: "comparison",
+    slug: "polar-vs-vantezzen-pay",
+    title: "Polar vs vantezzen/pay",
+    seoTitle: "Polar vs vantezzen/pay: Merchant of Record vs App Billing Layer",
+    description:
+      "Polar handles checkout and provider-side billing. vantezzen/pay adds reusable wallets, credits, feature gates, fulfillment, and app UI on top.",
+    eyebrow: "Comparison",
+    intent:
+      "For developers deciding whether Polar alone covers the app-facing billing state their product needs.",
+    updated: "2026-07-12",
+    tags: ["Polar", "Billing layer", "Checkout", "Credits"],
+    heroBullets: [
+      "Polar remains the payment provider and source of truth for money.",
+      "vantezzen/pay sits on top of Polar, not instead of it.",
+      "Use the extra layer when your app needs wallets, metering, or gates.",
+    ],
+    sections: [
+      {
+        title: "The short answer",
+        body: "Polar is the provider-facing commerce platform. vantezzen/pay connects Polar events to the product state and components a small app uses after checkout.",
+      },
+      {
+        title: "Use Polar directly when",
+        body: "Polar alone is a strong fit when its checkout, subscriptions, and customer portal already represent everything your product needs.",
+        bullets: [
+          "You do not need consumable credit balances.",
+          "Your existing app already owns access and entitlement state.",
+          "You prefer to build the checkout return and webhook glue yourself.",
+        ],
+      },
+      {
+        title: "Use vantezzen/pay with Polar when",
+        body: "Add vantezzen/pay when you want a provider-neutral app API and ready-made UI around Polar checkout.",
+        bullets: [
+          "You sell usage packs or recurring credits.",
+          "You need anonymous wallets without user accounts.",
+          "You want shadcn purchase, balance, wallet, and gate components.",
+          "You reuse the same billing layer across several small products.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Does vantezzen/pay replace Polar?",
+        answer: "No. Polar still hosts checkout and handles provider-side billing. vantezzen/pay turns its events into app-facing credits and access.",
+      },
+      {
+        question: "When should I keep the integration direct?",
+        answer: "Use Polar directly when you only need its native checkout and subscriptions and already own the product access layer.",
+      },
+    ],
+    cta: {
+      title: "Keep Polar. Add the app layer once.",
+      body: "Connect Polar to vantezzen/pay and reuse the same wallets, fulfillment, and components in every project.",
     },
   },
   {

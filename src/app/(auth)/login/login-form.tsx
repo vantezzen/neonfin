@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { login, type AuthState } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ export function LoginForm({
   notice?: string;
 }) {
   const [state, action, pending] = useActionState(login, initial);
+  const [email, setEmail] = useState("");
   return (
     <Card>
       <CardContent className="pt-6">
@@ -41,7 +42,7 @@ export function LoginForm({
         <form action={action} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required autoFocus />
+            <Input id="email" name="email" type="email" autoComplete="email" required autoFocus value={email} onChange={(event) => setEmail(event.currentTarget.value)} />
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
@@ -56,7 +57,17 @@ export function LoginForm({
             <Input id="password" name="password" type="password" autoComplete="current-password" required />
           </div>
           {state.error ? (
-            <p className="text-sm text-destructive">{state.error}</p>
+            <div className="text-sm text-destructive">
+              <p>{state.error}</p>
+              {state.error.startsWith("Check your email to verify") ? (
+                <Link
+                  href={`/verify-request?email=${encodeURIComponent(email)}`}
+                  className="mt-1 inline-block underline-offset-4 hover:underline"
+                >
+                  Resend verification email
+                </Link>
+              ) : null}
+            </div>
           ) : null}
           <Button type="submit" disabled={pending} className="w-full">
             {pending ? "Signing in…" : "Sign in"}
