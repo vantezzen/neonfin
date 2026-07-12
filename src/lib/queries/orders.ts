@@ -1,15 +1,8 @@
 import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { orders, projects, providerAccounts, webhookEvents } from "@/db/schema";
-
-async function ownedProjectIds(ownerId: string): Promise<string[]> {
-  const rows = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.ownerId, ownerId));
-  return rows.map((r) => r.id);
-}
+import { orders, providerAccounts, webhookEvents } from "@/db/schema";
+import { ownedProjectIds } from "./projects";
 
 export async function listOrders(
   ownerId: string,

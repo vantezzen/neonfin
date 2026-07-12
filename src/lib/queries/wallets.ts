@@ -5,18 +5,10 @@ import {
   featureGrants,
   ledgerEntries,
   orders,
-  projects,
   subscriptions,
   wallets,
 } from "@/db/schema";
-
-async function ownedProjectIds(ownerId: string): Promise<string[]> {
-  const rows = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.ownerId, ownerId));
-  return rows.map((r) => r.id);
-}
+import { ownedProjectIds } from "./projects";
 
 /** Wallets across the owner's projects, newest-seen first. */
 export async function listWallets(

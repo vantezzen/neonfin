@@ -157,30 +157,6 @@ export function PayProvider({
     };
   }, [client, refresh]);
 
-  // A purchase or wallet restore in another tab changes the shared local
-  // wallet identity. Refresh when that happens and when this tab regains focus
-  // so the UI does not keep showing an old balance.
-  useEffect(() => {
-    function refreshOnFocus() {
-      void refresh();
-    }
-    function refreshOnStorage(event: StorageEvent) {
-      if (
-        event.storageArea === window.localStorage &&
-        (event.key === client.storageKey || event.key === client.pendingOrderKey)
-      ) {
-        void refresh();
-      }
-    }
-
-    window.addEventListener("focus", refreshOnFocus);
-    window.addEventListener("storage", refreshOnStorage);
-    return () => {
-      window.removeEventListener("focus", refreshOnFocus);
-      window.removeEventListener("storage", refreshOnStorage);
-    };
-  }, [client, refresh]);
-
   const startCheckout = useCallback(
     async (priceId: string, opts: StartCheckoutOptions = {}) => {
       setConfirming(true);

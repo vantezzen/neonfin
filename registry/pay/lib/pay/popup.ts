@@ -106,28 +106,35 @@ export async function waitForPopupCheckout(
       reject(error);
     }
 
+    // A fetched order is either a confirmed success, a terminal failure, or
+    // still pending (keep polling). Both pollers share this classification.
+    function classify(order: OrderStatus): "paid" | "terminal" | null {
+      if (order.status === "paid" && (mode === "external_auth" || order.code)) {
+        return "paid";
+      }
+      if (
+        order.status === "failed" ||
+        order.status === "expired" ||
+        order.status === "refunded"
+      ) {
+        return "terminal";
+      }
+      return null;
+    }
+
     async function poll() {
       if (!active) return;
       try {
         const order = await getOrder(result.orderId);
-        if (
-          order.status === "paid" &&
-          (mode === "external_auth" || order.code)
-        ) {
+        const outcome = classify(order);
+        if (outcome === "paid") {
           finish(order);
           return;
         }
-        if (
-          order.status === "failed" ||
-          order.status === "expired" ||
-          order.status === "refunded"
-        ) {
+        if (outcome === "terminal") {
           forgetPendingOrder(result.orderId);
           fail(
-            checkoutError(
-              `checkout_${order.status}`,
-              `Checkout ${order.status}.`,
-            ),
+            checkoutError(`checkout_${order.status}`, `Checkout ${order.status}.`),
             true,
           );
           return;
@@ -149,27 +156,18 @@ export async function waitForPopupCheckout(
         if (!active) return;
         try {
           const order = await getOrder(result.orderId);
-          if (
-            order.status === "paid" &&
-            (mode === "external_auth" || order.code)
-          ) {
+          const outcome = classify(order);
+          if (outcome === "paid") {
             finish(order);
             return;
           }
-        if (
-          order.status === "failed" ||
-          order.status === "expired" ||
-          order.status === "refunded"
-        ) {
-              forgetPendingOrder(result.orderId);
-              fail(
-                checkoutError(
-                  `checkout_${order.status}`,
-                  `Checkout ${order.status}.`,
-                ),
-              );
-              return;
-            }
+          if (outcome === "terminal") {
+            forgetPendingOrder(result.orderId);
+            fail(
+              checkoutError(`checkout_${order.status}`, `Checkout ${order.status}.`),
+            );
+            return;
+          }
         } catch {
           // The pending-order resume poller will retry transient failures.
         }

@@ -8,11 +8,9 @@ import {
   corsHeaders,
   apiError,
   invalidBodyError,
-  invalidCodeAttempt,
   preflight,
-  rateLimitHeaders,
 } from "@/lib/api/http";
-import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
+import { walletNotFoundResponse } from "@/lib/api/credit-errors";
 import {
   computeWalletAccess,
   findActiveCodeWallet,
@@ -20,7 +18,7 @@ import {
   WalletExpiredError,
 } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
-import { providerErrorMessage } from "@/lib/api/provider-errors";
+import { PROVIDER_ERROR_MESSAGE } from "@/lib/api/provider-errors";
 import {
   createProviderCheckout,
   getProviderAccountMeta,
@@ -167,16 +165,7 @@ export async function POST(req: Request): Promise<Response> {
     try {
       const wallet = await findActiveCodeWallet(project.id, code);
       if (!wallet) {
-        const limit = await invalidCodeAttempt(project.id, req);
-        if (!limit.ok) {
-          return apiError(
-            429,
-            "rate_limited",
-            "Too many invalid recovery codes",
-            rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
-          );
-        }
-        return apiError(404, "wallet_not_found", "Wallet not found", cors);
+        return walletNotFoundResponse(project.id, req, cors);
       }
       walletId = wallet.id;
     } catch (e) {
@@ -299,6 +288,6 @@ export async function POST(req: Request): Promise<Response> {
       .update(orders)
       .set({ status: "failed" })
       .where(eq(orders.id, order.id));
-    return apiError(502, "provider_error", providerErrorMessage(), cors);
+    return apiError(502, "provider_error", PROVIDER_ERROR_MESSAGE, cors);
   }
 }

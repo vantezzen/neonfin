@@ -4,7 +4,7 @@ import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-function useCopy() {
+export function useCopy() {
   const [copied, setCopied] = useState(false);
   return {
     copied,

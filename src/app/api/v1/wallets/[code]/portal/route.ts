@@ -1,23 +1,17 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { orders, type Wallet } from "@/db/schema";
+import { type Wallet } from "@/db/schema";
 import { env } from "@/lib/env";
 import {
   authenticate,
   corsHeaders,
   apiError,
-  invalidCodeAttempt,
   preflight,
-  rateLimitHeaders,
 } from "@/lib/api/http";
-import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
+import {
+  portalUrlForWallet,
+  walletNotFoundResponse,
+} from "@/lib/api/credit-errors";
 import { findActiveCodeWallet, WalletExpiredError } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
-import { providerErrorMessage } from "@/lib/api/provider-errors";
-import {
-  getProviderAccountMeta,
-  getProviderPortalUrl,
-} from "@/lib/provider-service/client";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -57,37 +51,11 @@ export async function GET(
     throw e;
   }
   if (!wallet) {
-    const limit = await invalidCodeAttempt(project.id, req);
-    if (!limit.ok) {
-      return apiError(
-        429,
-        "rate_limited",
-        "Too many invalid recovery codes",
-        rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
-      );
-    }
-    return apiError(404, "wallet_not_found", "Wallet not found", cors);
+    return walletNotFoundResponse(project.id, req, cors);
   }
   if (!wallet.providerCustomerId) {
     return apiError(400, "no_billing_customer", "This wallet has no billing customer yet", cors);
   }
-
-  // The customer lives on whichever provider account fulfilled a purchase for
-  // this wallet - find it via the wallet's most recent order's product.
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.walletId, wallet.id),
-    orderBy: desc(orders.createdAt),
-    with: {
-      price: { with: { product: { columns: { providerAccountId: true } } } },
-    },
-  });
-  const providerAccountId = order?.price?.product.providerAccountId;
-  if (!providerAccountId) {
-    return apiError(400, "no_billing_customer", "No provider account for this wallet", cors);
-  }
-  const account = await getProviderAccountMeta(providerAccountId);
-  if (!account)
-    return apiError(400, "provider_account_missing", "Provider account missing", cors);
 
   const returnUrl =
     new URL(req.url).searchParams.get("returnUrl") ?? env().NEXT_PUBLIC_APP_URL;
@@ -99,14 +67,7 @@ export async function GET(
       cors,
     );
   }
-  try {
-    const url = await getProviderPortalUrl(
-      account.id,
-      wallet.providerCustomerId,
-      returnUrl,
-    );
-    return Response.json({ url }, { headers: cors });
-  } catch {
-    return apiError(502, "provider_error", providerErrorMessage(), cors);
-  }
+  const result = await portalUrlForWallet(wallet, returnUrl, cors);
+  if (result instanceof Response) return result;
+  return Response.json(result, { headers: cors });
 }

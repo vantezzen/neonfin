@@ -4,12 +4,11 @@ import {
   authenticate,
   corsHeaders,
   invalidBodyError,
-  invalidCodeAttempt,
   preflight,
-  rateLimitHeaders,
 } from "@/lib/api/http";
-import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
-import { decodeLedgerCursor, listWalletLedger } from "@/lib/api/ledger";
+import { walletNotFoundResponse } from "@/lib/api/credit-errors";
+import { listWalletLedger } from "@/lib/api/ledger";
+import { decodeCursor } from "@/lib/api/cursor";
 import {
   findActiveCodeWallet,
   WalletExpiredError,
@@ -38,7 +37,7 @@ export async function GET(
     Object.fromEntries(new URL(req.url).searchParams),
   );
   if (!parsed.success) return invalidBodyError(parsed.error, cors);
-  const cursor = decodeLedgerCursor(parsed.data.cursor);
+  const cursor = decodeCursor(parsed.data.cursor);
   if (parsed.data.cursor && !cursor) {
     return apiError(400, "invalid_body", "Invalid cursor", cors, {
       details: [{ path: "cursor", message: "Invalid cursor" }],
@@ -50,16 +49,7 @@ export async function GET(
   try {
     const wallet = await findActiveCodeWallet(project.id, code);
     if (!wallet) {
-      const limit = await invalidCodeAttempt(project.id, req);
-      if (!limit.ok) {
-        return apiError(
-          429,
-          "rate_limited",
-          "Too many invalid recovery codes",
-          rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
-        );
-      }
-      return apiError(404, "wallet_not_found", "Wallet not found", cors);
+      return walletNotFoundResponse(project.id, req, cors);
     }
     return Response.json(
       await listWalletLedger(wallet.id, cursor, parsed.data.limit),

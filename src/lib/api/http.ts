@@ -60,20 +60,6 @@ function unauthenticatedCorsHeaders(origin: string | null): Record<string, strin
   };
 }
 
-/**
- * Browser callers must be able to read authentication errors, including an
- * origin that the project has not allowlisted. These responses contain no
- * project data, so reflecting the origin here does not grant API access.
- */
-function authenticationErrorCorsHeaders(
-  project: Project,
-  origin: string | null,
-): Record<string, string> {
-  const headers = corsHeaders(project, origin);
-  if (origin) headers["Access-Control-Allow-Origin"] = origin;
-  return headers;
-}
-
 export function isOriginAllowed(project: Project, origin: string | null): boolean {
   if (!origin) return true; // non-browser / server call
   return (
@@ -199,7 +185,10 @@ export async function authenticate(
       ),
     };
   }
-  const authCors = authenticationErrorCorsHeaders(project, origin);
+  // Browser callers must be able to read auth errors even from a non-allowlisted
+  // origin; these responses carry no project data, so reflecting the origin here
+  // does not grant API access.
+  const authCors = unauthenticatedCorsHeaders(origin);
   if (opts.require && resolved.kind !== opts.require) {
     return {
       error: apiError(

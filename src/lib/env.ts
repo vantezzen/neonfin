@@ -29,15 +29,7 @@ const schema = z.object({
   // Optional GitHub OAuth for dashboard sign-in.
   GITHUB_CLIENT_ID: optionalString,
   GITHUB_CLIENT_SECRET: optionalString,
-  // Hosted vantezzen/pay billing is opt-in. Self-hosted installs stay unbilled
-  // unless an operator deliberately sets this to "hosted".
-  PAY_BILLING_MODE: z.enum(["self_hosted", "hosted"]).default("self_hosted"),
-  PAY_HOSTED_PAY_SECRET_KEY: optionalString,
-  PAY_ALL_ACCESS_EMAILS: optionalString,
-  PAY_ALL_ACCESS_USER_IDS: optionalString,
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
-  NEXT_PUBLIC_HOSTED_PAY_URL: optionalUrl,
-  NEXT_PUBLIC_HOSTED_PAY_KEY: optionalString,
 });
 
 let cached: z.infer<typeof schema> | null = null;

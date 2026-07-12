@@ -7,6 +7,7 @@ import {
 import { db } from "../db";
 import { providerAccounts } from "../db/schema";
 import {
+  makeProvider,
   normalizeWebhook,
   providerApi,
   secretContext,
@@ -21,18 +22,7 @@ async function validateCredentials(
   environment: string,
 ) {
   try {
-    const api =
-      provider === "stripe"
-        ? new (await import("../providers/adapters/stripe")).StripeProvider(
-            secretKey,
-            null,
-          )
-        : new (await import("../providers/adapters/polar")).PolarProvider(
-            secretKey,
-            null,
-            environment,
-          );
-    await api.validateCredentials();
+    await makeProvider(provider, secretKey, environment).validateCredentials();
   } catch (error) {
     throw new ProviderInputError(
       error instanceof Error
@@ -61,17 +51,11 @@ export async function handleProviderRequest(request: ProviderServiceRequest) {
         request.environment,
       );
       const id = request.accountId;
-      const api =
-        request.provider === "stripe"
-          ? new (await import("../providers/adapters/stripe")).StripeProvider(
-              request.secretKey,
-              null,
-            )
-          : new (await import("../providers/adapters/polar")).PolarProvider(
-              request.secretKey,
-              null,
-              request.environment,
-            );
+      const api = makeProvider(
+        request.provider,
+        request.secretKey,
+        request.environment,
+      );
       // Webhook permissions are optional for a restricted key. Provision one
       // when possible, but keep the manual wizard as a safe fallback.
       let webhookSecret: string | null = null;

@@ -55,7 +55,6 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       PAY_ALLOW_SIGNUPS: ${PAY_ALLOW_SIGNUPS:-true}
-      PAY_BILLING_MODE: self_hosted
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-}
     depends_on:

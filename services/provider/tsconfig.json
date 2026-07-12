@@ -8,7 +8,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node", "bun"]
   },
   "include": ["src/**/*.ts", "../../shared/**/*.ts"],
   "exclude": ["node_modules"]

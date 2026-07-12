@@ -1,9 +1,9 @@
 import "server-only";
-import {
-  apiError,
-  invalidCodeAttempt,
-  rateLimitHeaders,
-} from "@/lib/api/http";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { orders, type Wallet } from "@/db/schema";
+import { apiError, invalidCodeAttempt, rateLimitHeaders } from "@/lib/api/http";
+import { PROVIDER_ERROR_MESSAGE } from "@/lib/api/provider-errors";
 import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
 import {
   soleProductId,
@@ -11,6 +11,10 @@ import {
   ProductNotFoundError,
   WalletExpiredError,
 } from "@/lib/credits";
+import {
+  getProviderAccountMeta,
+  getProviderPortalUrl,
+} from "@/lib/provider-service/client";
 import type { Project } from "@/db/schema";
 
 /**
@@ -77,4 +81,54 @@ export async function walletNotFoundResponse(
     );
   }
   return apiError(404, "wallet_not_found", "Wallet not found", cors);
+}
+
+/**
+ * Resolve the provider customer-portal URL for a wallet that already has a
+ * `providerCustomerId`. Finds the provider account via the wallet's most recent
+ * order, then asks the provider service for a portal link. Returns a
+ * ready-to-return error Response on any failure, or `{ url }` on success.
+ */
+export async function portalUrlForWallet(
+  wallet: Wallet,
+  returnUrl: string,
+  cors: Record<string, string>,
+): Promise<Response | { url: string }> {
+  // The customer lives on whichever provider account fulfilled a purchase for
+  // this wallet - find it via the wallet's most recent order's product.
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.walletId, wallet.id),
+    orderBy: desc(orders.createdAt),
+    with: {
+      price: { with: { product: { columns: { providerAccountId: true } } } },
+    },
+  });
+  const providerAccountId = order?.price?.product.providerAccountId;
+  if (!providerAccountId) {
+    return apiError(
+      400,
+      "no_billing_customer",
+      "No provider account for this wallet",
+      cors,
+    );
+  }
+  const account = await getProviderAccountMeta(providerAccountId);
+  if (!account) {
+    return apiError(
+      400,
+      "provider_account_missing",
+      "Provider account missing",
+      cors,
+    );
+  }
+  try {
+    const url = await getProviderPortalUrl(
+      account.id,
+      wallet.providerCustomerId!,
+      returnUrl,
+    );
+    return { url };
+  } catch {
+    return apiError(502, "provider_error", PROVIDER_ERROR_MESSAGE, cors);
+  }
 }

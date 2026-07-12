@@ -22,10 +22,7 @@ export class StripeProvider implements PaymentProvider {
   catalogMode = "shared_product" as const;
 
   private stripe: Stripe;
-  constructor(
-    secretKey: string,
-    private webhookSecret: string | null,
-  ) {
+  constructor(secretKey: string) {
     this.stripe = new Stripe(secretKey);
   }
 
@@ -114,31 +111,6 @@ export class StripeProvider implements PaymentProvider {
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
     return { url: session.url, checkoutId: session.id };
-  }
-
-  async verifyAndNormalize(
-    rawBody: string,
-    headers: Headers,
-  ): Promise<NormalizedEvent> {
-    if (!this.webhookSecret) {
-      throw new Error("No webhook secret configured for this Stripe account");
-    }
-    const signature = headers.get("stripe-signature");
-    if (!signature) throw new Error("Missing Stripe signature");
-    const event = await this.stripe.webhooks.constructEventAsync(
-      rawBody,
-      signature,
-      this.webhookSecret,
-    );
-    return normalizeStripeEvent(event);
-  }
-
-  normalizeStoredPayload(
-    payload: unknown,
-    _providerEventId: string,
-  ): NormalizedEvent {
-    void _providerEventId;
-    return normalizeStripeEvent(payload as Stripe.Event);
   }
 
   async getPortalUrl(customerId: string, returnUrl: string) {

@@ -9,7 +9,8 @@ import {
   invalidBodyError,
   preflight,
 } from "@/lib/api/http";
-import { decodeLedgerCursor, listWalletLedger } from "@/lib/api/ledger";
+import { listWalletLedger } from "@/lib/api/ledger";
+import { decodeCursor } from "@/lib/api/cursor";
 
 const querySchema = z.object({
   externalUserId: z.string().min(1),
@@ -39,7 +40,7 @@ export async function GET(req: Request): Promise<Response> {
     Object.fromEntries(new URL(req.url).searchParams),
   );
   if (!parsed.success) return invalidBodyError(parsed.error, cors);
-  const cursor = decodeLedgerCursor(parsed.data.cursor);
+  const cursor = decodeCursor(parsed.data.cursor);
   if (parsed.data.cursor && !cursor) {
     return apiError(400, "invalid_body", "Invalid cursor", cors, {
       details: [{ path: "cursor", message: "Invalid cursor" }],

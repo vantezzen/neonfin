@@ -1,14 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { orders, wallets } from "@/db/schema";
+import { wallets } from "@/db/schema";
 import { env } from "@/lib/env";
 import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
-import { providerErrorMessage } from "@/lib/api/provider-errors";
-import {
-  getProviderAccountMeta,
-  getProviderPortalUrl,
-} from "@/lib/provider-service/client";
+import { portalUrlForWallet } from "@/lib/api/credit-errors";
 
 export function OPTIONS(): Response {
   return preflight();
@@ -61,41 +57,11 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.walletId, wallet.id),
-    orderBy: desc(orders.createdAt),
-    with: {
-      price: { with: { product: { columns: { providerAccountId: true } } } },
-    },
-  });
-  const providerAccountId = order?.price?.product.providerAccountId;
-  if (!providerAccountId) {
-    return apiError(
-      400,
-      "no_billing_customer",
-      "No provider account for this wallet",
-      cors,
-    );
-  }
-
-  const account = await getProviderAccountMeta(providerAccountId);
-  if (!account) {
-    return apiError(
-      400,
-      "provider_account_missing",
-      "Provider account missing",
-      cors,
-    );
-  }
-
-  try {
-    const url = await getProviderPortalUrl(
-      account.id,
-      wallet.providerCustomerId,
-      parsed.data.returnUrl ?? env().NEXT_PUBLIC_APP_URL,
-    );
-    return Response.json({ url }, { headers: cors });
-  } catch {
-    return apiError(502, "provider_error", providerErrorMessage(), cors);
-  }
+  const result = await portalUrlForWallet(
+    wallet,
+    parsed.data.returnUrl ?? env().NEXT_PUBLIC_APP_URL,
+    cors,
+  );
+  if (result instanceof Response) return result;
+  return Response.json(result, { headers: cors });
 }

@@ -1,10 +1,8 @@
 "use client";
-import type * as React from "react";
 import { Pencil } from "lucide-react";
 import type { Price } from "@/db/schema";
 import { createPrice, updatePrice } from "@/lib/actions/products";
 import { FormDialog } from "@/components/app/form-dialog";
-import { Button } from "@/components/ui/button";
 import { typeMeta } from "./meta";
 import type { ProductWithPrices } from "./meta";
 import { PriceFields } from "./price-form";
@@ -13,14 +11,10 @@ export function AddPriceButton({
   product,
   projectId,
   knownFeatures,
-  triggerSize = "sm",
-  triggerVariant = "outline",
 }: {
   product: ProductWithPrices;
   projectId: string;
   knownFeatures: string[];
-  triggerSize?: React.ComponentProps<typeof Button>["size"];
-  triggerVariant?: React.ComponentProps<typeof Button>["variant"];
 }) {
   const meta = typeMeta(product.type);
   return (
@@ -36,8 +30,8 @@ export function AddPriceButton({
       }
       action={createPrice}
       submitLabel={`Add ${meta.priceNoun}`}
-      triggerSize={triggerSize}
-      triggerVariant={triggerVariant}
+      triggerSize="sm"
+      triggerVariant="outline"
     >
       <input type="hidden" name="productId" value={product.id} />
       <input type="hidden" name="projectId" value={projectId} />

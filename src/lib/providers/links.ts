@@ -62,15 +62,3 @@ export function providerOrderUrl(
   }
   return null;
 }
-
-/** A customer's page at the provider. */
-export function providerCustomerUrl(
-  provider: Provider,
-  environment: string,
-  providerCustomerId: string | null | undefined,
-): string | null {
-  if (provider === "stripe" && providerCustomerId) {
-    return `${stripeBase(environment)}/customers/${providerCustomerId}`;
-  }
-  return null;
-}

@@ -82,14 +82,6 @@ export interface PaymentProvider {
   createCheckout(
     input: CreateCheckoutInput,
   ): Promise<{ url: string; checkoutId: string }>;
-  verifyAndNormalize(
-    rawBody: string,
-    headers: Headers,
-  ): Promise<NormalizedEvent>;
-  normalizeStoredPayload(
-    payload: unknown,
-    providerEventId: string,
-  ): NormalizedEvent;
   getPortalUrl(customerId: string, returnUrl: string): Promise<string>;
 }
 

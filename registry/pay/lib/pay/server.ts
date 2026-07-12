@@ -20,7 +20,7 @@ export type PayServerClientConfig = {
 };
 
 export { PayError, type PayErrorOptions } from "./error";
-import { PayError } from "./error";
+import { PayError, payFetch } from "./error";
 
 export type Balance = {
   productId: string;
@@ -179,60 +179,24 @@ export function createPayServerClient(config: PayServerClientConfig) {
       ? config.requestTimeoutMs!
       : 15_000;
 
-  async function fetchWithTimeout(
-    input: RequestInfo | URL,
-    init: RequestInit,
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
-    try {
-      return await fetch(input, { ...init, signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
   async function request<T>(
     path: string,
     body?: unknown,
     method: "GET" | "POST" = "POST",
   ): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(`${baseUrl}/api/v1${path}`, {
+    return payFetch<T>(
+      `${baseUrl}/api/v1${path}`,
+      {
         method,
         headers: {
           Authorization: `Bearer ${config.secretKey}`,
           ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-    } catch {
-      throw new PayError(0, "Could not reach vantezzen/pay. Check your connection and try again.", {
-        code: "network_error",
-      });
-    }
-    const data = res.status === 204 ? null : await res.json().catch(() => null);
-    if (!res.ok) {
-      const err = (data ?? {}) as {
-        error?: string;
-        code?: string;
-        balance?: number;
-        requested?: number;
-        requestId?: string;
-      };
-      throw new PayError(
-        res.status,
-        err.error ?? `Request failed (${res.status})`,
-        {
-          code: err.code,
-          balance: err.balance,
-          requested: err.requested,
-          requestId: err.requestId,
-        },
-      );
-    }
-    return data as T;
+      },
+      requestTimeoutMs,
+      "Could not reach vantezzen/pay. Check your connection and try again.",
+    );
   }
 
   /**

@@ -20,9 +20,11 @@ import { PRODUCT_TYPES } from "./meta";
 
 export function Field({
   label,
+  hint,
   children,
 }: {
   label: React.ReactNode;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -35,6 +37,9 @@ export function Field({
         </div>
       )}
       {children}
+      {hint ? (
+        <span className="text-xs text-muted-foreground">{hint}</span>
+      ) : null}
     </div>
   );
 }
@@ -133,13 +138,14 @@ function CreditUnitHelp() {
           </DialogHeader>
           <div className="flex flex-col gap-3 text-sm text-muted-foreground">
             <p>
-              Set the credit unit to something that decribes what one "credit"
-              represents.
+              Set the credit unit to something that describes what one
+              &quot;credit&quot; represents.
             </p>
             <p>
               For example, if your app charges for API calls, you might set the
-              credit unit to "API calls". If your app charges for processing
-              time, you might set the credit unit to "minutes".
+              credit unit to &quot;API calls&quot;. If your app charges for
+              processing time, you might set the credit unit to
+              &quot;minutes&quot;.
             </p>
             <p>
               This helps users understand what they are purchasing and how their

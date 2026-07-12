@@ -1,5 +1,4 @@
 import "server-only";
-import { addDays, addMonths } from "date-fns";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -13,6 +12,18 @@ import {
   type Wallet,
 } from "@/db/schema";
 import { fmt, toNum, type BalanceView, type Tx } from "./shared";
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function addMonths(base: Date, months: number): Date {
+  const d = new Date(base);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
 
 function codeExpiryDate(wallet: Wallet, project: Project): Date | null {
   const days = project.codeExpiresInDays;

@@ -59,9 +59,6 @@ function priceAmount<T extends z.ZodType<number>>(schema: T) {
 export const positiveCreditAmountSchema = creditAmount(z.number(), {
   mode: "positive",
 });
-export const nonNegativeCreditAmountSchema = creditAmount(z.number(), {
-  mode: "nonNegative",
-});
 export const signedCreditAmountSchema = creditAmount(z.number(), {
   mode: "signed",
 });

@@ -3,12 +3,7 @@ import { and, desc, eq, lt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { ledgerEntries, products } from "@/db/schema";
 import { toNum } from "@/lib/credits";
-import { type Cursor, decodeCursor, encodeCursor } from "@/lib/api/cursor";
-
-/** @deprecated Use {@link decodeCursor} from `@/lib/api/cursor` instead. */
-export const decodeLedgerCursor = decodeCursor;
-
-const encodeLedgerCursor = encodeCursor;
+import { type Cursor, encodeCursor } from "@/lib/api/cursor";
 
 /** List a wallet's immutable balance changes with stable cursor pagination. */
 export async function listWalletLedger(
@@ -56,6 +51,6 @@ export async function listWalletLedger(
       delta: toNum(entry.delta),
       createdAt: entry.createdAt.toISOString(),
     })),
-    nextCursor: hasMore && last ? encodeLedgerCursor(last) : null,
+    nextCursor: hasMore && last ? encodeCursor(last) : null,
   };
 }

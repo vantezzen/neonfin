@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { PayError } from "@/lib/pay";
 import { cn } from "@/lib/utils";
+import { useCopy } from "@/components/app/copy";
 import { CreditGate } from "@/components/pay/credit-gate";
 import { FeatureGate } from "@/components/pay/feature-gate";
 import {
@@ -92,18 +93,8 @@ function ComponentExample({
   children: React.ReactNode;
   previewClassName?: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopy();
   const trimmedCode = code.trim();
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(trimmedCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   return (
     <div className="not-prose my-8 overflow-hidden rounded-lg border bg-background">
@@ -121,7 +112,7 @@ function ComponentExample({
           variant="outline"
           size="sm"
           className="absolute right-3 top-3 z-10 bg-background"
-          onClick={copyCode}
+          onClick={() => copy(trimmedCode)}
           aria-label="Copy code"
         >
           {copied ? (

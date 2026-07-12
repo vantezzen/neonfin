@@ -11,6 +11,7 @@ import {
   wallets,
 } from "@/db/schema";
 import { toNum } from "@/lib/credits";
+import { ownedProjectIds } from "./projects";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = 30;
@@ -127,14 +128,6 @@ export async function getSetupState(ownerId: string): Promise<SetupState> {
     firstProjectId,
     complete: hasProvider && hasProject && isLive,
   };
-}
-
-async function ownedProjectIds(ownerId: string): Promise<string[]> {
-  const rows = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.ownerId, ownerId));
-  return rows.map((row) => row.id);
 }
 
 function dayKey(date: Date): string {

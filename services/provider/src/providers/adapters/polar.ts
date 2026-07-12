@@ -56,11 +56,7 @@ export class PolarProvider implements PaymentProvider {
   catalogMode = "price_product" as const;
 
   private polar: Polar;
-  constructor(
-    accessToken: string,
-    private webhookSecret: string | null,
-    environment: string,
-  ) {
+  constructor(accessToken: string, environment: string) {
     this.polar = new Polar({
       accessToken,
       server: environment === "sandbox" ? "sandbox" : "production",
@@ -140,28 +136,6 @@ export class PolarProvider implements PaymentProvider {
         : checkout.url,
       checkoutId: checkout.id,
     };
-  }
-
-  async verifyAndNormalize(
-    rawBody: string,
-    headers: Headers,
-  ): Promise<NormalizedEvent> {
-    if (!this.webhookSecret) {
-      throw new Error("No webhook secret configured for this Polar account");
-    }
-    const event = validateEvent(
-      rawBody,
-      Object.fromEntries(headers.entries()),
-      this.webhookSecret,
-    );
-    return normalizePolarEvent(event, header(headers, "webhook-id"));
-  }
-
-  normalizeStoredPayload(
-    payload: unknown,
-    providerEventId: string,
-  ): NormalizedEvent {
-    return normalizePolarEvent(payload as PolarWebhookEvent, providerEventId);
   }
 
   async getPortalUrl(customerId: string, returnUrl: string) {

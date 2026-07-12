@@ -88,7 +88,7 @@
         "input",
         "https://pay.vantezzen.io/r/pay-provider.json"
       ],
-      "dependencies": ["lucide-react"],
+      "dependencies": ["lucide-react", "uqr"],
       "files": [
         {
           "path": "registry/pay/components/pay/wallet-button.tsx",

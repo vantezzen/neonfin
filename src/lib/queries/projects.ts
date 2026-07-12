@@ -3,6 +3,15 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { apiKeys, products, projects } from "@/db/schema";
 
+/** IDs of every project owned by a user - the scope filter for owner-facing lists. */
+export async function ownedProjectIds(ownerId: string): Promise<string[]> {
+  const rows = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.ownerId, ownerId));
+  return rows.map((row) => row.id);
+}
+
 export async function listProjects(ownerId: string) {
   return db.query.projects.findMany({
     where: eq(projects.ownerId, ownerId),
@@ -13,12 +22,6 @@ export async function listProjects(ownerId: string) {
         with: { prices: { columns: { providerPriceId: true } } },
       },
     },
-  });
-}
-
-export async function getProject(id: string, ownerId: string) {
-  return db.query.projects.findFirst({
-    where: and(eq(projects.id, id), eq(projects.ownerId, ownerId)),
   });
 }
 

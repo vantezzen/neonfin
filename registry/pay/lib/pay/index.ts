@@ -32,7 +32,7 @@ export type PayClientConfig = {
 };
 
 export { PayError, type PayErrorOptions } from "./error";
-import { PayError } from "./error";
+import { PayError, payFetch } from "./error";
 
 export type FreeGrant = { credits: number; period: "monthly" | "once" } | null;
 
@@ -219,32 +219,14 @@ export function createPayClient(config: PayClientConfig) {
       : `${storageKey}_pending_order`;
   const baseOrigin = new URL(baseUrl).origin;
 
-  async function fetchWithTimeout(
-    input: RequestInfo | URL,
-    init: RequestInit,
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const signal = init.signal;
-    const abort = () => controller.abort();
-    if (signal?.aborted) abort();
-    else signal?.addEventListener("abort", abort, { once: true });
-    const timeout = setTimeout(abort, requestTimeoutMs);
-    try {
-      return await fetch(input, { ...init, signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-      signal?.removeEventListener("abort", abort);
-    }
-  }
-
   async function request<T>(
     path: string,
     init?: Omit<RequestInit, "body"> & { body?: unknown },
   ): Promise<T> {
     const { body, ...rest } = init ?? {};
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(`${baseUrl}/api/v1${path}`, {
+    return payFetch<T>(
+      `${baseUrl}/api/v1${path}`,
+      {
         ...rest,
         headers: {
           Authorization: `Bearer ${config.publishableKey}`,
@@ -252,70 +234,24 @@ export function createPayClient(config: PayClientConfig) {
           ...rest.headers,
         },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      });
-    } catch {
-      throw new PayError(0, "Could not reach vantezzen/pay. Check your connection and try again.", {
-        code: "network_error",
-      });
-    }
-    const data = res.status === 204 ? null : await res.json().catch(() => null);
-    if (!res.ok) {
-      const err = (data ?? {}) as {
-        error?: string;
-        code?: string;
-        balance?: number;
-        requested?: number;
-        requestId?: string;
-      };
-      throw new PayError(
-        res.status,
-        err.error ?? `Request failed (${res.status})`,
-        {
-          code: err.code,
-          balance: err.balance,
-          requested: err.requested,
-          requestId: err.requestId,
-        },
-      );
-    }
-    return data as T;
+      },
+      requestTimeoutMs,
+      "Could not reach vantezzen/pay. Check your connection and try again.",
+    );
   }
 
   async function externalRequest<T>(path: string, body: unknown): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(`${externalApiBasePath}${path}`, {
+    return payFetch<T>(
+      `${externalApiBasePath}${path}`,
+      {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      });
-    } catch {
-      throw new PayError(0, "Could not reach your billing endpoint. Check your connection and try again.", {
-        code: "network_error",
-      });
-    }
-    const data = res.status === 204 ? null : await res.json().catch(() => null);
-    if (!res.ok) {
-      const err = (data ?? {}) as {
-        error?: string;
-        code?: string;
-        balance?: number;
-        requested?: number;
-        requestId?: string;
-      };
-      throw new PayError(
-        res.status,
-        err.error ?? `Request failed (${res.status})`,
-        {
-          code: err.code,
-          balance: err.balance,
-          requested: err.requested,
-          requestId: err.requestId,
-        },
-      );
-    }
-    return data as T;
+      },
+      requestTimeoutMs,
+      "Could not reach your billing endpoint. Check your connection and try again.",
+    );
   }
 
   function requireExternalUserId(): string {

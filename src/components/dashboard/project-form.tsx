@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Field } from "@/components/dashboard/products/product-form";
 
 const initial: ActionState = {};
 
@@ -301,28 +302,3 @@ function ModeHelp() {
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: React.ReactNode;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      {typeof label === "string" ? (
-        <Label className="text-xs">{label}</Label>
-      ) : (
-        <div className="flex items-center gap-2 text-xs leading-none font-medium">
-          {label}
-        </div>
-      )}
-      {children}
-      {hint ? (
-        <span className="text-xs text-muted-foreground">{hint}</span>
-      ) : null}
-    </div>
-  );
-}
