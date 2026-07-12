@@ -22,26 +22,12 @@ import {
   type Price,
   type Product,
 } from "@/lib/pay";
+import { formatCredits, formatMoney } from "@/lib/pay/format";
 import {
   usePay,
   usePayCheckout,
   useSubscriptions,
 } from "@/components/pay/provider";
-
-function formatMoney(cents: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-    }).format(cents / 100);
-  } catch {
-    return `${(cents / 100).toFixed(2)} ${currency}`;
-  }
-}
-
-function formatCredits(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(6)));
-}
 
 /** "full_access" -> "Full access" */
 export function humanizeFeature(key: string): string {
@@ -258,7 +244,7 @@ export function PurchaseDialog({
     client
       .getProducts()
       .then((p) => active && setProducts(p))
-      .catch(() => active && setError("Couldn't load purchase options."));
+      .catch((err) => { if (!active) return; console.error("[pay] Failed to load products:", err); setError("Couldn't load purchase options."); });
     return () => {
       active = false;
     };
@@ -300,6 +286,7 @@ export function PurchaseDialog({
           "Confirming your payment. This page will update automatically when it is recorded.",
         );
       } else {
+        console.error("[pay] Failed to start checkout:", err);
         setError("Couldn't start checkout. Please try again.");
       }
     }
@@ -311,7 +298,8 @@ export function PurchaseDialog({
     try {
       const url = await client.getPortalUrl();
       if (typeof window !== "undefined") window.location.assign(url);
-    } catch {
+    } catch (err) {
+      console.error("[pay] Failed to open billing portal:", err);
       setError("Couldn't open the billing portal. Please try again.");
       setPortalBusy(false);
     }

@@ -142,10 +142,11 @@ export type OrderPage = {
   nextCursor: string | null;
 };
 
+import { openCheckoutPopup, waitForPopupCheckout } from "./popup";
+
 const DEFAULT_STORAGE_KEY = "pay_code";
 const DEFAULT_EXTERNAL_API_BASE_PATH = "/api/pay";
 export const PENDING_ORDER_KEY = "pay_pending_order";
-const POPUP_POLL_MS = 1500;
 
 function hasStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -175,50 +176,6 @@ function shouldUseRedirect(flow: CheckoutFlow): boolean {
   const mobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
   return mobileUA || window.innerWidth < 768;
 }
-
-function popupFeatures(): string {
-  if (typeof window === "undefined") return "";
-  const width = Math.min(520, window.outerWidth || 520);
-  const height = Math.min(760, window.outerHeight || 760);
-  const left =
-    (window.screenX || 0) + Math.max(0, ((window.outerWidth || width) - width) / 2);
-  const top =
-    (window.screenY || 0) +
-    Math.max(0, ((window.outerHeight || height) - height) / 2);
-  return [
-    "popup=yes",
-    `width=${Math.round(width)}`,
-    `height=${Math.round(height)}`,
-    `left=${Math.round(left)}`,
-    `top=${Math.round(top)}`,
-    "resizable=yes",
-    "scrollbars=yes",
-  ].join(",");
-}
-
-function openCheckoutPopup(): Window | null {
-  if (typeof window === "undefined") return null;
-  const popup = window.open("", `pay_checkout_${randomKey()}`, popupFeatures());
-  if (!popup) return null;
-
-  try {
-    popup.document.title = "Opening checkout";
-    popup.document.body.style.cssText =
-      "margin:0;min-height:100vh;display:grid;place-items:center;font:14px system-ui,sans-serif;color:#52525b;background:#fafafa";
-    popup.document.body.textContent = "Opening secure checkout...";
-  } catch {
-    // Some browsers restrict writing even to the blank popup. Navigation below
-    // still works, so this is only cosmetic.
-  }
-  popup.focus();
-  return popup;
-}
-
-type CheckoutPopupMessage = {
-  source?: unknown;
-  type?: unknown;
-  orderId?: unknown;
-};
 
 export type PayClient = ReturnType<typeof createPayClient>;
 
@@ -638,141 +595,6 @@ export function createPayClient(config: PayClientConfig) {
     }
   }
 
-  async function waitForPopupCheckout(
-    result: CheckoutResult,
-    popup: Window,
-  ): Promise<OrderStatus> {
-    return new Promise((resolve, reject) => {
-      let active = true;
-      let popupClosed = false;
-      let pollTimer: ReturnType<typeof setTimeout> | null = null;
-      let closeTimer: ReturnType<typeof setInterval> | null = null;
-
-      function cleanup() {
-        active = false;
-        if (pollTimer) clearTimeout(pollTimer);
-        if (closeTimer) clearInterval(closeTimer);
-        window.removeEventListener("message", onMessage);
-      }
-
-      function finish(order: OrderStatus) {
-        cleanup();
-        forgetPendingOrder(result.orderId);
-        if (order.code) setCode(order.code);
-        if (!popup.closed) popup.close();
-        resolve(order);
-      }
-
-      function fail(error: unknown, closePopup = false) {
-        cleanup();
-        if (closePopup && !popup.closed) popup.close();
-        reject(error);
-      }
-
-      async function poll() {
-        if (!active) return;
-        try {
-          const order = await getOrder(result.orderId);
-          if (
-            order.status === "paid" &&
-            (mode === "external_auth" || order.code)
-          ) {
-            finish(order);
-            return;
-          }
-          if (
-            order.status === "failed" ||
-            order.status === "expired" ||
-            order.status === "refunded"
-          ) {
-            forgetPendingOrder(result.orderId);
-            fail(
-              checkoutError(
-                `checkout_${order.status}`,
-                `Checkout ${order.status}.`,
-              ),
-              true,
-            );
-            return;
-          }
-        } catch {
-          // Transient network/API errors should not strand an in-progress
-          // checkout. Keep polling while the popup remains open.
-        }
-        if (!popupClosed) pollTimer = setTimeout(poll, POPUP_POLL_MS);
-      }
-
-      async function handleClosedPopup() {
-        if (popupClosed) return;
-        popupClosed = true;
-        if (closeTimer) clearInterval(closeTimer);
-
-        const deadline = Date.now() + 10_000;
-        async function confirmPayment() {
-          if (!active) return;
-          try {
-            const order = await getOrder(result.orderId);
-            if (
-              order.status === "paid" &&
-              (mode === "external_auth" || order.code)
-            ) {
-              finish(order);
-              return;
-            }
-        if (
-          order.status === "failed" ||
-          order.status === "expired" ||
-          order.status === "refunded"
-        ) {
-              forgetPendingOrder(result.orderId);
-              fail(
-                checkoutError(
-                  `checkout_${order.status}`,
-                  `Checkout ${order.status}.`,
-                ),
-              );
-              return;
-            }
-          } catch {
-            // The pending-order resume poller will retry transient failures.
-          }
-          if (Date.now() < deadline) {
-            pollTimer = setTimeout(confirmPayment, POPUP_POLL_MS);
-            return;
-          }
-          fail(
-            checkoutError(
-              "checkout_closed",
-              "Checkout closed before payment could be confirmed. We'll keep checking in the background.",
-            ),
-          );
-        }
-        void confirmPayment();
-      }
-
-      function onMessage(event: MessageEvent<CheckoutPopupMessage>) {
-        if (event.origin !== baseOrigin) return;
-        const data = event.data;
-        if (data?.source !== "pay") return;
-
-        const matchesOrder = data.orderId === result.orderId;
-        if (data.type === "checkout_paid" && matchesOrder) {
-          void poll();
-        }
-        if (data.type === "checkout_cancelled" && matchesOrder) {
-          forgetPendingOrder(result.orderId);
-          fail(checkoutError("checkout_cancelled", "Checkout was cancelled."));
-        }
-      }
-
-      window.addEventListener("message", onMessage);
-      closeTimer = setInterval(() => {
-        if (popup.closed) void handleClosedPopup();
-      }, 500);
-      void poll();
-    });
-  }
-
   // --- checkout ------------------------------------------------------------
 
   /**
@@ -825,7 +647,7 @@ export function createPayClient(config: PayClientConfig) {
     const redirect = shouldUseRedirect(flow);
 
     if (!redirect) {
-      const popup = openCheckoutPopup();
+      const popup = openCheckoutPopup(randomKey);
       if (!popup) {
         if (flow === "popup") {
           throw checkoutError(
@@ -844,7 +666,13 @@ export function createPayClient(config: PayClientConfig) {
             );
           }
           popup.location.href = result.url;
-          await waitForPopupCheckout(result, popup);
+          await waitForPopupCheckout(result, popup, {
+            getOrder,
+            mode,
+            setCode,
+            forgetPendingOrder,
+            baseOrigin,
+          });
           return result;
         } catch (err) {
           if (!popup.closed) popup.close();

@@ -1,12 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatCredits } from "@/lib/pay/format";
 import { useCredits } from "@/components/pay/provider";
-
-function formatCredits(n: number): string {
-  const value = Number.isInteger(n) ? n : Number(n.toFixed(6));
-  return new Intl.NumberFormat().format(value);
-}
 
 export type RemainingCreditsProps = {
   /** Which product's balance to show. Omit for single-product projects. */

@@ -18,6 +18,16 @@
           "path": "registry/pay/lib/pay/index.ts",
           "type": "registry:lib",
           "target": "lib/pay/index.ts"
+        },
+        {
+          "path": "registry/pay/lib/pay/format.ts",
+          "type": "registry:lib",
+          "target": "lib/pay/format.ts"
+        },
+        {
+          "path": "registry/pay/lib/pay/popup.ts",
+          "type": "registry:lib",
+          "target": "lib/pay/popup.ts"
         }
       ]
     },
