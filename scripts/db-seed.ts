@@ -1,4 +1,4 @@
-import { createCipheriv, createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { hashPassword } from "better-auth/crypto";
@@ -7,6 +7,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
 import { createId } from "../src/lib/id";
+import { encryptSecret } from "../shared/secret-encryption";
 
 loadEnvConfig(process.cwd());
 const databaseUrl = process.env.DATABASE_URL;
@@ -39,102 +40,6 @@ function daysFromNow(days: number, hour = 10): Date {
 
 function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
-}
-
-type Provider = "stripe" | "polar";
-type SecretPurpose = "provider_api_key" | "webhook_secret";
-
-interface SecretContext {
-  accountId: string;
-  provider: Provider;
-  purpose: SecretPurpose;
-}
-
-function contextBytes(context: SecretContext): Buffer {
-  return Buffer.from(
-    `${context.provider}:${context.accountId}:${context.purpose}`,
-    "utf8",
-  );
-}
-
-function encryptionKey(): Buffer {
-  const raw = process.env.PAY_ENCRYPTION_KEY;
-  if (!raw) {
-    throw new Error(
-      "PAY_ENCRYPTION_KEY is not set in services/provider/.env or the process environment",
-    );
-  }
-  const key = Buffer.from(raw, "base64");
-  if (key.length !== 32) {
-    throw new Error("PAY_ENCRYPTION_KEY must decode to exactly 32 bytes");
-  }
-  return key;
-}
-
-async function encryptSecret(
-  plaintext: string,
-  context: SecretContext,
-): Promise<string> {
-  const provider = process.env.PAY_SECRETS_PROVIDER ?? "env";
-  if (provider === "vault") {
-    return vaultEncrypt(plaintext, context);
-  }
-  if (provider !== "env") {
-    throw new Error('PAY_SECRETS_PROVIDER must be "env" or "vault"');
-  }
-
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
-  cipher.setAAD(contextBytes(context));
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ]);
-  const tag = cipher.getAuthTag();
-  const body = [iv, tag, ciphertext]
-    .map((b) => b.toString("base64url"))
-    .join(".");
-  return `env:v1:${body}`;
-}
-
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
-}
-
-async function vaultEncrypt(
-  plaintext: string,
-  context: SecretContext,
-): Promise<string> {
-  const address = requiredEnv("VAULT_ADDR").replace(/\/+$/, "");
-  const mount = (process.env.VAULT_TRANSIT_MOUNT ?? "transit").replace(
-    /^\/+|\/+$/g,
-    "",
-  );
-  const res = await fetch(
-    `${address}/v1/${mount}/encrypt/${requiredEnv("VAULT_TRANSIT_KEY")}`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-vault-token": requiredEnv("VAULT_TOKEN"),
-      },
-      body: JSON.stringify({
-        plaintext: Buffer.from(plaintext, "utf8").toString("base64"),
-        context: contextBytes(context).toString("base64"),
-      }),
-    },
-  );
-  const data = (await res.json().catch(() => ({}))) as {
-    data?: { ciphertext?: string };
-    errors?: string[];
-  };
-  if (!res.ok || !data.data?.ciphertext) {
-    const message = data.errors?.join("; ") || `${res.status} ${res.statusText}`;
-    throw new Error(`Vault Transit encrypt failed: ${message}`);
-  }
-  return data.data.ciphertext;
 }
 
 function apiKey(projectId: string, kind: schema.ApiKeyKind, name: string) {

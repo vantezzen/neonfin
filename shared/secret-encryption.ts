@@ -1,0 +1,183 @@
+// Secret-encryption primitives shared by services/provider (runtime) and
+// scripts/db-seed.ts (dev tooling). NEVER import this from the web app (src/)
+// - the web server must not be able to decrypt provider credentials.
+
+import { Buffer } from "node:buffer";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import type { ProviderName } from "./provider-service";
+
+const ENV_PREFIX = "env:v1:";
+const ALGO = "aes-256-gcm";
+
+export type SecretPurpose = "provider_api_key" | "webhook_secret";
+
+export interface SecretContext {
+  accountId: string;
+  provider: ProviderName;
+  purpose: SecretPurpose;
+}
+
+export function contextBytes(context: SecretContext): Buffer {
+  return Buffer.from(
+    `${context.provider}:${context.accountId}:${context.purpose}`,
+    "utf8",
+  );
+}
+
+export function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+export function envKey(): Buffer {
+  const raw = Buffer.from(requiredEnv("PAY_ENCRYPTION_KEY"), "base64");
+  if (raw.length !== 32) {
+    throw new Error("PAY_ENCRYPTION_KEY must decode to exactly 32 bytes");
+  }
+  return raw;
+}
+
+export function vaultConfig() {
+  const address = requiredEnv("VAULT_ADDR").replace(/\/+$/, "");
+  const mount = (process.env.VAULT_TRANSIT_MOUNT ?? "transit").replace(
+    /^\/+|\/+$/g,
+    "",
+  );
+  return {
+    address,
+    mount,
+    token: requiredEnv("VAULT_TOKEN"),
+    key: requiredEnv("VAULT_TRANSIT_KEY"),
+  };
+}
+
+interface VaultResponse {
+  data?: {
+    ciphertext?: string;
+    plaintext?: string;
+  };
+  errors?: string[];
+}
+
+export async function vaultRequest(
+  action: "encrypt" | "decrypt",
+  body: Record<string, string>,
+): Promise<VaultResponse> {
+  const config = vaultConfig();
+  const res = await fetch(
+    `${config.address}/v1/${config.mount}/${action}/${config.key}`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-vault-token": config.token,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  const data = (await res.json().catch(() => ({}))) as VaultResponse;
+  if (!res.ok) {
+    const message = data.errors?.join("; ") || `${res.status} ${res.statusText}`;
+    throw new Error(`Vault Transit request failed: ${message}`);
+  }
+  return data;
+}
+
+export async function encryptEnv(
+  plaintext: string,
+  context: SecretContext,
+): Promise<string> {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(ALGO, envKey(), iv);
+  cipher.setAAD(contextBytes(context));
+  const ciphertext = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  const body = [iv, tag, ciphertext]
+    .map((b) => b.toString("base64url"))
+    .join(".");
+  return `${ENV_PREFIX}${body}`;
+}
+
+export async function decryptEnv(
+  encoded: string,
+  context: SecretContext,
+): Promise<string> {
+  const isCurrent = encoded.startsWith(ENV_PREFIX);
+  const body = isCurrent ? encoded.slice(ENV_PREFIX.length) : encoded;
+  const [ivB64, tagB64, ctB64] = body.split(".");
+  if (!ivB64 || !tagB64 || !ctB64) {
+    throw new Error("Malformed encrypted secret");
+  }
+
+  const decipher = createDecipheriv(
+    ALGO,
+    envKey(),
+    Buffer.from(ivB64, "base64url"),
+  );
+  if (isCurrent) decipher.setAAD(contextBytes(context));
+  decipher.setAuthTag(Buffer.from(tagB64, "base64url"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(ctB64, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+export async function encryptVault(
+  plaintext: string,
+  context: SecretContext,
+): Promise<string> {
+  const data = await vaultRequest("encrypt", {
+    plaintext: Buffer.from(plaintext, "utf8").toString("base64"),
+    context: contextBytes(context).toString("base64"),
+  });
+  if (!data.data?.ciphertext) {
+    throw new Error("Vault Transit did not return ciphertext");
+  }
+  return data.data.ciphertext;
+}
+
+export async function decryptVault(
+  encoded: string,
+  context: SecretContext,
+): Promise<string> {
+  const data = await vaultRequest("decrypt", {
+    ciphertext: encoded,
+    context: contextBytes(context).toString("base64"),
+  });
+  if (!data.data?.plaintext) {
+    throw new Error("Vault Transit did not return plaintext");
+  }
+  return Buffer.from(data.data.plaintext, "base64").toString("utf8");
+}
+
+export function configuredProvider(): "env" | "vault" {
+  const provider = process.env.PAY_SECRETS_PROVIDER ?? "env";
+  if (provider !== "env" && provider !== "vault") {
+    throw new Error('PAY_SECRETS_PROVIDER must be "env" or "vault"');
+  }
+  return provider;
+}
+
+export async function encryptSecret(
+  plaintext: string,
+  context: SecretContext,
+): Promise<string> {
+  return configuredProvider() === "vault"
+    ? encryptVault(plaintext, context)
+    : encryptEnv(plaintext, context);
+}
+
+export async function decryptSecret(
+  encoded: string,
+  context: SecretContext,
+): Promise<string> {
+  if (encoded.startsWith("vault:")) {
+    return decryptVault(encoded, context);
+  }
+  return decryptEnv(encoded, context);
+}
