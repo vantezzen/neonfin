@@ -78,8 +78,11 @@ export async function handleProviderRequest(request: ProviderServiceRequest) {
       try {
         webhookSecret = (await api.createWebhook({ url: request.webhookUrl }))
           .webhookSecret;
-      } catch {
-        // The dashboard will guide the user through manual setup.
+      } catch (err) {
+        console.warn(
+          "[provider-service] webhook auto-provisioning failed, falling back to manual setup:",
+          err,
+        );
       }
       const secretKeyEnc = await encryptSecret(request.secretKey, {
         accountId: id,
