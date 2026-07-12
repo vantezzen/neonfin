@@ -1,11 +1,24 @@
 import type { NextConfig } from "next";
 import { createMDX } from "fumadocs-mdx/next";
 
+const cspReportOnly = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https:",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
     value: "base-uri 'self'; object-src 'none'; frame-ancestors 'none'",
   },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
