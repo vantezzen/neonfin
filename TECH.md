@@ -91,8 +91,9 @@ Web-app server-only environment is validated lazily in `src/lib/env.ts`:
 - `BETTER_AUTH_SECRET`: better-auth session signing secret.
 - `BETTER_AUTH_URL`: auth base URL.
 - `PAY_ALLOW_SIGNUPS`: `"true"` or `"false"`. First user is always allowed.
-- `RESEND_API_KEY`, `RESEND_FROM`: transactional email for auth flows and
-  wallet recovery.
+- `RESEND_API_KEY`, `RESEND_FROM`: optional transactional email. If unset,
+  email verification, password reset, and wallet recovery emails are disabled
+  (the app warns to the server log and no-ops rather than crashing).
 - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`: optional dashboard GitHub OAuth.
 - `NEXT_PUBLIC_APP_URL`: public app URL used for checkout callbacks.
 - `PAY_BILLING_MODE`: `"self_hosted"` or `"hosted"`, default
@@ -391,17 +392,21 @@ Route map:
 | Route | Purpose |
 |---|---|
 | `GET /api/v1/products` | Product catalog and active prices. |
+| `GET /api/v1/me` | Inspect the authenticated publishable key and project. |
 | `POST /api/v1/wallets` | Create anonymous code wallet. |
 | `GET /api/v1/wallets/{code}` | Read code wallet balances/access. |
 | `POST /api/v1/wallets/{code}/deduct` | Deduct credits from code wallet. |
 | `GET /api/v1/wallets/{code}/portal` | Provider billing portal URL. |
+| `GET /api/v1/wallets/{code}/ledger` | Cursor-paginated ledger entries for a code wallet. |
 | `POST /api/v1/wallets/external` | Get/create external-auth wallet. |
 | `POST /api/v1/wallets/external/deduct` | Deduct from external-auth wallet. |
 | `POST /api/v1/wallets/external/portal` | Provider billing portal URL for external-auth wallets. |
+| `GET /api/v1/wallets/external/ledger` | Cursor-paginated ledger entries for an external-auth wallet. |
 | `POST /api/v1/checkout` | Create provider checkout. |
 | `GET /api/v1/orders/{ref}` | Poll order by order id or provider checkout id. |
 | `POST /api/v1/credit` | Manual credit grant by code or external user. |
 | `POST /api/v1/features` | Manual feature grant/revoke. |
+| `GET /api/health` | Unauthenticated readiness probe; 200 when DB is reachable, 503 otherwise. |
 
 ## Dashboard And Server Actions
 

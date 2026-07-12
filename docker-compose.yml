@@ -35,8 +35,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "3001:3001"
+    # internal-only: reachable from the web container via the compose network
+    expose:
+      - "3001"
 
   web:
     profiles: ["secure"]
@@ -62,6 +63,8 @@ services:
         condition: service_healthy
       provider-service:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "3000:3000"
 
