@@ -404,18 +404,23 @@ export async function getOrCreateExternalWallet(
       .onConflictDoNothing()
       .returning();
     if (!wallet) {
-      const w = await tx.query.wallets.findFirst({
+      const existing = await tx.query.wallets.findFirst({
         where: and(
           eq(wallets.projectId, projectId),
           eq(wallets.externalUserId, externalUserId),
         ),
       });
+      if (!existing) throw new Error("Could not create external wallet");
       const balances: BalanceView[] = [];
       for (const p of prods) {
-        balances.push(viewOf(p, await syncBalance(tx, w!.id, p), null));
+        balances.push(viewOf(p, await syncBalance(tx, existing.id, p), null));
       }
       // Existed after a create race - surface its real access, not empty.
-      return { wallet: w!, balances, ...(await computeWalletAccess(tx, w!.id)) };
+      return {
+        wallet: existing,
+        balances,
+        ...(await computeWalletAccess(tx, existing.id)),
+      };
     }
     const balances: BalanceView[] = [];
     for (const product of prods) {
