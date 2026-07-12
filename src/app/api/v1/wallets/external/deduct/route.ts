@@ -2,10 +2,11 @@ import { z } from "zod";
 import { positiveCreditAmountSchema } from "@/lib/amounts";
 import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
 import {
+  creditErrorResponse,
+  requireProductId,
+} from "@/lib/api/credit-errors";
+import {
   deductByExternalId,
-  soleProductId,
-  InsufficientCreditsError,
-  ProductNotFoundError,
   WalletNotFoundError,
 } from "@/lib/credits";
 
@@ -46,10 +47,9 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // Default to the sole product when the caller omits one.
-  const productId = parsed.data.productId ?? (await soleProductId(project.id));
-  if (!productId) {
-    return apiError(400, "product_required", "productId is required (project has multiple products)", cors);
-  }
+  const productIdOrError = await requireProductId(project, parsed.data.productId, cors);
+  if (productIdOrError instanceof Response) return productIdOrError;
+  const productId = productIdOrError;
 
   try {
     const result = await deductByExternalId(
@@ -62,16 +62,10 @@ export async function POST(req: Request): Promise<Response> {
     );
     return Response.json(result, { headers: cors });
   } catch (e) {
-    if (e instanceof InsufficientCreditsError) {
-      return apiError(402, "insufficient_credits", "Insufficient credits", cors, {
-        balance: e.balance,
-        requested: e.requested,
-      });
-    }
     if (e instanceof WalletNotFoundError)
       return apiError(404, "wallet_not_found", "Wallet not found", cors);
-    if (e instanceof ProductNotFoundError)
-      return apiError(400, "unknown_product", "Unknown product", cors);
+    const mapped = creditErrorResponse(e, cors);
+    if (mapped) return mapped;
     throw e;
   }
 }

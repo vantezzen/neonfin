@@ -3,20 +3,17 @@ import { positiveCreditAmountSchema } from "@/lib/amounts";
 import {
   authenticate,
   corsHeaders,
-  apiError,
   invalidBodyError,
-  invalidCodeAttempt,
   preflight,
-  rateLimitHeaders,
 } from "@/lib/api/http";
-import { INVALID_CODE_LIMIT } from "@/lib/api/rate-limit";
+import {
+  creditErrorResponse,
+  requireProductId,
+  walletNotFoundResponse,
+} from "@/lib/api/credit-errors";
 import {
   deductByCode,
   findActiveCodeWallet,
-  soleProductId,
-  InsufficientCreditsError,
-  ProductNotFoundError,
-  WalletExpiredError,
   WalletNotFoundError,
 } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
@@ -50,24 +47,14 @@ export async function POST(
   }
 
   // Default to the sole product when the caller omits one.
-  const productId = parsed.data.productId ?? (await soleProductId(project.id));
-  if (!productId) {
-    return apiError(400, "product_required", "productId is required (project has multiple products)", cors);
-  }
+  const productIdOrError = await requireProductId(project, parsed.data.productId, cors);
+  if (productIdOrError instanceof Response) return productIdOrError;
+  const productId = productIdOrError;
 
   try {
     const wallet = await findActiveCodeWallet(project.id, code);
       if (!wallet) {
-        const limit = await invalidCodeAttempt(project.id, req);
-        if (!limit.ok) {
-          return apiError(
-            429,
-            "rate_limited",
-            "Too many invalid recovery codes",
-            rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
-          );
-        }
-        return apiError(404, "wallet_not_found", "Wallet not found", cors);
+        return walletNotFoundResponse(project.id, req, cors);
       }
 
     const result = await deductByCode(
@@ -79,28 +66,11 @@ export async function POST(
     );
     return Response.json(result, { headers: cors });
   } catch (e) {
-    if (e instanceof InsufficientCreditsError) {
-      return apiError(402, "insufficient_credits", "Insufficient credits", cors, {
-        balance: e.balance,
-        requested: e.requested,
-      });
-    }
     if (e instanceof WalletNotFoundError) {
-      const limit = await invalidCodeAttempt(project.id, req);
-      if (!limit.ok) {
-        return apiError(
-          429,
-          "rate_limited",
-          "Too many invalid recovery codes",
-          rateLimitHeaders(cors, INVALID_CODE_LIMIT, limit),
-        );
-      }
-      return apiError(404, "wallet_not_found", "Wallet not found", cors);
+      return walletNotFoundResponse(project.id, req, cors);
     }
-    if (e instanceof WalletExpiredError)
-      return apiError(410, "wallet_expired", "Wallet expired", cors);
-    if (e instanceof ProductNotFoundError)
-      return apiError(400, "unknown_product", "Unknown product", cors);
+    const mapped = creditErrorResponse(e, cors);
+    if (mapped) return mapped;
     throw e;
   }
 }

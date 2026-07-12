@@ -8,6 +8,7 @@ import {
   invalidBodyError,
   preflight,
 } from "@/lib/api/http";
+import { decodeCursor, encodeCursor } from "@/lib/api/cursor";
 import { z } from "zod";
 
 export function OPTIONS(): Response {
@@ -18,31 +19,6 @@ const querySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
-
-type Cursor = { createdAt: string; id: string };
-
-function decodeCursor(value: string | undefined): Cursor | null {
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-    if (
-      typeof parsed?.createdAt !== "string" ||
-      Number.isNaN(new Date(parsed.createdAt).valueOf()) ||
-      typeof parsed?.id !== "string"
-    ) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function encodeCursor(order: { createdAt: Date; id: string }): string {
-  return Buffer.from(
-    JSON.stringify({ createdAt: order.createdAt.toISOString(), id: order.id }),
-  ).toString("base64url");
-}
 
 /** List recent project orders using stable cursor pagination. */
 export async function GET(req: Request): Promise<Response> {

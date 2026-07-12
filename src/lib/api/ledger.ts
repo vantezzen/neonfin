@@ -3,31 +3,12 @@ import { and, desc, eq, lt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { ledgerEntries, products } from "@/db/schema";
 import { toNum } from "@/lib/credits";
+import { type Cursor, decodeCursor, encodeCursor } from "@/lib/api/cursor";
 
-type Cursor = { createdAt: string; id: string };
+/** @deprecated Use {@link decodeCursor} from `@/lib/api/cursor` instead. */
+export const decodeLedgerCursor = decodeCursor;
 
-export function decodeLedgerCursor(value: string | undefined): Cursor | null {
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-    if (
-      typeof parsed?.createdAt !== "string" ||
-      Number.isNaN(new Date(parsed.createdAt).valueOf()) ||
-      typeof parsed?.id !== "string"
-    ) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function encodeLedgerCursor(entry: { createdAt: Date; id: string }): string {
-  return Buffer.from(
-    JSON.stringify({ createdAt: entry.createdAt.toISOString(), id: entry.id }),
-  ).toString("base64url");
-}
+const encodeLedgerCursor = encodeCursor;
 
 /** List a wallet's immutable balance changes with stable cursor pagination. */
 export async function listWalletLedger(

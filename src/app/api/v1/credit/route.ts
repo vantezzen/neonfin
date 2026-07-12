@@ -4,10 +4,10 @@ import { db } from "@/db";
 import { products, wallets } from "@/db/schema";
 import { positiveCreditAmountSchema } from "@/lib/amounts";
 import { authenticate, corsHeaders, apiError, invalidBodyError, preflight } from "@/lib/api/http";
+import { requireProductId } from "@/lib/api/credit-errors";
 import {
   creditWallet,
   getOrCreateExternalWallet,
-  soleProductId,
 } from "@/lib/credits";
 import { normalizeCreditCode } from "@/lib/id";
 
@@ -82,10 +82,9 @@ export async function POST(req: Request): Promise<Response> {
     walletId = wallet.id;
   }
 
-  const productId = input.productId ?? (await soleProductId(project.id));
-  if (!productId) {
-    return apiError(400, "product_required", "productId is required (project has multiple products)", cors);
-  }
+  const productIdOrError = await requireProductId(project, input.productId, cors);
+  if (productIdOrError instanceof Response) return productIdOrError;
+  const productId = productIdOrError;
   const product = await db.query.products.findFirst({
     where: and(eq(products.id, productId), eq(products.projectId, project.id)),
     columns: { id: true },
