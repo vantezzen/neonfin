@@ -36,7 +36,6 @@ export async function recoverWalletByEmail(
   if (!parsed.success) return { error: "Enter a valid email address." };
 
   const email = parsed.data.email.toLowerCase();
-  const returnUrl = safeReturnUrl(parsed.data.returnUrl);
   const requestHeaders = await headers();
   const ip = clientIpFromHeaders(requestHeaders);
   const rateLimit = await consumeToken(
@@ -55,6 +54,7 @@ export async function recoverWalletByEmail(
       paidAt: orders.paidAt,
       createdAt: orders.createdAt,
       projectName: projects.name,
+      allowedOrigins: projects.allowedOrigins,
       productName: products.name,
     })
     .from(orders)
@@ -71,6 +71,10 @@ export async function recoverWalletByEmail(
     .limit(20);
 
   const wallets = uniqueWallets(rows);
+  const returnUrl = safeReturnUrl(
+    parsed.data.returnUrl,
+    wallets.map((w) => w.allowedOrigins),
+  );
   if (wallets.length > 0) {
     try {
       await sendRecoveryEmail(email, wallets, returnUrl);
@@ -94,16 +98,22 @@ function clientIpFromHeaders(headers: Pick<Headers, "get">): string {
   );
 }
 
-function safeReturnUrl(value: string | undefined): string | null {
+function safeReturnUrl(
+  value: string | undefined,
+  allowedOriginSets: string[][],
+): string | null {
   if (!value) return null;
+  let url: URL;
   try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:"
-      ? url.toString()
-      : null;
+    url = new URL(value);
   } catch {
     return null;
   }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  const anyUnrestricted = allowedOriginSets.some((set) => set.length === 0);
+  if (anyUnrestricted) return url.toString();
+  const allowed = allowedOriginSets.flat();
+  return allowed.includes(url.origin) ? url.toString() : null;
 }
 
 function uniqueWallets(
@@ -112,6 +122,7 @@ function uniqueWallets(
     paidAt: Date | null;
     createdAt: Date;
     projectName: string;
+    allowedOrigins: string[];
     productName: string | null;
   }>,
 ) {
