@@ -17,11 +17,15 @@ Try it at [https://pay.vantezzen.io](https://pay.vantezzen.io) or learn how to h
 
 ## Local Setup
 
-1. Install dependencies with `bun install`.
-2. Copy `.env.example` to `.env` and fill the secrets.
-3. Start local Postgres with `docker compose up -d`.
-4. Run migrations with `bun run db:migrate`.
-5. Start the app with `bun run dev` when you are working locally.
+1. Install web dependencies with `bun install`.
+2. Install provider service dependencies with `bun install --cwd services/provider`.
+3. Copy `.env.example` to `.env` and fill the secrets.
+4. Copy `services/provider/.env.example` to `services/provider/.env` and fill the provider secrets.
+5. Start local Postgres with `docker compose up -d`.
+6. Run migrations with `bun run db:migrate`.
+7. Start the app with `bun run dev` (runs the Next.js app and the provider service).
+
+See [TECH.md](TECH.md#local-setup) for the full list of required environment variables.
 
 ## Scripts
 
