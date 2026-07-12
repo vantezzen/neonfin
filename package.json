@@ -18,6 +18,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:reset": "sh -c 'bun run scripts/db-reset.ts \"$@\" && bun run db:migrate' --",
     "db:seed": "bun run scripts/db-seed.ts",
+    "db:seed:prism": "bun run scripts/db-seed-prism.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "registry:build": "shadcn build"

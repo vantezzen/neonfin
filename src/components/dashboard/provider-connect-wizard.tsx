@@ -1,6 +1,5 @@
 "use client";
 import { useActionState, useState } from "react";
-import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Info, Plus } from "lucide-react";
 import {
   connectProviderStart,
@@ -146,9 +145,7 @@ function Body({
             <Button type="button" variant="outline" onClick={onDone}>
               Done
             </Button>
-            <Button render={<Link href="/dashboard/providers" />}>
-              View provider status
-            </Button>
+            <Button onClick={onDone}>View provider status</Button>
           </DialogFooter>
         </div>
       ) : null}

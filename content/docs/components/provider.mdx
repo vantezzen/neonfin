@@ -79,6 +79,8 @@ using `externalUserId`.
 - Exposes balances and deduction helpers through `useCredits()`.
 - Exposes feature access through `useFeature()` and subscriptions through
   `useSubscription()`.
+- Caches the product catalog once and shares it through `useProducts()`.
+- Runs a handler after a completed checkout through `useCheckoutPaid()`.
 - Starts checkout with desktop popup/mobile redirect behavior through
   `usePayCheckout()`.
 - Watches pending checkout orders in the background and refreshes when the order
@@ -86,6 +88,36 @@ using `externalUserId`.
 - Dispatches a `pay:checkout-paid` browser event after popup completion or
   redirect resume. `WalletButton` uses this to show the post-purchase wallet
   reminder.
+
+## useProducts
+
+Read the project's product catalog. The catalog is fetched once and shared —
+purchase dialogs and your own pricing UI read the same cache.
+
+```tsx
+const { products, loading } = useProducts();
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `products` | `Product[] \| null` | The catalog, or `null` before the first load completes. |
+| `loading` | `boolean` | `true` until the first load settles. |
+| `error` | `string \| null` | Message from the last failed load, or `null`. |
+| `refresh` | `() => Promise<void>` | Force a refetch (e.g. after you know the catalog changed). |
+
+## useCheckoutPaid
+
+Run a handler whenever a checkout started from this page is confirmed paid —
+popup completion, redirect resume, or background confirmation.
+
+```tsx
+useCheckoutPaid((order) => toast.success(`Payment received (${order.status})`));
+```
+
+The wallet context (balances, features, subscriptions) has already been
+refreshed by the time the handler fires, and the handler does not need to be
+memoized. The raw `PAY_CHECKOUT_PAID_EVENT` constant remains available for
+non-React listeners.
 
 ## Related APIs
 

@@ -177,6 +177,18 @@ function shouldUseRedirect(flow: CheckoutFlow): boolean {
   return mobileUA || window.innerWidth < 768;
 }
 
+/**
+ * Resolve an `auto` checkout flow to the concrete behavior for this device:
+ * popup on desktop, redirect on touch/small screens (and during SSR). Useful
+ * for UI that describes what is about to happen ("opens in a new window" vs
+ * "redirects you").
+ */
+export function resolveCheckoutFlow(
+  flow: CheckoutFlow = "auto",
+): "popup" | "redirect" {
+  return shouldUseRedirect(flow) ? "redirect" : "popup";
+}
+
 export type PayClient = ReturnType<typeof createPayClient>;
 
 export function createPayClient(config: PayClientConfig) {

@@ -78,5 +78,9 @@ import { useFeature } from "@/components/pay/provider";
 const { enabled, loading } = useFeature("analytics");
 ```
 
+> In development, `useFeature`/`FeatureGate` warn in the console when a slug
+> isn't sold by any price in your catalog — the most common cause of a gate
+> that never unlocks is a typo'd slug.
+
 See [Access & features](/docs/concepts/access-and-features) for how features are
 attached to prices and derived.

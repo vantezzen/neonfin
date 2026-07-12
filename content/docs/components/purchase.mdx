@@ -13,7 +13,9 @@ page stays mounted, and touch/mobile users use a normal redirect. Pass
 
 <PurchaseLiveDemo />
 
-Each offer shows its tier label, included credits, and the features it unlocks.
+Each offer is presented as a complete purchase card with clear billing cadence,
+included credits, unlocked features, unit pricing, and one obvious action. The
+dialog keeps the order decision separate from the provider-hosted payment step.
 If the wallet already subscribes to a product shown here, its tiers are marked
 **Current plan** and a **Manage subscription** button opens the billing portal -
 because a fresh checkout can't switch an existing subscription (the API returns
@@ -109,14 +111,14 @@ Controlled usage:
 | `filters` | `PurchaseFilters` | All prices | Filter products/prices shown in the dialog. |
 | `children` | `React.ReactNode` | Filter-aware label | Button label. |
 | `title` | `string` | Filter-aware title | Dialog title. |
-| `description` | `string` | `Payment is handled by our secure checkout.` | Dialog description. |
-| `emptyMessage` | `string` | `Nothing is available to buy right now. Please check back later.` | Text shown when filters match no prices. |
+| `description` | `string` | Context-aware | Dialog description. Defaults to a filter-aware line about what happens after payment (e.g. credits landing instantly). |
+| `emptyMessage` | `string` | `Please check back soon.` | Body of the empty state shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
 | `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
 | `collectCustomerEmail` | `boolean` | Mode-aware | Shows the optional receipt and wallet-recovery email field. Defaults to `true` in credit-codes mode and `false` in external-auth mode. |
-| `recommendedPriceId` | `string` | - | Highlights one price as the suggested option. |
+| `recommendedPriceId` | `string \| (options) => string \| null` | - | Highlights one price. Pass an id, or a selector that receives the filtered options — e.g. the exported `recommendMiddleOption`. |
 | `recommendedLabel` | `string` | `Popular` | Label shown on the recommended price. |
 | `showBranding` | `boolean` | `true` | Shows the vantezzen/pay attribution link. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
@@ -133,14 +135,14 @@ Controlled usage:
 | `onOpenChange` | `(open: boolean) => void` | Internal setter | Controlled open callback. |
 | `children` | `React.ReactNode` | - | Optional trigger element. |
 | `title` | `string` | Filter-aware title | Dialog title. |
-| `description` | `string` | `Payment is handled by our secure checkout.` | Dialog description. |
-| `emptyMessage` | `string` | `Nothing is available to buy right now. Please check back later.` | Text shown when filters match no prices. |
+| `description` | `string` | Context-aware | Dialog description. Defaults to a filter-aware line about what happens after payment (e.g. credits landing instantly). |
+| `emptyMessage` | `string` | `Please check back soon.` | Body of the empty state shown when filters match no prices. |
 | `flow` | `"auto" \| "popup" \| "redirect"` | `"auto"` | Checkout window behavior. |
 | `allowPromotionCodes` | `boolean` | `true` | Lets customers enter a provider promotion or discount code at checkout. |
 | `discountCode` | `string` | - | Applies or pre-fills a specific provider promotion or discount code. |
 | `customerEmail` | `string` | - | Pre-fills the receipt and wallet-recovery email. |
 | `collectCustomerEmail` | `boolean` | Mode-aware | Shows the optional receipt and wallet-recovery email field. Defaults to `true` in credit-codes mode and `false` in external-auth mode. |
-| `recommendedPriceId` | `string` | - | Highlights one price as the suggested option. |
+| `recommendedPriceId` | `string \| (options) => string \| null` | - | Highlights one price. Pass an id, or a selector that receives the filtered options — e.g. the exported `recommendMiddleOption`. |
 | `recommendedLabel` | `string` | `Popular` | Label shown on the recommended price. |
 | `showBranding` | `boolean` | `true` | Shows the vantezzen/pay attribution link. |
 | `renderOption` | `(option, controls) => ReactNode` | Built-in row | Custom option renderer. |
@@ -161,6 +163,22 @@ true }}`. The default `FeatureGate` fallback uses `filters={{ features:
 
 Custom option renderers receive `PurchaseOptionControls` with `busy`,
 `disabled`, `current`, `recurring`, `recommended`, and a `buy()` callback.
+
+## Recommend an option
+
+Pass a price id, or let the dialog pick from what it is actually showing:
+
+```tsx
+import { PurchaseButton, recommendMiddleOption } from "@/components/pay/purchase-dialog";
+
+<PurchaseButton
+  filters={{ grantsCredits: true }}
+  recommendedPriceId={recommendMiddleOption}
+/>
+```
+
+The selector receives the filtered, price-sorted options and returns a price
+id — write your own to pin a tier by label, currency, or experiment arm.
 
 ## Checkout return behavior
 

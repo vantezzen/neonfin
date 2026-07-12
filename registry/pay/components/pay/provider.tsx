@@ -18,11 +18,15 @@ import {
   type DeductResult,
   type OrderStatus,
   type PayClient,
+  type Product,
   type StartCheckoutOptions,
   type Subscription,
 } from "@/lib/pay";
 
 export const PAY_CHECKOUT_PAID_EVENT = "pay:checkout-paid";
+
+// Dev-only: slugs we already warned about, so each typo logs once.
+const warnedFeatureSlugs = new Set<string>();
 
 function notifyCheckoutPaid(order: OrderStatus): void {
   if (typeof window === "undefined") return;
@@ -37,6 +41,12 @@ type PayContextValue = {
   balances: Balance[];
   features: string[];
   subscriptions: Subscription[];
+  /** The project catalog, or null before the first load completes. */
+  products: Product[] | null;
+  /** Message from the last failed catalog load, or null. */
+  productsError: string | null;
+  /** Load (and cache) the product catalog; pass `revalidate` to force a refetch. */
+  loadProducts: (opts?: { revalidate?: boolean }) => Promise<Product[]>;
   loading: boolean;
   error: string | null;
   /** Re-fetch the wallet (balances, features, subscriptions) from the server. */
@@ -104,6 +114,47 @@ export function PayProvider({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resumeNonce, setResumeNonce] = useState(0);
+
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  // Deduplicates concurrent loads (e.g. two dialogs opening at once).
+  const productsInflight = useRef<Promise<Product[]> | null>(null);
+
+  const loadProducts = useCallback(
+    async (opts?: { revalidate?: boolean }): Promise<Product[]> => {
+      if (products && !opts?.revalidate) return products;
+      if (productsInflight.current) return productsInflight.current;
+      const request = client
+        .getProducts()
+        .then((next) => {
+          setProducts(next);
+          setProductsError(null);
+          return next;
+        })
+        .catch((error) => {
+          setProductsError(
+            error instanceof PayError
+              ? error.message
+              : "Failed to load products",
+          );
+          throw error;
+        })
+        .finally(() => {
+          productsInflight.current = null;
+        });
+      productsInflight.current = request;
+      return request;
+    },
+    [client, products],
+  );
+
+  // Reset the catalog cache when the client changes (a new provider config).
+  // The client identity only changes when the provider props change.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional cache reset on client change
+    setProducts(null);
+    setProductsError(null);
+  }, [client]);
 
   const hasLoaded = useRef(false);
   const refresh = useCallback(async () => {
@@ -240,6 +291,9 @@ export function PayProvider({
       balances,
       features,
       subscriptions,
+      products,
+      productsError,
+      loadProducts,
       loading,
       error,
       refresh,
@@ -252,6 +306,9 @@ export function PayProvider({
       balances,
       features,
       subscriptions,
+      products,
+      productsError,
+      loadProducts,
       loading,
       error,
       refresh,
@@ -291,6 +348,71 @@ export function usePayCheckout(): PayContextValue["startCheckout"] {
 /** All of the current wallet's active subscriptions. */
 export function useSubscriptions(): Subscription[] {
   return usePayContext().subscriptions;
+}
+
+export type UseProducts = {
+  /** The project catalog, or null before the first load completes. */
+  products: Product[] | null;
+  /** True until the first load settles. */
+  loading: boolean;
+  error: string | null;
+  /** Force a refetch (e.g. after you know the catalog changed). */
+  refresh: () => Promise<void>;
+};
+
+/**
+ * The project's product catalog, fetched once per provider and shared by
+ * every consumer — purchase dialogs, pricing pages, recommendation logic.
+ */
+export function useProducts(): UseProducts {
+  const { products, productsError, loadProducts } = usePayContext();
+  useEffect(() => {
+    loadProducts().catch(() => {
+      // Error state is exposed via `error`; consumers decide how to render it.
+    });
+  }, [loadProducts]);
+  return {
+    products,
+    loading: products === null && productsError === null,
+    error: productsError,
+    refresh: async () => {
+      await loadProducts({ revalidate: true });
+    },
+  };
+}
+
+/** Internal: catalog cache primitives for pay components. */
+export function usePayProducts(): {
+  products: Product[] | null;
+  productsError: string | null;
+  loadProducts: (opts?: { revalidate?: boolean }) => Promise<Product[]>;
+} {
+  const { products, productsError, loadProducts } = usePayContext();
+  return { products, productsError, loadProducts };
+}
+
+/**
+ * Runs the handler whenever a checkout started from this page is confirmed
+ * paid — popup completion, redirect resume, or background confirmation.
+ * The wallet context (balances, features, subscriptions) has already been
+ * refreshed by the time the handler fires.
+ *
+ * The handler does not need to be memoized.
+ *
+ * ```tsx
+ * useCheckoutPaid((order) => toast.success(`Payment received (${order.status})`));
+ * ```
+ */
+export function useCheckoutPaid(handler: (order: OrderStatus) => void): void {
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+  useEffect(() => {
+    function onPaid(event: Event) {
+      handlerRef.current((event as CustomEvent<OrderStatus>).detail);
+    }
+    window.addEventListener(PAY_CHECKOUT_PAID_EVENT, onPaid);
+    return () => window.removeEventListener(PAY_CHECKOUT_PAID_EVENT, onPaid);
+  }, []);
 }
 
 export type UseCredits = {
@@ -369,7 +491,33 @@ export type UseFeature = {
  * "show this only to paying users" check.
  */
 export function useFeature(feature: string): UseFeature {
-  const { features, loading, error, confirming, refresh } = usePayContext();
+  const { features, products, loading, error, confirming, refresh } =
+    usePayContext();
+
+  // Dev-only typo guard: if the cached catalog sells features and this slug
+  // isn't one of them (nor granted to the wallet), the gate can never open
+  // through a purchase — almost always a typo.
+  if (process.env.NODE_ENV !== "production") {
+    if (
+      products &&
+      !features.includes(feature) &&
+      !warnedFeatureSlugs.has(feature)
+    ) {
+      const sellable = new Set(
+        products.flatMap((p) => p.prices.flatMap((price) => price.features)),
+      );
+      if (sellable.size > 0 && !sellable.has(feature)) {
+        warnedFeatureSlugs.add(feature);
+        console.warn(
+          `[pay] useFeature("${feature}"): no price in this project sells the ` +
+            `feature "${feature}". Check the slug for a typo (sellable: ` +
+            `${[...sellable].join(", ")}). Ignore this if the feature is only ` +
+            `granted manually.`,
+        );
+      }
+    }
+  }
+
   return {
     enabled: features.includes(feature),
     loading,
