@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { ChevronDown, Webhook } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
-import { replayWebhookEvent } from "@/lib/actions/webhooks";
 import { listWebhookEvents } from "@/lib/queries/orders";
 import { formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { Status, type StatusTone } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
-import { MutationForm } from "@/components/app/mutation-form";
+import { ReplayWebhookButton } from "@/components/dashboard/replay-webhook-button";
 import { WebhookPayload } from "@/components/dashboard/webhook-payload";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -136,19 +135,7 @@ export default async function WebhooksPage({
                   <p className="text-xs text-muted-foreground">
                     Replay re-runs fulfillment from the stored verified payload.
                   </p>
-                  <MutationForm
-                    action={replayWebhookEvent}
-                    successMessage="Webhook replayed"
-                  >
-                    {(pending) => (
-                      <>
-                        <input type="hidden" name="id" value={e.id} />
-                        <Button type="submit" variant="outline" size="sm" disabled={pending}>
-                          {pending ? "Replaying…" : "Replay"}
-                        </Button>
-                      </>
-                    )}
-                  </MutationForm>
+                  <ReplayWebhookButton eventId={e.id} />
                 </div>
                 <WebhookPayload eventId={e.id} />
               </details>

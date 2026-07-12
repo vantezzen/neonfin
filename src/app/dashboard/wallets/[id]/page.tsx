@@ -1,13 +1,8 @@
 import { notFound } from "next/navigation";
-import { Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { requireUser } from "@/lib/auth/dal";
 import { getWalletDetail } from "@/lib/queries/wallets";
-import {
-  adjustBalance,
-  grantWalletFeature,
-  revokeWalletFeature,
-} from "@/lib/actions/wallets";
+import { adjustBalance, grantWalletFeature } from "@/lib/actions/wallets";
 import { computeWalletAccess, toNum } from "@/lib/credits";
 import { humanizeFeatureKey } from "@/lib/features";
 import { formatLargeNumber, formatDate, formatDateTime } from "@/lib/format";
@@ -16,8 +11,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { FormDialog } from "@/components/app/form-dialog";
 import { CopyInline } from "@/components/app/copy";
 import { StatusDot, type StatusTone } from "@/components/app/status";
-import { Button } from "@/components/ui/button";
-import { MutationForm } from "@/components/app/mutation-form";
+import { RevokeFeatureButton } from "@/components/dashboard/revoke-feature-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -232,32 +226,10 @@ export default async function WalletDetailPage({
                       >
                         {humanizeFeatureKey(f)}
                         {manual ? (
-                          <MutationForm
-                            action={revokeWalletFeature}
-                            successMessage="Feature grant revoked"
-                          >
-                            {(pending) => (
-                              <>
-                                <input
-                                  type="hidden"
-                                  name="walletId"
-                                  value={wallet.id}
-                                />
-                                <input type="hidden" name="feature" value={f} />
-                                <Button
-                                  type="submit"
-                                  variant="ghost"
-                                  size="icon-xs"
-                                  className="text-muted-foreground hover:text-destructive"
-                                  title="Revoke manual grant"
-                                  aria-label="Revoke manual grant"
-                                  disabled={pending}
-                                >
-                                  <Trash2 className="size-3" />
-                                </Button>
-                              </>
-                            )}
-                          </MutationForm>
+                          <RevokeFeatureButton
+                            walletId={wallet.id}
+                            feature={f}
+                          />
                         ) : (
                           <span
                             className="text-muted-foreground"
