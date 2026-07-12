@@ -22,8 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CopyText } from "@/components/dashboard/copy-text";
-import { CodeSnippet } from "@/components/app/copy";
+import { CopyField, CodeSnippet } from "@/components/app/copy";
 import { Stepper } from "@/components/app/wizard/stepper";
 
 const STEPS = ["Keys", "Webhook", "Secret"] as const;
@@ -250,7 +249,7 @@ function Body({
               {" - add this endpoint in "}
               {providerName}
             </Label>
-            <CopyText value={webhookUrl} />
+            <CopyField value={webhookUrl} />
             <p className="text-xs text-muted-foreground">
               {provider === "polar" ? (
                 <>

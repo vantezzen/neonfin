@@ -10,7 +10,7 @@ import {
   removeApiKey,
   type KeyState,
 } from "@/lib/actions/projects";
-import { CopyText } from "@/components/dashboard/copy-text";
+import { CopyField } from "@/components/app/copy";
 import { SectionHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { Button } from "@/components/ui/button";
@@ -236,7 +236,7 @@ function IssueKeyButton({
               only.
             </DialogDescription>
           </DialogHeader>
-          {state.key ? <CopyText value={state.key} /> : null}
+          {state.key ? <CopyField value={state.key} /> : null}
         </DialogContent>
       </Dialog>
     </>

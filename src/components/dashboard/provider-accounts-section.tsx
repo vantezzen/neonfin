@@ -11,7 +11,7 @@ import { ProviderLink } from "@/components/app/provider-link";
 import { providerDashboardUrl } from "@/lib/providers/links";
 import { EmptyState } from "@/components/app/empty-state";
 import { Status } from "@/components/app/status";
-import { CopyText } from "@/components/dashboard/copy-text";
+import { CopyField } from "@/components/app/copy";
 import { ProviderConnectWizard } from "@/components/dashboard/provider-connect-wizard";
 import { Button } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/app/confirm-action";
@@ -186,7 +186,7 @@ export function ProviderAccountsSection({
               <span className="text-xs text-muted-foreground">
                 Webhook URL - paste into {meta.name}
               </span>
-              <CopyText
+              <CopyField
                 value={`${appUrl}/api/webhooks/${a.provider}/${a.id}`}
               />
             </div>
