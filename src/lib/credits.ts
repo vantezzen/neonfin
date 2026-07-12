@@ -210,6 +210,46 @@ async function initBalanceRow(
 }
 
 /**
+ * Batch variant of initBalanceRow: inserts all (wallet, product) balance rows
+ * in a single statement and emits free_grant ledger entries (also batched) only
+ * for products that were actually inserted and have a non-zero grant.
+ * Returns a Map<productId, { balance, resetAt }> for every input product.
+ */
+async function initBalanceRows(
+  tx: Tx,
+  walletId: string,
+  products: Product[],
+): Promise<Map<string, { balance: number; resetAt: Date | null }>> {
+  const grants = new Map(
+    products.map((p) => [p.id, { product: p, grant: initialGrant(p) }]),
+  );
+  if (products.length === 0) return new Map();
+  const inserted = await tx
+    .insert(creditBalances)
+    .values(
+      products.map((p) => {
+        const { balance, resetAt } = grants.get(p.id)!.grant;
+        return { walletId, productId: p.id, balance: fmt(balance), freeGrantResetAt: resetAt };
+      }),
+    )
+    .onConflictDoNothing()
+    .returning({ productId: creditBalances.productId });
+  const insertedIds = new Set(inserted.map((r) => r.productId));
+  const grantRows = products
+    .filter((p) => insertedIds.has(p.id) && grants.get(p.id)!.grant.balance > 0)
+    .map((p) => ({
+      walletId,
+      productId: p.id,
+      delta: fmt(grants.get(p.id)!.grant.balance),
+      reason: "free_grant" as const,
+    }));
+  if (grantRows.length > 0) {
+    await tx.insert(ledgerEntries).values(grantRows);
+  }
+  return new Map(products.map((p) => [p.id, grants.get(p.id)!.grant]));
+}
+
+/**
  * Lock (or lazily create) the (wallet, product) balance row and apply any due
  * monthly free-grant refill. Tops up *to* the grant amount (never additive) so
  * unused free credits don't accumulate. Returns the current balance.
@@ -323,11 +363,11 @@ export async function createCodeWalletTx(
 ): Promise<WalletWithBalances> {
   const prods = await activeProductsTx(tx, project.id);
   const wallet = await insertCodeWallet(tx, project);
-  const balances: BalanceView[] = [];
-  for (const product of prods) {
-    const balance = (await initBalanceRow(tx, wallet.id, product)) ?? 0;
-    balances.push(viewOf(product, balance, initialGrant(product).resetAt));
-  }
+  const grants = await initBalanceRows(tx, wallet.id, prods);
+  const balances: BalanceView[] = prods.map((product) => {
+    const g = grants.get(product.id)!;
+    return viewOf(product, g.balance, g.resetAt);
+  });
   // A brand-new wallet has no subscriptions or feature grants yet.
   return { wallet, balances, ...EMPTY_ACCESS };
 }
@@ -422,11 +462,11 @@ export async function getOrCreateExternalWallet(
         ...(await computeWalletAccess(tx, existing.id)),
       };
     }
-    const balances: BalanceView[] = [];
-    for (const product of prods) {
-      const balance = (await initBalanceRow(tx, wallet.id, product)) ?? 0;
-      balances.push(viewOf(product, balance, initialGrant(product).resetAt));
-    }
+    const grants = await initBalanceRows(tx, wallet.id, prods);
+    const balances: BalanceView[] = prods.map((product) => {
+      const g = grants.get(product.id)!;
+      return viewOf(product, g.balance, g.resetAt);
+    });
     return { wallet, balances, ...EMPTY_ACCESS };
   });
 }
