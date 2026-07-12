@@ -1,7 +1,8 @@
-import { LogOut } from "lucide-react";
+import { CogIcon, LogOut } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
 import { logout } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 /**
  * Server-rendered account block at the bottom of the nav. Reads the session,
@@ -22,6 +23,9 @@ export async function NavUser() {
           </span>
         ) : null}
       </div>
+      <Link href="/dashboard/settings">
+        <CogIcon className="size-4 text-muted-foreground/70" />
+      </Link>
       <form action={logout}>
         <Button
           type="submit"

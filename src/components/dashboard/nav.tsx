@@ -30,7 +30,6 @@ const MAIN = [
   { href: "/dashboard/projects", label: "Projects", icon: Boxes },
   { href: "/dashboard/wallets", label: "Wallets", icon: Wallet },
   { href: "/dashboard/orders", label: "Orders", icon: Receipt },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const;
 
 const PAYMENTS = [
@@ -147,7 +146,9 @@ export function DashboardNav({ footer }: { footer?: React.ReactNode }) {
           height={26}
           className="rounded-md"
         />
-        <span className="text-sm font-semibold tracking-tight">vantezzen/pay</span>
+        <span className="text-sm font-semibold tracking-tight">
+          vantezzen/pay
+        </span>
       </Link>
 
       <NavSections surface="canvas" />
@@ -175,7 +176,9 @@ export function MobileNav({ footer }: { footer?: React.ReactNode }) {
           height={24}
           className="rounded-md"
         />
-        <span className="text-sm font-semibold tracking-tight">vantezzen/pay</span>
+        <span className="text-sm font-semibold tracking-tight">
+          vantezzen/pay
+        </span>
       </Link>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger

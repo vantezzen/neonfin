@@ -1,4 +1,13 @@
 {
   "title": "Getting started",
-  "pages": ["index", "choose-setup", "quickstart", "install", "frameworks", "dashboard", "first-feature", "go-live"]
+  "icon": "Rocket",
+  "pages": [
+    "index",
+    "choose-setup",
+    "dashboard",
+    "install",
+    "frameworks",
+    "first-feature",
+    "go-live"
+  ]
 }

@@ -1,9 +1,5 @@
 {
   "title": "HTTP API",
-  "pages": [
-    "index",
-    "server-side-users",
-    "webhooks",
-    "errors"
-  ]
+  "icon": "CodeXml",
+  "pages": ["index", "server-side-users", "webhooks", "errors"]
 }

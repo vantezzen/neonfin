@@ -111,6 +111,47 @@ function FreeGrantFields({ defaults }: { defaults?: Product }) {
   );
 }
 
+function CreditUnitHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-muted-foreground hover:text-foreground"
+        aria-label="What is a credit unit?"
+      >
+        <HelpCircle className="size-3.5" />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Credit unit</DialogTitle>
+            <DialogDescription>
+              The unit of measure for this product&apos;s metered credits
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p>
+              Set the credit unit to something that decribes what one "credit"
+              represents.
+            </p>
+            <p>
+              For example, if your app charges for API calls, you might set the
+              credit unit to "API calls". If your app charges for processing
+              time, you might set the credit unit to "minutes".
+            </p>
+            <p>
+              This helps users understand what they are purchasing and how their
+              credits will be used.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 /** The product fields shared by the create and edit dialogs. */
 export function ProductFields({
   fixedType,
@@ -170,7 +211,13 @@ export function ProductFields({
       )}
 
       {type === "credits" ? (
-        <Field label="Credit unit">
+        <Field
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              Credit unit <CreditUnitHelp />
+            </span>
+          }
+        >
           <Input
             name="creditUnit"
             defaultValue={defaults?.creditUnit ?? "credits"}

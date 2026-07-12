@@ -1,5 +1,6 @@
 {
   "title": "Self-host",
+  "icon": "HardDrive",
   "pages": [
     "index",
     "environment",

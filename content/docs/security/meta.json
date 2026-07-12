@@ -1,4 +1,5 @@
 {
   "title": "Security",
+  "icon": "BrickWallShield",
   "pages": ["index", "provider-service"]
 }

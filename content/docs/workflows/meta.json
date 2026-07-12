@@ -1,5 +1,6 @@
 {
   "title": "Common workflows",
+  "icon": "Workflow",
   "pages": [
     "index",
     "providers",
