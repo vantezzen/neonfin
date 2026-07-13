@@ -92,7 +92,7 @@ function Seam({
           <span
             aria-hidden
             className={cn(
-              "pointer-events-none absolute left-1/2 z-20 max-w-48 -translate-x-1/2 truncate rounded bg-primary px-1.5 py-0.5 font-mono text-[10px] leading-none whitespace-nowrap text-primary-foreground shadow-sm",
+              "pointer-events-none absolute left-1/2 z-20 max-w-48 -translate-x-1/2 truncate rounded bg-primary px-1.5 py-0.5 font-mono text-[10px] leading-none text-primary-foreground shadow-sm",
               labelClassName ?? "top-full mt-1",
             )}
           >
@@ -209,14 +209,7 @@ export function PrismStudio() {
 
         {/* The app shell — spans the full page width */}
         <div className="bg-background">
-          <header
-            className={cn(
-              "flex flex-wrap items-center justify-end gap-2 border-b px-4 py-3 sm:px-6",
-              // Reveal mode adds a band below the controls so the staggered
-              // component labels have room and don't overlap the app body.
-              seams && "pb-16",
-            )}
-          >
+          <header className="relative flex flex-wrap items-center justify-end gap-2 border-b px-4 py-3 sm:px-6">
             <Seam label="<RemainingCredits />" labelClassName="top-full mt-1">
               <span className="flex items-center gap-0.5 rounded-full border bg-muted/30 py-0.5 pr-0.5 pl-3 text-sm font-medium">
                 <RemainingCredits />
@@ -261,7 +254,10 @@ export function PrismStudio() {
               )}
             </Seam>
 
-            <Seam label="<WalletButton />" labelClassName="top-full mt-11">
+            <Seam
+              label="<WalletButton />"
+              labelClassName="top-full mt-11 right-0 left-auto translate-x-0"
+            >
               <WalletButton
                 variant="ghost"
                 size="icon"

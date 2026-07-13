@@ -117,16 +117,20 @@ export function PayProvider({
 
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const productsCache = useRef<Product[] | null>(null);
   // Deduplicates concurrent loads (e.g. two dialogs opening at once).
   const productsInflight = useRef<Promise<Product[]> | null>(null);
 
   const loadProducts = useCallback(
     async (opts?: { revalidate?: boolean }): Promise<Product[]> => {
-      if (products && !opts?.revalidate) return products;
+      if (productsCache.current && !opts?.revalidate) {
+        return productsCache.current;
+      }
       if (productsInflight.current) return productsInflight.current;
       const request = client
         .getProducts()
         .then((next) => {
+          productsCache.current = next;
           setProducts(next);
           setProductsError(null);
           return next;
@@ -145,12 +149,13 @@ export function PayProvider({
       productsInflight.current = request;
       return request;
     },
-    [client, products],
+    [client],
   );
 
   // Reset the catalog cache when the client changes (a new provider config).
   // The client identity only changes when the provider props change.
   useEffect(() => {
+    productsCache.current = null;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional cache reset on client change
     setProducts(null);
     setProductsError(null);
