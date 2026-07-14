@@ -175,10 +175,14 @@ export async function waitForPopupCheckout(
           pollTimer = setTimeout(confirmPayment, POPUP_POLL_MS);
           return;
         }
+        // Grace period elapsed with no payment: the user abandoned checkout.
+        // Drop the pending order so nothing keeps polling for a purchase that
+        // never happened, and report a clean, non-blocking close.
+        forgetPendingOrder(result.orderId);
         fail(
           checkoutError(
             "checkout_closed",
-            "Checkout closed before payment could be confirmed. We'll keep checking in the background.",
+            "Checkout closed before payment completed.",
           ),
         );
       }

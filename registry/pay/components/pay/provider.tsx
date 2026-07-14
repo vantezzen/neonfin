@@ -113,7 +113,6 @@ export function PayProvider({
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resumeNonce, setResumeNonce] = useState(0);
 
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -224,7 +223,10 @@ export function PayProvider({
         return result;
       } catch (error) {
         if (error instanceof PayError && error.code === "checkout_closed") {
-          setResumeNonce((nonce) => nonce + 1);
+          // The popup was closed without a confirmed payment. Refresh once in
+          // case a last-moment payment landed, but don't enter a blocking
+          // background poll for a purchase the user most likely abandoned.
+          void refresh();
         }
         throw error;
       } finally {
@@ -287,7 +289,7 @@ export function PayProvider({
     return () => {
       active = false;
     };
-  }, [client, refresh, resumeNonce]);
+  }, [client, refresh]);
 
   const value = useMemo<PayContextValue>(
     () => ({

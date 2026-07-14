@@ -11,6 +11,7 @@ import { createCreditCode } from "@/lib/id";
 import {
   activeProducts,
   activeProductsTx,
+  creditBearingProductIds,
   expireCodeWalletIfNeeded,
   initBalanceRows,
   syncBalance,
@@ -58,10 +59,13 @@ export async function createCodeWalletTx(
   const prods = await activeProductsTx(tx, project.id);
   const wallet = await insertCodeWallet(tx, project);
   const grants = await initBalanceRows(tx, wallet.id, prods);
-  const balances: BalanceView[] = prods.map((product) => {
-    const g = grants.get(product.id)!;
-    return viewOf(product, g.balance, g.resetAt);
-  });
+  const bearing = await creditBearingProductIds(tx, prods);
+  const balances: BalanceView[] = prods
+    .filter((product) => bearing.has(product.id))
+    .map((product) => {
+      const g = grants.get(product.id)!;
+      return viewOf(product, g.balance, g.resetAt);
+    });
   // A brand-new wallet has no subscriptions or feature grants yet.
   return { wallet, balances, ...EMPTY_ACCESS };
 }
@@ -132,6 +136,8 @@ export async function getOrCreateExternalWallet(
 
   const prods = await activeProducts(projectId);
   return db.transaction(async (tx) => {
+    const bearing = await creditBearingProductIds(tx, prods);
+    const creditProds = prods.filter((p) => bearing.has(p.id));
     const [wallet] = await tx
       .insert(wallets)
       .values({ projectId, kind: "external", externalUserId })
@@ -146,7 +152,7 @@ export async function getOrCreateExternalWallet(
       });
       if (!existing) throw new Error("Could not create external wallet");
       const balances: BalanceView[] = [];
-      for (const p of prods) {
+      for (const p of creditProds) {
         balances.push(viewOf(p, await syncBalance(tx, existing.id, p), null));
       }
       // Existed after a create race - surface its real access, not empty.
@@ -157,7 +163,7 @@ export async function getOrCreateExternalWallet(
       };
     }
     const grants = await initBalanceRows(tx, wallet.id, prods);
-    const balances: BalanceView[] = prods.map((product) => {
+    const balances: BalanceView[] = creditProds.map((product) => {
       const g = grants.get(product.id)!;
       return viewOf(product, g.balance, g.resetAt);
     });

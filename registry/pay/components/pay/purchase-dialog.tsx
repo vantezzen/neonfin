@@ -407,7 +407,6 @@ export function PurchaseDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [enteredEmail, setEnteredEmail] = useState("");
   const dialogTitleRef = React.useRef<HTMLHeadingElement>(null);
   const receiptEmailId = React.useId();
@@ -431,17 +430,16 @@ export function PurchaseDialog({
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
-    setNotice(null);
     loadProducts({ revalidate: true }).catch(() => {
       // productsError renders below when there is nothing cached to show.
     });
   }, [isOpen, loadProducts]);
 
-  // Status banners render at the top of the scroll area — make sure they are
+  // The error banner renders at the top of the scroll area — make sure it is
   // seen even when the user was scrolled down in a long option list.
   useEffect(() => {
-    if (error || notice) scrollRef.current?.scrollTo({ top: 0 });
-  }, [error, notice]);
+    if (error) scrollRef.current?.scrollTo({ top: 0 });
+  }, [error]);
 
   const subscribedProductIds = new Set(subscriptions.map((s) => s.productId));
 
@@ -454,7 +452,6 @@ export function PurchaseDialog({
     }
     setBusy(priceId);
     setError(null);
-    setNotice(null);
     try {
       await startCheckout(priceId, {
         flow,
@@ -477,8 +474,8 @@ export function PurchaseDialog({
       } else if (err instanceof PayError && err.code === "checkout_cancelled") {
         setError("Checkout was cancelled. No charge was made.");
       } else if (err instanceof PayError && err.code === "checkout_closed") {
-        setNotice(
-          "Confirming your payment — this page updates automatically once it's recorded.",
+        setError(
+          "Checkout closed before payment completed. If you did pay, your balance updates automatically — otherwise you can try again.",
         );
       } else {
         console.error("[pay] Failed to start checkout:", err);
@@ -490,7 +487,6 @@ export function PurchaseDialog({
   async function openPortal() {
     setPortalBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const url = await client.getPortalUrl();
       if (typeof window !== "undefined") window.location.assign(url);
@@ -573,7 +569,7 @@ export function PurchaseDialog({
       ) : null}
       <DialogContent
         initialFocus={dialogTitleRef}
-        className="max-h-[min(92svh,820px)] gap-0 overflow-hidden p-0 sm:max-w-lg"
+        className="flex max-h-[min(92svh,820px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       >
         <div className="relative overflow-hidden border-b bg-muted/30 px-5 pt-5 pb-4 pr-14 sm:px-6 sm:pt-6 sm:pb-5 sm:pr-16">
           <div
@@ -596,7 +592,7 @@ export function PurchaseDialog({
 
         <div
           ref={scrollRef}
-          className="min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5"
         >
           <div className="flex flex-col gap-4">
             {error ? (
@@ -605,18 +601,6 @@ export function PurchaseDialog({
                 className="rounded-xl border border-destructive/20 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
               >
                 {error}
-              </p>
-            ) : null}
-            {notice ? (
-              <p
-                role="status"
-                className="flex items-start gap-2 rounded-xl border bg-muted/40 px-3.5 py-3 text-sm text-muted-foreground"
-              >
-                <Loader2
-                  className="mt-0.5 size-4 shrink-0 animate-spin"
-                  aria-hidden
-                />
-                {notice}
               </p>
             ) : null}
             {busy ? (

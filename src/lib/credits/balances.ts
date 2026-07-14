@@ -1,10 +1,11 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   creditBalances,
   ledgerEntries,
   orders,
+  prices,
   products,
   projects,
   type Product,
@@ -221,6 +222,36 @@ export async function syncBalance(
       .where(eq(creditBalances.id, row.id));
   }
   return balance;
+}
+
+/**
+ * Of the given products, the ones that can actually hold a credit balance:
+ * metered credit packs (`type === "credits"`), anything with a free grant, and
+ * subscription / one-time products whose price includes credits
+ * (`creditsGranted > 0`). Feature-only products (plain subscriptions, one-time
+ * unlocks) are excluded so they never surface as meaningless "0 credits"
+ * balances - their access lives in `features`/`subscriptions` instead.
+ */
+export async function creditBearingProductIds(
+  exec: typeof db | Tx,
+  prods: Product[],
+): Promise<Set<string>> {
+  const bearing = new Set(
+    prods
+      .filter((p) => p.type === "credits" || p.freeGrant != null)
+      .map((p) => p.id),
+  );
+  const rest = prods.filter((p) => !bearing.has(p.id)).map((p) => p.id);
+  if (rest.length > 0) {
+    const rows = await exec
+      .selectDistinct({ productId: prices.productId })
+      .from(prices)
+      .where(
+        and(inArray(prices.productId, rest), sql`${prices.creditsGranted} > 0`),
+      );
+    for (const r of rows) bearing.add(r.productId);
+  }
+  return bearing;
 }
 
 export async function activeProducts(projectId: string): Promise<Product[]> {

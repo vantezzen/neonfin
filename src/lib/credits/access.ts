@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import {
   activeProducts,
+  creditBearingProductIds,
   expireCodeWalletIfNeeded,
   syncBalance,
   viewOf,
@@ -118,8 +119,10 @@ export async function readWalletById(walletId: string): Promise<WalletWithBalanc
     expiredAt = await expireCodeWalletIfNeeded(tx, wallet);
     if (expiredAt) return [];
 
+    const bearing = await creditBearingProductIds(tx, prods);
     const out: BalanceView[] = [];
     for (const product of prods) {
+      if (!bearing.has(product.id)) continue;
       const balance = await syncBalance(tx, wallet.id, product);
       const [row] = await tx
         .select({ resetAt: creditBalances.freeGrantResetAt })
